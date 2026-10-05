@@ -23,6 +23,6 @@ class PaymentBinding extends Bindings {
       paymentService: Get.find<PaymentService>(),
       supplierRepo: Get.find<SupplierRepository>(),
       accountRepo: Get.find<AccountRepository>(),
-    ));
+    ), fenix: true);
   }
 }

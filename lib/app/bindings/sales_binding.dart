@@ -16,6 +16,6 @@ class SalesBinding extends Bindings {
       customerRepo: Get.find<CustomerRepository>(),
       productRepo: Get.find<ProductRepository>(),
       companyRepo: Get.find<CompanyRepository>(),
-    ));
+    ), fenix: true);
   }
 }

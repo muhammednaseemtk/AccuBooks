@@ -32,7 +32,7 @@ class SalesController extends GetxController {
   final products = <ProductModel>[].obs;
   final company = Rxn<CompanyModel>();
 
-  final isLoading = false.obs;
+  final isLoading = true.obs;
   final isSubmitting = false.obs;
   final errorMessage = ''.obs;
 
@@ -62,8 +62,8 @@ class SalesController extends GetxController {
   double get formBalanceAmount => formGrandTotal - formPaidAmount.value;
 
   @override
-  void onInit() {
-    super.onInit();
+  void onReady() {
+    super.onReady();
     loadMetadata();
     loadInvoices();
   }

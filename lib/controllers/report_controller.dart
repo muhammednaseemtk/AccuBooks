@@ -18,7 +18,7 @@ class ReportController extends GetxController {
         _journalRepo = journalRepo ?? JournalRepository();
 
   final accounts = <AccountModel>[].obs;
-  final isLoading = false.obs;
+  final isLoading = true.obs;
   final isExporting = false.obs;
   final errorMessage = ''.obs;
 
@@ -42,8 +42,8 @@ class ReportController extends GetxController {
   final stockReportData = <Map<String, dynamic>>[].obs;
 
   @override
-  void onInit() {
-    super.onInit();
+  void onReady() {
+    super.onReady();
     loadAccounts();
     loadDayBook();
   }

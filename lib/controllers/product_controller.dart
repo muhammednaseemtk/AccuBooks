@@ -21,7 +21,7 @@ class ProductController extends GetxController {
   final categories = <CategoryModel>[].obs;
   final taxes = <TaxModel>[].obs;
 
-  final isLoading = false.obs;
+  final isLoading = true.obs;
   final isSubmitting = false.obs;
   final errorMessage = ''.obs;
 
@@ -35,8 +35,8 @@ class ProductController extends GetxController {
   final isLoadingTransactions = false.obs;
 
   @override
-  void onInit() {
-    super.onInit();
+  void onReady() {
+    super.onReady();
     loadMetadata();
     loadProducts();
   }

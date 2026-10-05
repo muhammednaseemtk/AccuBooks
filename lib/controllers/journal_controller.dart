@@ -38,7 +38,7 @@ class JournalController extends GetxController {
   final journalEntries = <JournalEntryModel>[].obs;
   final accounts = <AccountModel>[].obs;
 
-  final isLoading = false.obs;
+  final isLoading = true.obs;
   final isSubmitting = false.obs;
   final errorMessage = ''.obs;
 
@@ -71,8 +71,8 @@ class JournalController extends GetxController {
   bool get isFormBalanced => formDifference <= 0.01 && formTotalDebit > 0;
 
   @override
-  void onInit() {
-    super.onInit();
+  void onReady() {
+    super.onReady();
     loadAccounts();
     loadJournalEntries();
   }

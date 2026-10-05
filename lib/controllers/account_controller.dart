@@ -15,7 +15,7 @@ class AccountController extends GetxController {
         _journalRepo = journalRepo ?? JournalRepository();
 
   final accounts = <AccountModel>[].obs;
-  final isLoading = false.obs;
+  final isLoading = true.obs;
   final isSubmitting = false.obs;
   final errorMessage = ''.obs;
 
@@ -30,8 +30,8 @@ class AccountController extends GetxController {
   final isLoadingLedger = false.obs;
 
   @override
-  void onInit() {
-    super.onInit();
+  void onReady() {
+    super.onReady();
     loadAccounts();
   }
 

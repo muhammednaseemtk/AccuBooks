@@ -14,6 +14,6 @@ class ExpenseBinding extends Bindings {
       expenseRepo: Get.find<ExpenseRepository>(),
       accountRepo: Get.find<AccountRepository>(),
       accountingService: Get.find<AccountingService>(),
-    ));
+    ), fenix: true);
   }
 }

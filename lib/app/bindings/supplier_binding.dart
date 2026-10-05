@@ -8,6 +8,6 @@ class SupplierBinding extends Bindings {
     Get.lazyPut<SupplierRepository>(() => SupplierRepository(), fenix: true);
     Get.lazyPut<SupplierController>(() => SupplierController(
       supplierRepo: Get.find<SupplierRepository>(),
-    ));
+    ), fenix: true);
   }
 }

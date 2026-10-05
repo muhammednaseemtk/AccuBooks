@@ -24,7 +24,7 @@ class ReceiptController extends GetxController {
   final customers = <CustomerModel>[].obs;
   final bankCashAccounts = <AccountModel>[].obs;
 
-  final isLoading = false.obs;
+  final isLoading = true.obs;
   final isSubmitting = false.obs;
   final errorMessage = ''.obs;
 
@@ -42,8 +42,8 @@ class ReceiptController extends GetxController {
   final formNotes = ''.obs;
 
   @override
-  void onInit() {
-    super.onInit();
+  void onReady() {
+    super.onReady();
     loadMetadata();
     loadReceipts();
   }

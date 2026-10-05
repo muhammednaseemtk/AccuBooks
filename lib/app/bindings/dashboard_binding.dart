@@ -8,6 +8,6 @@ class DashboardBinding extends Bindings {
   void dependencies() {
     Get.lazyPut<ReportRepository>(() => ReportRepository(), fenix: true);
     Get.lazyPut<ReportService>(() => ReportService(reportRepo: Get.find<ReportRepository>()), fenix: true);
-    Get.lazyPut<DashboardController>(() => DashboardController(reportService: Get.find<ReportService>()));
+    Get.lazyPut<DashboardController>(() => DashboardController(reportService: Get.find<ReportService>()), fenix: true);
   }
 }

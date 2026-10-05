@@ -14,6 +14,6 @@ class PurchaseBinding extends Bindings {
       purchaseService: Get.find<PurchaseService>(),
       supplierRepo: Get.find<SupplierRepository>(),
       productRepo: Get.find<ProductRepository>(),
-    ));
+    ), fenix: true);
   }
 }

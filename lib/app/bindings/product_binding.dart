@@ -11,6 +11,6 @@ class ProductBinding extends Bindings {
     Get.lazyPut<ProductController>(() => ProductController(
       productRepo: Get.find<ProductRepository>(),
       inventoryService: Get.find<InventoryService>(),
-    ));
+    ), fenix: true);
   }
 }

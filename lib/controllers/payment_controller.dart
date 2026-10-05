@@ -24,7 +24,7 @@ class PaymentController extends GetxController {
   final suppliers = <SupplierModel>[].obs;
   final bankCashAccounts = <AccountModel>[].obs;
 
-  final isLoading = false.obs;
+  final isLoading = true.obs;
   final isSubmitting = false.obs;
   final errorMessage = ''.obs;
 
@@ -42,8 +42,8 @@ class PaymentController extends GetxController {
   final formNotes = ''.obs;
 
   @override
-  void onInit() {
-    super.onInit();
+  void onReady() {
+    super.onReady();
     loadMetadata();
     loadPayments();
   }

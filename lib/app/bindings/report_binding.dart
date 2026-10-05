@@ -16,6 +16,6 @@ class ReportBinding extends Bindings {
       reportService: Get.find<ReportService>(),
       accountRepo: Get.find<AccountRepository>(),
       journalRepo: Get.find<JournalRepository>(),
-    ));
+    ), fenix: true);
   }
 }

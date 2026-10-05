@@ -11,6 +11,6 @@ class AccountBinding extends Bindings {
     Get.lazyPut<AccountController>(() => AccountController(
       accountRepo: Get.find<AccountRepository>(),
       journalRepo: Get.find<JournalRepository>(),
-    ));
+    ), fenix: true);
   }
 }

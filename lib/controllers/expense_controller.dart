@@ -28,7 +28,7 @@ class ExpenseController extends GetxController {
   final expenseAccounts = <AccountModel>[].obs;
   final paymentAccounts = <AccountModel>[].obs;
 
-  final isLoading = false.obs;
+  final isLoading = true.obs;
   final isSubmitting = false.obs;
   final errorMessage = ''.obs;
 
@@ -47,8 +47,8 @@ class ExpenseController extends GetxController {
   final formReference = ''.obs;
 
   @override
-  void onInit() {
-    super.onInit();
+  void onReady() {
+    super.onReady();
     loadMetadata();
     loadExpenses();
   }

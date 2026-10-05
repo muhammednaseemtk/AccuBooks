@@ -6,10 +6,12 @@ import 'theme/app_theme.dart';
 
 class AccuBooksApp extends StatelessWidget {
   final ThemeMode initialThemeMode;
+  final String? initialRoute;
 
   const AccuBooksApp({
     super.key,
     this.initialThemeMode = ThemeMode.light,
+    this.initialRoute,
   });
 
   @override
@@ -21,9 +23,10 @@ class AccuBooksApp extends StatelessWidget {
       darkTheme: AppTheme.darkTheme,
       themeMode: initialThemeMode,
       initialBinding: InitialBinding(),
-      initialRoute: AppPages.initial,
+      initialRoute: initialRoute ?? AppPages.initial,
       getPages: AppPages.routes,
       defaultTransition: Transition.fade,
+      transitionDuration: const Duration(milliseconds: 100),
     );
   }
 }

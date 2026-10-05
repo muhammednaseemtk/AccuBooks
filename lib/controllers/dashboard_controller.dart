@@ -27,8 +27,8 @@ class DashboardController extends GetxController {
   final lowStockProducts = <dynamic>[].obs;
 
   @override
-  void onInit() {
-    super.onInit();
+  void onReady() {
+    super.onReady();
     loadDashboardData();
   }
 

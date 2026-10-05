@@ -25,7 +25,7 @@ class PurchaseController extends GetxController {
   final suppliers = <SupplierModel>[].obs;
   final products = <ProductModel>[].obs;
 
-  final isLoading = false.obs;
+  final isLoading = true.obs;
   final isSubmitting = false.obs;
   final errorMessage = ''.obs;
 
@@ -54,8 +54,8 @@ class PurchaseController extends GetxController {
   double get formBalanceAmount => formGrandTotal - formPaidAmount.value;
 
   @override
-  void onInit() {
-    super.onInit();
+  void onReady() {
+    super.onReady();
     loadMetadata();
     loadPurchases();
   }

@@ -8,6 +8,6 @@ class CustomerBinding extends Bindings {
     Get.lazyPut<CustomerRepository>(() => CustomerRepository(), fenix: true);
     Get.lazyPut<CustomerController>(() => CustomerController(
       customerRepo: Get.find<CustomerRepository>(),
-    ));
+    ), fenix: true);
   }
 }

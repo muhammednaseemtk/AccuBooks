@@ -268,12 +268,16 @@ class AppScaffold extends StatelessWidget {
                 child: InkWell(
                   borderRadius: BorderRadius.circular(8),
                   onTap: () {
+                    if (currentRoute == item.route) {
+                      if (!ResponsiveUtils.isDesktop(context) && !ResponsiveUtils.isTablet(context)) {
+                        Navigator.of(context).pop();
+                      }
+                      return;
+                    }
                     if (!ResponsiveUtils.isDesktop(context) && !ResponsiveUtils.isTablet(context)) {
-                      Navigator.of(context).pop(); // close drawer
+                      Navigator.of(context).pop();
                     }
-                    if (currentRoute != item.route) {
-                      Get.offNamed(item.route);
-                    }
+                    Get.offNamed(item.route);
                   },
                   child: Container(
                     decoration: BoxDecoration(

@@ -23,6 +23,6 @@ class ReceiptBinding extends Bindings {
       receiptService: Get.find<ReceiptService>(),
       customerRepo: Get.find<CustomerRepository>(),
       accountRepo: Get.find<AccountRepository>(),
-    ));
+    ), fenix: true);
   }
 }

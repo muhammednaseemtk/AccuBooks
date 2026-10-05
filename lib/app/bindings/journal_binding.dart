@@ -14,6 +14,6 @@ class JournalBinding extends Bindings {
       journalRepo: Get.find<JournalRepository>(),
       accountRepo: Get.find<AccountRepository>(),
       accountingService: Get.find<AccountingService>(),
-    ));
+    ), fenix: true);
   }
 }
