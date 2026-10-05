@@ -77,6 +77,27 @@ class CustomerController extends GetxController {
     }
   }
 
+  Future<bool> deleteCustomer(CustomerModel customer) async {
+    try {
+      final canDelete = await _customerRepo.canDeleteCustomer(customer.id!);
+      if (!canDelete) {
+        Get.snackbar(
+          'Cannot Delete',
+          'Customer "${customer.name}" has active sales invoices or receipts. Please delete or cancel those records first.',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        return false;
+      }
+      await _customerRepo.deleteCustomer(customer.id!);
+      await loadCustomers();
+      Get.snackbar('Success', 'Customer "${customer.name}" deleted successfully', snackPosition: SnackPosition.BOTTOM);
+      return true;
+    } catch (e) {
+      Get.snackbar('Error', 'Unable to delete customer: $e', snackPosition: SnackPosition.BOTTOM);
+      return false;
+    }
+  }
+
   Future<bool> deactivateCustomer(int id) async {
     try {
       await _customerRepo.deactivateCustomer(id);

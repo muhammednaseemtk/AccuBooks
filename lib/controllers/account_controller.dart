@@ -90,6 +90,35 @@ class AccountController extends GetxController {
     }
   }
 
+  Future<bool> deleteAccount(AccountModel account) async {
+    try {
+      if (account.isSystemAccount) {
+        Get.snackbar(
+          'Action Not Allowed',
+          'System accounts cannot be deleted as they are essential for accounting operations.',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        return false;
+      }
+      final canDelete = await _accountRepo.canDeleteAccount(account.id!);
+      if (!canDelete) {
+        Get.snackbar(
+          'Cannot Delete',
+          'Account "${account.accountName}" has recorded transactions or linked records. You can mark it inactive instead.',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        return false;
+      }
+      await _accountRepo.deleteAccount(account.id!);
+      await loadAccounts();
+      Get.snackbar('Success', 'Account "${account.accountName}" deleted successfully', snackPosition: SnackPosition.BOTTOM);
+      return true;
+    } catch (e) {
+      Get.snackbar('Error', 'Unable to delete account: $e', snackPosition: SnackPosition.BOTTOM);
+      return false;
+    }
+  }
+
   Future<bool> deactivateAccount(int id) async {
     try {
       final canDelete = await _accountRepo.canDeleteAccount(id);

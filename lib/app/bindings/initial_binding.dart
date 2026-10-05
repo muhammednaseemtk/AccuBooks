@@ -1,7 +1,9 @@
 import 'package:get/get.dart';
+import '../../controllers/auth_controller.dart';
 import '../../controllers/settings_controller.dart';
 import '../../core/database/database_helper.dart';
 import '../../repositories/account_repository.dart';
+import '../../repositories/auth_repository.dart';
 import '../../repositories/company_repository.dart';
 import '../../repositories/customer_repository.dart';
 import '../../repositories/expense_repository.dart';
@@ -14,6 +16,7 @@ import '../../repositories/report_repository.dart';
 import '../../repositories/sales_repository.dart';
 import '../../repositories/supplier_repository.dart';
 import '../../services/accounting_service.dart';
+import '../../services/auth_service.dart';
 import '../../services/backup_service.dart';
 import '../../services/inventory_service.dart';
 import '../../services/payment_service.dart';
@@ -28,6 +31,7 @@ class InitialBinding extends Bindings {
     Get.put<DatabaseHelper>(DatabaseHelper(), permanent: true);
 
     // Repositories
+    Get.lazyPut<AuthRepository>(() => AuthRepository(), fenix: true);
     Get.lazyPut<CompanyRepository>(() => CompanyRepository(), fenix: true);
     Get.lazyPut<AccountRepository>(() => AccountRepository(), fenix: true);
     Get.lazyPut<CustomerRepository>(() => CustomerRepository(), fenix: true);
@@ -60,8 +64,10 @@ class InitialBinding extends Bindings {
       accountingService: Get.find<AccountingService>(),
     ), fenix: true);
     Get.lazyPut<ReportService>(() => ReportService(reportRepo: Get.find<ReportRepository>()), fenix: true);
+    Get.lazyPut<AuthService>(() => AuthService(authRepo: Get.find<AuthRepository>()), fenix: true);
 
-    // Persistent global settings controller
+    // Persistent global settings and auth controllers
     Get.put<SettingsController>(SettingsController(), permanent: true);
+    Get.put<AuthController>(AuthController(authService: Get.find<AuthService>()), permanent: true);
   }
 }

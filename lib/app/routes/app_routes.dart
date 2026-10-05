@@ -1,5 +1,10 @@
 class AppRoutes {
   static const String splash = '/';
+  static const String login = '/login';
+  static const String signup = '/signup';
+  static const String forgotPassword = '/forgot-password';
+  static const String resetPassword = '/reset-password';
+  static const String profile = '/profile';
   static const String dashboard = '/dashboard';
   static const String accounts = '/accounts';
   static const String customers = '/customers';
