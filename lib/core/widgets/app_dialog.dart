@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
 import 'app_button.dart';
@@ -20,6 +21,28 @@ class AppDialog extends StatelessWidget {
     this.maxHeight,
     this.leadingIcon,
   });
+
+  static Future<bool?> confirm({
+    BuildContext? context,
+    required String title,
+    required String message,
+    String confirmText = 'Confirm',
+    String cancelText = 'Cancel',
+    bool isDestructive = false,
+    VoidCallback? onConfirm,
+  }) {
+    final ctx = context ?? Get.overlayContext ?? Get.context;
+    if (ctx == null) return Future.value(false);
+    return showConfirmation(
+      context: ctx,
+      title: title,
+      message: message,
+      confirmText: confirmText,
+      cancelText: cancelText,
+      isDestructive: isDestructive,
+      onConfirm: onConfirm,
+    );
+  }
 
   static Future<bool?> showConfirmation({
     required BuildContext context,

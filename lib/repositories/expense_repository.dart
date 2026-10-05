@@ -94,4 +94,13 @@ class ExpenseRepository {
       expense.toMap(),
     );
   }
+
+  Future<int> deleteExpense(int id, {Transaction? txn}) async {
+    final executor = txn ?? await _dbHelper.database;
+    return await executor.delete(
+      DatabaseTables.tableExpenses,
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
 }

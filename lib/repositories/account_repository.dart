@@ -198,7 +198,58 @@ class AccountRepository {
       whereArgs: [id],
       limit: 1,
     );
-    return lines.isEmpty;
+    if (lines.isNotEmpty) return false;
+
+    final rec = await db.query(
+      DatabaseTables.tableReceipts,
+      where: 'account_id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (rec.isNotEmpty) return false;
+
+    final pay = await db.query(
+      DatabaseTables.tablePayments,
+      where: 'account_id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (pay.isNotEmpty) return false;
+
+    final exp = await db.query(
+      DatabaseTables.tableExpenses,
+      where: 'account_id = ? OR payment_account_id = ?',
+      whereArgs: [id, id],
+      limit: 1,
+    );
+    if (exp.isNotEmpty) return false;
+
+    final cust = await db.query(
+      DatabaseTables.tableCustomers,
+      where: 'account_id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (cust.isNotEmpty) return false;
+
+    final sup = await db.query(
+      DatabaseTables.tableSuppliers,
+      where: 'account_id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (sup.isNotEmpty) return false;
+
+    return true;
+  }
+
+  Future<int> deleteAccount(int id) async {
+    final db = await _dbHelper.database;
+    return await db.delete(
+      DatabaseTables.tableAccounts,
+      where: 'id = ?',
+      whereArgs: [id],
+    );
   }
 
   Future<int> deactivateAccount(int id) async {

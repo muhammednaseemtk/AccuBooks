@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
 
@@ -20,6 +21,7 @@ class AppTextField extends StatelessWidget {
   final FocusNode? focusNode;
   final bool autofocus;
   final bool isRequired;
+  final List<TextInputFormatter>? inputFormatters;
 
   const AppTextField({
     super.key,
@@ -40,6 +42,7 @@ class AppTextField extends StatelessWidget {
     this.focusNode,
     this.autofocus = false,
     this.isRequired = false,
+    this.inputFormatters,
   });
 
   @override
@@ -52,24 +55,21 @@ class AppTextField extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         if (label != null) ...[
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                label!,
-                style: AppTextStyles.subtitle2.copyWith(
-                  fontSize: 13,
-                  color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
-                ),
+          RichText(
+            text: TextSpan(
+              text: label!,
+              style: AppTextStyles.subtitle2.copyWith(
+                fontSize: 13,
+                color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
               ),
-              if (isRequired) ...[
-                const SizedBox(width: 4),
-                const Text(
-                  '*',
-                  style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
-                ),
+              children: [
+                if (isRequired)
+                  const TextSpan(
+                    text: ' *',
+                    style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold),
+                  ),
               ],
-            ],
+            ),
           ),
           const SizedBox(height: 6),
         ],

@@ -1,6 +1,9 @@
 class DatabaseTables {
   // Table Names
   static const String tableCompanies = 'companies';
+  static const String tableOrganizations = 'organizations';
+  static const String tableUsers = 'users';
+  static const String tablePasswordResets = 'password_resets';
   static const String tableAccounts = 'accounts';
   static const String tableCustomers = 'customers';
   static const String tableSuppliers = 'suppliers';
@@ -32,6 +35,48 @@ class DatabaseTables {
       financial_year_end TEXT,
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
+    );
+  ''';
+
+  static const String createOrganizationsTable = '''
+    CREATE TABLE $tableOrganizations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      name TEXT NOT NULL,
+      owner_id INTEGER,
+      currency TEXT DEFAULT '₹',
+      tax_number TEXT,
+      phone TEXT,
+      email TEXT,
+      address TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL
+    );
+  ''';
+
+  static const String createUsersTable = '''
+    CREATE TABLE $tableUsers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      organization_id INTEGER NOT NULL,
+      email TEXT UNIQUE NOT NULL,
+      password_hash TEXT NOT NULL,
+      salt TEXT NOT NULL,
+      full_name TEXT NOT NULL,
+      phone TEXT,
+      role TEXT NOT NULL DEFAULT 'OWNER',
+      is_active INTEGER DEFAULT 1,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (organization_id) REFERENCES $tableOrganizations (id) ON DELETE CASCADE
+    );
+  ''';
+
+  static const String createPasswordResetsTable = '''
+    CREATE TABLE $tablePasswordResets (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      email TEXT NOT NULL,
+      token TEXT NOT NULL,
+      expires_at TEXT NOT NULL,
+      created_at TEXT NOT NULL
     );
   ''';
 
@@ -316,5 +361,8 @@ class DatabaseTables {
     'CREATE INDEX IF NOT EXISTS idx_receipts_customer ON $tableReceipts(customer_id);',
     'CREATE INDEX IF NOT EXISTS idx_payments_supplier ON $tablePayments(supplier_id);',
     'CREATE INDEX IF NOT EXISTS idx_expenses_account ON $tableExpenses(account_id);',
+    'CREATE INDEX IF NOT EXISTS idx_users_email ON $tableUsers(email);',
+    'CREATE INDEX IF NOT EXISTS idx_users_org ON $tableUsers(organization_id);',
+    'CREATE INDEX IF NOT EXISTS idx_pw_resets_email ON $tablePasswordResets(email);',
   ];
 }

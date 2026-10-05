@@ -150,6 +150,36 @@ class CustomerRepository {
     );
   }
 
+  Future<bool> canDeleteCustomer(int id) async {
+    final db = await _dbHelper.database;
+    final sales = await db.query(
+      DatabaseTables.tableSalesInvoices,
+      where: 'customer_id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (sales.isNotEmpty) return false;
+
+    final rec = await db.query(
+      DatabaseTables.tableReceipts,
+      where: 'customer_id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (rec.isNotEmpty) return false;
+
+    return true;
+  }
+
+  Future<int> deleteCustomer(int id) async {
+    final db = await _dbHelper.database;
+    return await db.delete(
+      DatabaseTables.tableCustomers,
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
   Future<int> deactivateCustomer(int id) async {
     final db = await _dbHelper.database;
     return await db.update(
