@@ -214,18 +214,11 @@ class AppScaffold extends StatelessWidget {
           child: Row(
             mainAxisAlignment: isCollapsed ? MainAxisAlignment.center : MainAxisAlignment.start,
             children: [
-              Container(
+              Image.asset(
+                'assets/images/app_logo.png',
                 width: 36,
                 height: 36,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [AppColors.primary, AppColors.primaryLight],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(Icons.account_balance_wallet, color: Colors.white, size: 20),
+                fit: BoxFit.contain,
               ),
               if (!isCollapsed) ...[
                 const SizedBox(width: 12),
