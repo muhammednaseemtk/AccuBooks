@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:get/get.dart';
 import '../core/constants/accounting_constants.dart';
 import '../core/database/database_helper.dart';
+import '../core/database/database_tables.dart';
 import '../core/utils/currency_utils.dart';
 import '../models/account_model.dart';
 import '../models/expense_model.dart';
@@ -198,6 +199,31 @@ class ExpenseController extends GetxController {
       return false;
     } finally {
       isSubmitting.value = false;
+    }
+  }
+
+  Future<bool> deleteExpense(ExpenseModel expense) async {
+    try {
+      await _dbHelper.transaction((txn) async {
+        final entries = await txn.query(
+          DatabaseTables.tableJournalEntries,
+          columns: ['id'],
+          where: '(reference_id = ? AND transaction_type = ?) OR transaction_number = ?',
+          whereArgs: [expense.id, AccountingConstants.transTypeExpense, 'JV-EXP-${expense.id}'],
+        );
+        for (final e in entries) {
+          final eId = e['id'] as int;
+          await txn.delete(DatabaseTables.tableJournalLines, where: 'journal_entry_id = ?', whereArgs: [eId]);
+          await txn.delete(DatabaseTables.tableJournalEntries, where: 'id = ?', whereArgs: [eId]);
+        }
+        await _expenseRepo.deleteExpense(expense.id!, txn: txn);
+      });
+      await loadExpenses();
+      Get.snackbar('Success', 'Expense #${expense.expenseNumber} deleted successfully', snackPosition: SnackPosition.BOTTOM);
+      return true;
+    } catch (e) {
+      Get.snackbar('Error', 'Failed to delete expense: $e', snackPosition: SnackPosition.BOTTOM);
+      return false;
     }
   }
 }

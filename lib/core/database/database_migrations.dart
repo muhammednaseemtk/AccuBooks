@@ -4,12 +4,15 @@ import '../utils/date_utils.dart';
 import 'database_tables.dart';
 
 class DatabaseMigrations {
-  static const int currentVersion = 1;
+  static const int currentVersion = 2;
 
   static Future<void> onCreate(Database db, int version) async {
     final batch = db.batch();
 
     // 1. Create Tables
+    batch.execute(DatabaseTables.createOrganizationsTable);
+    batch.execute(DatabaseTables.createUsersTable);
+    batch.execute(DatabaseTables.createPasswordResetsTable);
     batch.execute(DatabaseTables.createCompaniesTable);
     batch.execute(DatabaseTables.createAccountsTable);
     batch.execute(DatabaseTables.createCustomersTable);
@@ -37,12 +40,22 @@ class DatabaseMigrations {
 
     // 3. Seed Default Records
     await _seedDefaultCompany(db);
-    await _seedChartOfAccounts(db);
+    await seedChartOfAccountsForOrganization(db, 1);
     await _seedDefaultTaxes(db);
   }
 
   static Future<void> onUpgrade(Database db, int oldVersion, int newVersion) async {
-    // Future database upgrades if new version is introduced
+    if (oldVersion < 2) {
+      // Create auth tables if not existing
+      await db.execute(DatabaseTables.createOrganizationsTable);
+      await db.execute(DatabaseTables.createUsersTable);
+      await db.execute(DatabaseTables.createPasswordResetsTable);
+
+      // Create indexes for auth tables
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_users_email ON ${DatabaseTables.tableUsers}(email);');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_users_org ON ${DatabaseTables.tableUsers}(organization_id);');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_pw_resets_email ON ${DatabaseTables.tablePasswordResets}(email);');
+    }
   }
 
   static Future<void> _seedDefaultCompany(Database db) async {
@@ -63,7 +76,7 @@ class DatabaseMigrations {
     });
   }
 
-  static Future<void> _seedChartOfAccounts(Database db) async {
+  static Future<void> seedChartOfAccountsForOrganization(DatabaseExecutor db, [int? orgId]) async {
     final now = AppDateUtils.formatDb(DateTime.now());
 
     final accounts = [
@@ -288,7 +301,11 @@ class DatabaseMigrations {
     ];
 
     for (final acc in accounts) {
-      await db.insert(DatabaseTables.tableAccounts, acc);
+      await db.insert(
+        DatabaseTables.tableAccounts,
+        acc,
+        conflictAlgorithm: ConflictAlgorithm.ignore,
+      );
     }
   }
 

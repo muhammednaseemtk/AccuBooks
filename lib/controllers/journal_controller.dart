@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:get/get.dart';
+import '../core/constants/accounting_constants.dart';
 import '../core/utils/currency_utils.dart';
 import '../models/account_model.dart';
 import '../models/journal_entry_model.dart';
@@ -202,6 +203,26 @@ class JournalController extends GetxController {
       return false;
     } finally {
       isSubmitting.value = false;
+    }
+  }
+
+  Future<bool> deleteJournal(JournalEntryModel entry) async {
+    try {
+      if (entry.referenceId != null && entry.transactionType != AccountingConstants.transTypeJournal) {
+        Get.snackbar(
+          'Protected Entry',
+          'This journal was automatically created by ${entry.transactionType}. Please delete or cancel the original ${entry.transactionType} instead.',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        return false;
+      }
+      await _journalRepo.deleteJournalEntry(entry.id!);
+      await loadJournalEntries();
+      Get.snackbar('Success', 'Journal entry #${entry.transactionNumber} deleted successfully', snackPosition: SnackPosition.BOTTOM);
+      return true;
+    } catch (e) {
+      Get.snackbar('Error', 'Failed to delete journal entry: $e', snackPosition: SnackPosition.BOTTOM);
+      return false;
     }
   }
 }

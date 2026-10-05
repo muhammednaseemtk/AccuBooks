@@ -77,6 +77,27 @@ class SupplierController extends GetxController {
     }
   }
 
+  Future<bool> deleteSupplier(SupplierModel supplier) async {
+    try {
+      final canDelete = await _supplierRepo.canDeleteSupplier(supplier.id!);
+      if (!canDelete) {
+        Get.snackbar(
+          'Cannot Delete',
+          'Supplier "${supplier.name}" has active purchase invoices or payments. Please delete or cancel those records first.',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        return false;
+      }
+      await _supplierRepo.deleteSupplier(supplier.id!);
+      await loadSuppliers();
+      Get.snackbar('Success', 'Supplier "${supplier.name}" deleted successfully', snackPosition: SnackPosition.BOTTOM);
+      return true;
+    } catch (e) {
+      Get.snackbar('Error', 'Unable to delete supplier: $e', snackPosition: SnackPosition.BOTTOM);
+      return false;
+    }
+  }
+
   Future<bool> deactivateSupplier(int id) async {
     try {
       await _supplierRepo.deactivateSupplier(id);

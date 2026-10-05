@@ -125,6 +125,53 @@ class ProductController extends GetxController {
     }
   }
 
+  Future<bool> deleteProduct(ProductModel product) async {
+    try {
+      final canDelete = await _productRepo.canDeleteProduct(product.id!);
+      if (!canDelete) {
+        Get.snackbar(
+          'Cannot Delete',
+          'Product "${product.name}" is used in sales or purchase invoices. You can mark it inactive instead.',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+        return false;
+      }
+      await _productRepo.deleteProduct(product.id!);
+      await loadProducts();
+      Get.snackbar('Success', 'Product "${product.name}" deleted successfully', snackPosition: SnackPosition.BOTTOM);
+      return true;
+    } catch (e) {
+      Get.snackbar('Error', 'Unable to delete product: $e', snackPosition: SnackPosition.BOTTOM);
+      return false;
+    }
+  }
+
+  Future<bool> deleteCategory(int id) async {
+    try {
+      await _productRepo.deleteCategory(id);
+      await loadMetadata();
+      await loadProducts();
+      Get.snackbar('Success', 'Category deleted successfully', snackPosition: SnackPosition.BOTTOM);
+      return true;
+    } catch (e) {
+      Get.snackbar('Error', 'Unable to delete category: $e', snackPosition: SnackPosition.BOTTOM);
+      return false;
+    }
+  }
+
+  Future<bool> deleteStockTransaction(int transactionId, ProductModel product) async {
+    try {
+      await _productRepo.deleteStockTransaction(transactionId);
+      await loadProductHistory(product);
+      await loadProducts();
+      Get.snackbar('Success', 'Stock movement record deleted and inventory restored', snackPosition: SnackPosition.BOTTOM);
+      return true;
+    } catch (e) {
+      Get.snackbar('Error', 'Unable to delete stock transaction: $e', snackPosition: SnackPosition.BOTTOM);
+      return false;
+    }
+  }
+
   Future<bool> saveCategory(CategoryModel category) async {
     try {
       if (category.id == null) {

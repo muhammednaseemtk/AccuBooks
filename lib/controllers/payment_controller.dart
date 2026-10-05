@@ -148,4 +148,16 @@ class PaymentController extends GetxController {
       isSubmitting.value = false;
     }
   }
+
+  Future<bool> deletePayment(PaymentModel payment) async {
+    try {
+      await _paymentService.deletePayment(payment.id!);
+      await loadPayments();
+      Get.snackbar('Success', 'Payment #${payment.paymentNumber} deleted successfully', snackPosition: SnackPosition.BOTTOM);
+      return true;
+    } catch (e) {
+      Get.snackbar('Error', 'Failed to delete payment: $e', snackPosition: SnackPosition.BOTTOM);
+      return false;
+    }
+  }
 }

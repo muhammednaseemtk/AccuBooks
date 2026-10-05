@@ -225,6 +225,21 @@ class SalesController extends GetxController {
     }
   }
 
+  Future<bool> deleteInvoice(SalesInvoiceModel invoice) async {
+    try {
+      await _salesService.deleteSalesInvoice(invoice.id!);
+      await loadInvoices();
+      if (selectedInvoice.value?.id == invoice.id) {
+        selectedInvoice.value = null;
+      }
+      Get.snackbar('Success', 'Invoice #${invoice.invoiceNumber} deleted successfully', snackPosition: SnackPosition.BOTTOM);
+      return true;
+    } catch (e) {
+      Get.snackbar('Error', 'Failed to delete invoice: $e', snackPosition: SnackPosition.BOTTOM);
+      return false;
+    }
+  }
+
   Future<void> printCurrentInvoice(SalesInvoiceModel invoice) async {
     try {
       final comp = company.value ?? await _companyRepo.getCompany();

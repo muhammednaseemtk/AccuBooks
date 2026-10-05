@@ -214,4 +214,19 @@ class PurchaseController extends GetxController {
       Get.snackbar('Error', 'Failed to cancel purchase: $e', snackPosition: SnackPosition.BOTTOM);
     }
   }
+
+  Future<bool> deletePurchase(PurchaseInvoiceModel invoice) async {
+    try {
+      await _purchaseService.deletePurchaseInvoice(invoice.id!);
+      await loadPurchases();
+      if (selectedPurchase.value?.id == invoice.id) {
+        selectedPurchase.value = null;
+      }
+      Get.snackbar('Success', 'Purchase invoice #${invoice.invoiceNumber} deleted successfully', snackPosition: SnackPosition.BOTTOM);
+      return true;
+    } catch (e) {
+      Get.snackbar('Error', 'Failed to delete purchase invoice: $e', snackPosition: SnackPosition.BOTTOM);
+      return false;
+    }
+  }
 }

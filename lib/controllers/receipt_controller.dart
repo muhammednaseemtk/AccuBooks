@@ -149,4 +149,16 @@ class ReceiptController extends GetxController {
       isSubmitting.value = false;
     }
   }
+
+  Future<bool> deleteReceipt(ReceiptModel receipt) async {
+    try {
+      await _receiptService.deleteReceipt(receipt.id!);
+      await loadReceipts();
+      Get.snackbar('Success', 'Receipt #${receipt.receiptNumber} deleted successfully', snackPosition: SnackPosition.BOTTOM);
+      return true;
+    } catch (e) {
+      Get.snackbar('Error', 'Failed to delete receipt: $e', snackPosition: SnackPosition.BOTTOM);
+      return false;
+    }
+  }
 }
