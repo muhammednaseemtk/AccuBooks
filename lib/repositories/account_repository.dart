@@ -1,3 +1,4 @@
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../core/constants/accounting_constants.dart';
 import '../core/database/database_helper.dart';
 import '../core/database/database_tables.dart';
@@ -70,31 +71,31 @@ class AccountRepository {
     return results;
   }
 
-  Future<AccountModel?> getAccountById(int id) async {
-    final db = await _dbHelper.database;
-    final List<Map<String, dynamic>> maps = await db.query(
+  Future<AccountModel?> getAccountById(int id, {Transaction? txn}) async {
+    final executor = txn ?? await _dbHelper.database;
+    final List<Map<String, dynamic>> maps = await executor.query(
       DatabaseTables.tableAccounts,
       where: 'id = ?',
       whereArgs: [id],
     );
     if (maps.isNotEmpty) {
       final acc = AccountModel.fromMap(maps.first);
-      final balance = await getAccountBalance(acc.id!, acc.accountType, acc.openingBalance, acc.openingBalanceType);
+      final balance = await getAccountBalance(acc.id!, acc.accountType, acc.openingBalance, acc.openingBalanceType, txn: txn);
       return acc.copyWith(currentBalance: balance);
     }
     return null;
   }
 
-  Future<AccountModel?> getAccountByCode(String code) async {
-    final db = await _dbHelper.database;
-    final List<Map<String, dynamic>> maps = await db.query(
+  Future<AccountModel?> getAccountByCode(String code, {Transaction? txn}) async {
+    final executor = txn ?? await _dbHelper.database;
+    final List<Map<String, dynamic>> maps = await executor.query(
       DatabaseTables.tableAccounts,
       where: 'account_code = ?',
       whereArgs: [code],
     );
     if (maps.isNotEmpty) {
       final acc = AccountModel.fromMap(maps.first);
-      final balance = await getAccountBalance(acc.id!, acc.accountType, acc.openingBalance, acc.openingBalanceType);
+      final balance = await getAccountBalance(acc.id!, acc.accountType, acc.openingBalance, acc.openingBalanceType, txn: txn);
       return acc.copyWith(currentBalance: balance);
     }
     return null;
@@ -104,10 +105,11 @@ class AccountRepository {
     int accountId,
     String accountType,
     double openingBalance,
-    String openingBalanceType,
-  ) async {
-    final db = await _dbHelper.database;
-    final result = await db.rawQuery('''
+    String openingBalanceType, {
+    Transaction? txn,
+  }) async {
+    final executor = txn ?? await _dbHelper.database;
+    final result = await executor.rawQuery('''
       SELECT 
         COALESCE(SUM(debit), 0.0) as total_debit,
         COALESCE(SUM(credit), 0.0) as total_credit

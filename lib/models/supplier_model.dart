@@ -128,4 +128,12 @@ class SupplierModel {
       totalPayments: totalPayments ?? this.totalPayments,
     );
   }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is SupplierModel && runtimeType == other.runtimeType && id != null && id == other.id;
+
+  @override
+  int get hashCode => id?.hashCode ?? super.hashCode;
 }

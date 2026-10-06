@@ -1,3 +1,4 @@
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../core/constants/accounting_constants.dart';
 import '../core/database/database_helper.dart';
 import '../core/database/database_tables.dart';
@@ -75,15 +76,15 @@ class CustomerRepository {
     return results;
   }
 
-  Future<CustomerModel?> getCustomerById(int id) async {
-    final db = await _dbHelper.database;
-    final List<Map<String, dynamic>> maps = await db.query(
+  Future<CustomerModel?> getCustomerById(int id, {Transaction? txn}) async {
+    final executor = txn ?? await _dbHelper.database;
+    final List<Map<String, dynamic>> maps = await executor.query(
       DatabaseTables.tableCustomers,
       where: 'id = ?',
       whereArgs: [id],
     );
     if (maps.isNotEmpty) {
-      final summary = await getCustomerFinancialSummary(id);
+      final summary = await getCustomerFinancialSummary(id, txn: txn);
       return CustomerModel.fromMap(
         maps.first,
         outstanding: summary.outstanding,
@@ -94,11 +95,11 @@ class CustomerRepository {
     return null;
   }
 
-  Future<({double totalSales, double totalReceipts, double outstanding})> getCustomerFinancialSummary(int customerId) async {
-    final db = await _dbHelper.database;
+  Future<({double totalSales, double totalReceipts, double outstanding})> getCustomerFinancialSummary(int customerId, {Transaction? txn}) async {
+    final executor = txn ?? await _dbHelper.database;
 
     // Customer opening balance
-    final custMap = await db.query(
+    final custMap = await executor.query(
       DatabaseTables.tableCustomers,
       columns: ['opening_balance', 'opening_balance_type'],
       where: 'id = ?',
@@ -113,7 +114,7 @@ class CustomerRepository {
     }
 
     // Invoices sum (excluding cancelled)
-    final salesRes = await db.rawQuery('''
+    final salesRes = await executor.rawQuery('''
       SELECT COALESCE(SUM(grand_total), 0.0) as total_sales
       FROM ${DatabaseTables.tableSalesInvoices}
       WHERE customer_id = ? AND payment_status != ?
@@ -121,14 +122,25 @@ class CustomerRepository {
     final totalSales = (salesRes.first['total_sales'] as num?)?.toDouble() ?? 0.0;
 
     // Receipts sum
-    final receiptRes = await db.rawQuery('''
+    final receiptRes = await executor.rawQuery('''
       SELECT COALESCE(SUM(amount), 0.0) as total_receipts
       FROM ${DatabaseTables.tableReceipts}
       WHERE customer_id = ?
     ''', [customerId]);
     final totalReceipts = (receiptRes.first['total_receipts'] as num?)?.toDouble() ?? 0.0;
 
-    final outstanding = CurrencyUtils.round(opening + totalSales - totalReceipts);
+    // Sales returns sum (excluding cancelled)
+    double totalReturns = 0.0;
+    try {
+      final returnRes = await executor.rawQuery('''
+        SELECT COALESCE(SUM(grand_total), 0.0) as total_returns
+        FROM ${DatabaseTables.tableSalesReturns}
+        WHERE customer_id = ? AND status != ?
+      ''', [customerId, AccountingConstants.statusCancelled]);
+      totalReturns = (returnRes.first['total_returns'] as num?)?.toDouble() ?? 0.0;
+    } catch (_) {}
+
+    final outstanding = CurrencyUtils.round(opening + totalSales - totalReceipts - totalReturns);
     return (totalSales: totalSales, totalReceipts: totalReceipts, outstanding: outstanding);
   }
 
