@@ -1,5 +1,6 @@
 import '../core/constants/accounting_constants.dart';
 import '../core/database/database_helper.dart';
+import '../core/database/database_tables.dart';
 import '../core/utils/currency_utils.dart';
 import '../models/journal_line_model.dart';
 import '../models/receipt_model.dart';
@@ -51,19 +52,18 @@ class ReceiptService {
     final roundedAmount = CurrencyUtils.round(receipt.amount);
     final finalReceipt = receipt.copyWith(amount: roundedAmount);
 
+    final customer = await _customerRepo.getCustomerById(finalReceipt.customerId);
+    if (customer == null) throw Exception('Customer not found: ${finalReceipt.customerId}');
+
+    final receivableAccountId = customer.accountId ??
+        (await _accountRepo.getAccountByCode(AccountingConstants.codeAccountsReceivable))?.id ??
+        3;
+
     return await _dbHelper.transaction<int>((txn) async {
       // 1. Save receipt
       final receiptId = await _receiptRepo.insertReceipt(finalReceipt, txn: txn);
 
-      // 2. Fetch Customer & Accounts
-      final customer = await _customerRepo.getCustomerById(finalReceipt.customerId);
-      if (customer == null) throw Exception('Customer not found: ${finalReceipt.customerId}');
-
-      final receivableAccountId = customer.accountId ??
-          (await _accountRepo.getAccountByCode(AccountingConstants.codeAccountsReceivable))?.id ??
-          3;
-
-      // 3. Double-entry Journal Lines
+      // 2. Double-entry Journal Lines
       // Debit: Cash/Bank Account
       // Credit: Customer (Receivables) Account
       final lines = [
@@ -93,6 +93,24 @@ class ReceiptService {
       );
 
       return receiptId;
+    });
+  }
+
+  Future<void> deleteReceipt(int receiptId) async {
+    await _dbHelper.transaction((txn) async {
+      final entries = await txn.query(
+        DatabaseTables.tableJournalEntries,
+        columns: ['id'],
+        where: '(reference_id = ? AND transaction_type = ?) OR transaction_number = ?',
+        whereArgs: [receiptId, AccountingConstants.transTypeReceipt, 'JV-REC-$receiptId'],
+      );
+      for (final e in entries) {
+        final eId = e['id'] as int;
+        await txn.delete(DatabaseTables.tableJournalLines, where: 'journal_entry_id = ?', whereArgs: [eId]);
+        await txn.delete(DatabaseTables.tableJournalEntries, where: 'id = ?', whereArgs: [eId]);
+      }
+
+      await txn.delete(DatabaseTables.tableReceipts, where: 'id = ?', whereArgs: [receiptId]);
     });
   }
 }

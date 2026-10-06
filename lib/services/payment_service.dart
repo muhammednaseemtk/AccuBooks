@@ -1,5 +1,6 @@
 import '../core/constants/accounting_constants.dart';
 import '../core/database/database_helper.dart';
+import '../core/database/database_tables.dart';
 import '../core/utils/currency_utils.dart';
 import '../models/journal_line_model.dart';
 import '../models/payment_model.dart';
@@ -51,19 +52,18 @@ class PaymentService {
     final roundedAmount = CurrencyUtils.round(payment.amount);
     final finalPayment = payment.copyWith(amount: roundedAmount);
 
+    final supplier = await _supplierRepo.getSupplierById(finalPayment.supplierId);
+    if (supplier == null) throw Exception('Supplier not found: ${finalPayment.supplierId}');
+
+    final payableAccountId = supplier.accountId ??
+        (await _accountRepo.getAccountByCode(AccountingConstants.codeAccountsPayable))?.id ??
+        5;
+
     return await _dbHelper.transaction<int>((txn) async {
       // 1. Save payment
       final paymentId = await _paymentRepo.insertPayment(finalPayment, txn: txn);
 
-      // 2. Fetch Supplier & Accounts
-      final supplier = await _supplierRepo.getSupplierById(finalPayment.supplierId);
-      if (supplier == null) throw Exception('Supplier not found: ${finalPayment.supplierId}');
-
-      final payableAccountId = supplier.accountId ??
-          (await _accountRepo.getAccountByCode(AccountingConstants.codeAccountsPayable))?.id ??
-          5;
-
-      // 3. Double-entry Journal Lines
+      // 2. Double-entry Journal Lines
       // Debit: Supplier (Payable) Account
       // Credit: Cash/Bank Account
       final lines = [
@@ -93,6 +93,24 @@ class PaymentService {
       );
 
       return paymentId;
+    });
+  }
+
+  Future<void> deletePayment(int paymentId) async {
+    await _dbHelper.transaction((txn) async {
+      final entries = await txn.query(
+        DatabaseTables.tableJournalEntries,
+        columns: ['id'],
+        where: '(reference_id = ? AND transaction_type = ?) OR transaction_number = ?',
+        whereArgs: [paymentId, AccountingConstants.transTypePayment, 'JV-PAY-$paymentId'],
+      );
+      for (final e in entries) {
+        final eId = e['id'] as int;
+        await txn.delete(DatabaseTables.tableJournalLines, where: 'journal_entry_id = ?', whereArgs: [eId]);
+        await txn.delete(DatabaseTables.tableJournalEntries, where: 'id = ?', whereArgs: [eId]);
+      }
+
+      await txn.delete(DatabaseTables.tablePayments, where: 'id = ?', whereArgs: [paymentId]);
     });
   }
 }

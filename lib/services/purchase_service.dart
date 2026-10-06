@@ -1,5 +1,6 @@
 import '../core/constants/accounting_constants.dart';
 import '../core/database/database_helper.dart';
+import '../core/database/database_tables.dart';
 import '../core/utils/currency_utils.dart';
 import '../models/journal_line_model.dart';
 import '../models/purchase_invoice_item_model.dart';
@@ -272,6 +273,52 @@ class PurchaseService {
         lines: reverseLines,
         txn: txn,
       );
+    });
+  }
+
+  /// Delete purchase invoice: reverses stock, removes associated journal entries and invoice
+  Future<void> deletePurchaseInvoice(int invoiceId) async {
+    final invoice = await _purchaseRepo.getPurchaseInvoiceById(invoiceId);
+    if (invoice == null) throw Exception('Purchase invoice not found: $invoiceId');
+
+    await _dbHelper.transaction((txn) async {
+      // 1. If purchase was not cancelled, decrement back the inventory
+      if (!invoice.isCancelled) {
+        for (final item in invoice.items) {
+          await _productRepo.updateStock(
+            item.productId,
+            -item.quantity,
+            transactionType: AccountingConstants.stockPurchaseReturn,
+            referenceId: invoiceId,
+            rate: item.rate,
+            txn: txn,
+          );
+        }
+      }
+
+      // 2. Remove stock transactions directly linked to this purchase
+      await txn.delete(
+        DatabaseTables.tableStockTransactions,
+        where: 'reference_id = ? AND transaction_type IN (?, ?)',
+        whereArgs: [invoiceId, AccountingConstants.stockPurchase, AccountingConstants.stockPurchaseReturn],
+      );
+
+      // 3. Remove all journal entries (and cascading lines) linked to this purchase
+      final entries = await txn.query(
+        DatabaseTables.tableJournalEntries,
+        columns: ['id'],
+        where: '(reference_id = ? AND transaction_type IN (?, ?)) OR transaction_number LIKE ?',
+        whereArgs: [invoiceId, AccountingConstants.transTypePurchase, AccountingConstants.transTypePayment, '%-$invoiceId%'],
+      );
+      for (final e in entries) {
+        final eId = e['id'] as int;
+        await txn.delete(DatabaseTables.tableJournalLines, where: 'journal_entry_id = ?', whereArgs: [eId]);
+        await txn.delete(DatabaseTables.tableJournalEntries, where: 'id = ?', whereArgs: [eId]);
+      }
+
+      // 4. Delete items and invoice
+      await txn.delete(DatabaseTables.tablePurchaseInvoiceItems, where: 'invoice_id = ?', whereArgs: [invoiceId]);
+      await txn.delete(DatabaseTables.tablePurchaseInvoices, where: 'id = ?', whereArgs: [invoiceId]);
     });
   }
 }

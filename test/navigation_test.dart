@@ -4,6 +4,8 @@ import 'package:get/get.dart';
 import 'package:accubooks/app/app.dart';
 import 'package:accubooks/app/routes/app_routes.dart';
 import 'package:accubooks/core/database/database_helper.dart';
+import 'package:accubooks/models/user_model.dart';
+import 'package:accubooks/services/auth_service.dart';
 
 void main() {
   setUpAll(() {
@@ -33,6 +35,19 @@ void main() {
       tester.view.resetPhysicalSize();
       tester.view.resetDevicePixelRatio();
     });
+
+    // Pre-authenticate session so protected accounting routes are accessible
+    final authService = Get.put<AuthService>(AuthService(), permanent: true);
+    authService.isAuthenticated.value = true;
+    authService.currentUser.value = UserModel(
+      id: 1,
+      organizationId: 1,
+      fullName: 'Test User',
+      email: 'test@example.com',
+      role: 'OWNER',
+      isActive: true,
+      createdAt: DateTime.now(),
+    );
 
     await tester.pumpWidget(const AccuBooksApp(initialRoute: AppRoutes.dashboard));
     await tester.pump();
