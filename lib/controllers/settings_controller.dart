@@ -18,9 +18,19 @@ class SettingsController extends GetxController {
 
   final company = Rxn<CompanyModel>();
   final isDarkMode = false.obs;
+  final isSidebarCollapsed = false.obs;
   final isLoading = false.obs;
   final isSubmitting = false.obs;
   final dbInfo = <String, dynamic>{}.obs;
+
+  void toggleSidebar() {
+    isSidebarCollapsed.value = !isSidebarCollapsed.value;
+    try {
+      SharedPreferences.getInstance().then((prefs) {
+        prefs.setBool('isSidebarCollapsed', isSidebarCollapsed.value);
+      }).catchError((_) {});
+    } catch (_) {}
+  }
 
   @override
   void onInit() {
@@ -36,6 +46,7 @@ class SettingsController extends GetxController {
 
       final prefs = await SharedPreferences.getInstance();
       isDarkMode.value = prefs.getBool(AppConstants.prefThemeMode) ?? false;
+      isSidebarCollapsed.value = prefs.getBool('isSidebarCollapsed') ?? false;
 
       final info = await _backupService.getDatabaseInfo();
       dbInfo.assignAll(info);

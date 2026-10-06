@@ -4,7 +4,7 @@ import '../utils/date_utils.dart';
 import 'database_tables.dart';
 
 class DatabaseMigrations {
-  static const int currentVersion = 2;
+  static const int currentVersion = 3;
 
   static Future<void> onCreate(Database db, int version) async {
     final batch = db.batch();
@@ -22,8 +22,16 @@ class DatabaseMigrations {
     batch.execute(DatabaseTables.createTaxesTable);
     batch.execute(DatabaseTables.createSalesInvoicesTable);
     batch.execute(DatabaseTables.createSalesInvoiceItemsTable);
+    batch.execute(DatabaseTables.createSalesOrdersTable);
+    batch.execute(DatabaseTables.createSalesOrderItemsTable);
+    batch.execute(DatabaseTables.createSalesReturnsTable);
+    batch.execute(DatabaseTables.createSalesReturnItemsTable);
     batch.execute(DatabaseTables.createPurchaseInvoicesTable);
     batch.execute(DatabaseTables.createPurchaseInvoiceItemsTable);
+    batch.execute(DatabaseTables.createPurchaseOrdersTable);
+    batch.execute(DatabaseTables.createPurchaseOrderItemsTable);
+    batch.execute(DatabaseTables.createPurchaseReturnsTable);
+    batch.execute(DatabaseTables.createPurchaseReturnItemsTable);
     batch.execute(DatabaseTables.createReceiptsTable);
     batch.execute(DatabaseTables.createPaymentsTable);
     batch.execute(DatabaseTables.createExpensesTable);
@@ -55,6 +63,26 @@ class DatabaseMigrations {
       await db.execute('CREATE INDEX IF NOT EXISTS idx_users_email ON ${DatabaseTables.tableUsers}(email);');
       await db.execute('CREATE INDEX IF NOT EXISTS idx_users_org ON ${DatabaseTables.tableUsers}(organization_id);');
       await db.execute('CREATE INDEX IF NOT EXISTS idx_pw_resets_email ON ${DatabaseTables.tablePasswordResets}(email);');
+    }
+
+    if (oldVersion < 3) {
+      await db.execute(DatabaseTables.createSalesOrdersTable);
+      await db.execute(DatabaseTables.createSalesOrderItemsTable);
+      await db.execute(DatabaseTables.createSalesReturnsTable);
+      await db.execute(DatabaseTables.createSalesReturnItemsTable);
+      await db.execute(DatabaseTables.createPurchaseOrdersTable);
+      await db.execute(DatabaseTables.createPurchaseOrderItemsTable);
+      await db.execute(DatabaseTables.createPurchaseReturnsTable);
+      await db.execute(DatabaseTables.createPurchaseReturnItemsTable);
+
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_sales_orders_cust ON ${DatabaseTables.tableSalesOrders}(customer_id);');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_sales_orders_date ON ${DatabaseTables.tableSalesOrders}(order_date);');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_sales_returns_cust ON ${DatabaseTables.tableSalesReturns}(customer_id);');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_sales_returns_date ON ${DatabaseTables.tableSalesReturns}(return_date);');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_purchase_orders_supp ON ${DatabaseTables.tablePurchaseOrders}(supplier_id);');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_purchase_orders_date ON ${DatabaseTables.tablePurchaseOrders}(order_date);');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_purchase_returns_supp ON ${DatabaseTables.tablePurchaseReturns}(supplier_id);');
+      await db.execute('CREATE INDEX IF NOT EXISTS idx_purchase_returns_date ON ${DatabaseTables.tablePurchaseReturns}(return_date);');
     }
   }
 

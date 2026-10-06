@@ -12,9 +12,13 @@ class DatabaseHelper {
   DatabaseHelper._internal();
 
   Database? _db;
+  static bool _isFfiInitialized = false;
 
-  /// Ensure FFI is initialized on desktop platforms
+  /// Ensure FFI is initialized on desktop platforms (idempotent, runs only once)
   static void initializeFfi() {
+    if (_isFfiInitialized) return;
+    _isFfiInitialized = true;
+
     if (!kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS)) {
       sqfliteFfiInit();
       databaseFactory = databaseFactoryFfi;
@@ -53,6 +57,7 @@ class DatabaseHelper {
           await db.execute('PRAGMA foreign_keys = ON;');
           await db.execute('PRAGMA journal_mode = WAL;');
           await db.execute('PRAGMA synchronous = NORMAL;');
+          await db.execute('PRAGMA busy_timeout = 30000;');
           await db.execute('PRAGMA cache_size = -64000;');
         },
         onCreate: DatabaseMigrations.onCreate,

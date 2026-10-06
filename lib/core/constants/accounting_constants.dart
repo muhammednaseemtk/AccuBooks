@@ -51,6 +51,16 @@ class AccountingConstants {
   static const String transTypeExpense = 'Expense';
   static const String transTypeJournal = 'Journal';
   static const String transTypeOpeningBalance = 'Opening Balance';
+  static const String transTypeSalesOrder = 'Sales Order';
+  static const String transTypeSalesReturn = 'Sales Return';
+  static const String transTypePurchaseOrder = 'Purchase Order';
+  static const String transTypePurchaseReturn = 'Purchase Return';
+
+  // Order & Return Statuses
+  static const String statusPending = 'Pending';
+  static const String statusConfirmed = 'Confirmed';
+  static const String statusCompleted = 'Completed';
+  static const String statusCancelled = 'Cancelled';
 
   // Stock Transaction Types
   static const String stockPurchase = 'Purchase';
@@ -99,6 +109,10 @@ class AccountingConstants {
   // Number Prefix
   static const String prefixSales = 'INV-';
   static const String prefixPurchase = 'PUR-';
+  static const String prefixSalesOrder = 'SO-';
+  static const String prefixSalesReturn = 'SR-';
+  static const String prefixPurchaseOrder = 'PO-';
+  static const String prefixPurchaseReturn = 'PR-';
   static const String prefixReceipt = 'REC-';
   static const String prefixPayment = 'PAY-';
   static const String prefixExpense = 'EXP-';

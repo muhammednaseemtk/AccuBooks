@@ -12,8 +12,16 @@ class DatabaseTables {
   static const String tableTaxes = 'taxes';
   static const String tableSalesInvoices = 'sales_invoices';
   static const String tableSalesInvoiceItems = 'sales_invoice_items';
+  static const String tableSalesOrders = 'sales_orders';
+  static const String tableSalesOrderItems = 'sales_order_items';
+  static const String tableSalesReturns = 'sales_returns';
+  static const String tableSalesReturnItems = 'sales_return_items';
   static const String tablePurchaseInvoices = 'purchase_invoices';
   static const String tablePurchaseInvoiceItems = 'purchase_invoice_items';
+  static const String tablePurchaseOrders = 'purchase_orders';
+  static const String tablePurchaseOrderItems = 'purchase_order_items';
+  static const String tablePurchaseReturns = 'purchase_returns';
+  static const String tablePurchaseReturnItems = 'purchase_return_items';
   static const String tableReceipts = 'receipts';
   static const String tablePayments = 'payments';
   static const String tableExpenses = 'expenses';
@@ -344,6 +352,154 @@ class DatabaseTables {
     );
   ''';
 
+  static const String createSalesOrdersTable = '''
+    CREATE TABLE $tableSalesOrders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_number TEXT UNIQUE NOT NULL,
+      order_date TEXT NOT NULL,
+      expected_delivery_date TEXT,
+      customer_id INTEGER NOT NULL,
+      subtotal REAL NOT NULL DEFAULT 0.0,
+      discount REAL NOT NULL DEFAULT 0.0,
+      tax_amount REAL NOT NULL DEFAULT 0.0,
+      grand_total REAL NOT NULL DEFAULT 0.0,
+      status TEXT NOT NULL DEFAULT 'Pending',
+      notes TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (customer_id) REFERENCES $tableCustomers (id)
+    );
+  ''';
+
+  static const String createSalesOrderItemsTable = '''
+    CREATE TABLE $tableSalesOrderItems (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_id INTEGER NOT NULL,
+      product_id INTEGER NOT NULL,
+      description TEXT,
+      quantity REAL NOT NULL,
+      rate REAL NOT NULL,
+      discount REAL DEFAULT 0.0,
+      tax_rate REAL DEFAULT 0.0,
+      tax_amount REAL DEFAULT 0.0,
+      total REAL NOT NULL,
+      FOREIGN KEY (order_id) REFERENCES $tableSalesOrders (id) ON DELETE CASCADE,
+      FOREIGN KEY (product_id) REFERENCES $tableProducts (id)
+    );
+  ''';
+
+  static const String createSalesReturnsTable = '''
+    CREATE TABLE $tableSalesReturns (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      return_number TEXT UNIQUE NOT NULL,
+      return_date TEXT NOT NULL,
+      customer_id INTEGER NOT NULL,
+      reference_invoice_id INTEGER,
+      reference_invoice_number TEXT,
+      subtotal REAL NOT NULL DEFAULT 0.0,
+      discount REAL NOT NULL DEFAULT 0.0,
+      tax_amount REAL NOT NULL DEFAULT 0.0,
+      grand_total REAL NOT NULL DEFAULT 0.0,
+      reason TEXT,
+      status TEXT NOT NULL DEFAULT 'Completed',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (customer_id) REFERENCES $tableCustomers (id),
+      FOREIGN KEY (reference_invoice_id) REFERENCES $tableSalesInvoices (id)
+    );
+  ''';
+
+  static const String createSalesReturnItemsTable = '''
+    CREATE TABLE $tableSalesReturnItems (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      return_id INTEGER NOT NULL,
+      product_id INTEGER NOT NULL,
+      description TEXT,
+      quantity REAL NOT NULL,
+      rate REAL NOT NULL,
+      discount REAL DEFAULT 0.0,
+      tax_rate REAL DEFAULT 0.0,
+      tax_amount REAL DEFAULT 0.0,
+      total REAL NOT NULL,
+      FOREIGN KEY (return_id) REFERENCES $tableSalesReturns (id) ON DELETE CASCADE,
+      FOREIGN KEY (product_id) REFERENCES $tableProducts (id)
+    );
+  ''';
+
+  static const String createPurchaseOrdersTable = '''
+    CREATE TABLE $tablePurchaseOrders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_number TEXT UNIQUE NOT NULL,
+      order_date TEXT NOT NULL,
+      expected_delivery_date TEXT,
+      supplier_id INTEGER NOT NULL,
+      subtotal REAL NOT NULL DEFAULT 0.0,
+      discount REAL NOT NULL DEFAULT 0.0,
+      tax_amount REAL NOT NULL DEFAULT 0.0,
+      grand_total REAL NOT NULL DEFAULT 0.0,
+      status TEXT NOT NULL DEFAULT 'Pending',
+      notes TEXT,
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (supplier_id) REFERENCES $tableSuppliers (id)
+    );
+  ''';
+
+  static const String createPurchaseOrderItemsTable = '''
+    CREATE TABLE $tablePurchaseOrderItems (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_id INTEGER NOT NULL,
+      product_id INTEGER NOT NULL,
+      description TEXT,
+      quantity REAL NOT NULL,
+      rate REAL NOT NULL,
+      discount REAL DEFAULT 0.0,
+      tax_rate REAL DEFAULT 0.0,
+      tax_amount REAL DEFAULT 0.0,
+      total REAL NOT NULL,
+      FOREIGN KEY (order_id) REFERENCES $tablePurchaseOrders (id) ON DELETE CASCADE,
+      FOREIGN KEY (product_id) REFERENCES $tableProducts (id)
+    );
+  ''';
+
+  static const String createPurchaseReturnsTable = '''
+    CREATE TABLE $tablePurchaseReturns (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      return_number TEXT UNIQUE NOT NULL,
+      return_date TEXT NOT NULL,
+      supplier_id INTEGER NOT NULL,
+      reference_invoice_id INTEGER,
+      reference_invoice_number TEXT,
+      subtotal REAL NOT NULL DEFAULT 0.0,
+      discount REAL NOT NULL DEFAULT 0.0,
+      tax_amount REAL NOT NULL DEFAULT 0.0,
+      grand_total REAL NOT NULL DEFAULT 0.0,
+      reason TEXT,
+      status TEXT NOT NULL DEFAULT 'Completed',
+      created_at TEXT NOT NULL,
+      updated_at TEXT NOT NULL,
+      FOREIGN KEY (supplier_id) REFERENCES $tableSuppliers (id),
+      FOREIGN KEY (reference_invoice_id) REFERENCES $tablePurchaseInvoices (id)
+    );
+  ''';
+
+  static const String createPurchaseReturnItemsTable = '''
+    CREATE TABLE $tablePurchaseReturnItems (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      return_id INTEGER NOT NULL,
+      product_id INTEGER NOT NULL,
+      description TEXT,
+      quantity REAL NOT NULL,
+      rate REAL NOT NULL,
+      discount REAL DEFAULT 0.0,
+      tax_rate REAL DEFAULT 0.0,
+      tax_amount REAL DEFAULT 0.0,
+      total REAL NOT NULL,
+      FOREIGN KEY (return_id) REFERENCES $tablePurchaseReturns (id) ON DELETE CASCADE,
+      FOREIGN KEY (product_id) REFERENCES $tableProducts (id)
+    );
+  ''';
+
   // Indexes for high performance
   static const List<String> createIndexes = [
     'CREATE INDEX IF NOT EXISTS idx_accounts_type ON $tableAccounts(account_type);',
@@ -356,8 +512,16 @@ class DatabaseTables {
     'CREATE INDEX IF NOT EXISTS idx_stock_date ON $tableStockTransactions(transaction_date);',
     'CREATE INDEX IF NOT EXISTS idx_sales_customer ON $tableSalesInvoices(customer_id);',
     'CREATE INDEX IF NOT EXISTS idx_sales_date ON $tableSalesInvoices(invoice_date);',
+    'CREATE INDEX IF NOT EXISTS idx_sales_orders_cust ON $tableSalesOrders(customer_id);',
+    'CREATE INDEX IF NOT EXISTS idx_sales_orders_date ON $tableSalesOrders(order_date);',
+    'CREATE INDEX IF NOT EXISTS idx_sales_returns_cust ON $tableSalesReturns(customer_id);',
+    'CREATE INDEX IF NOT EXISTS idx_sales_returns_date ON $tableSalesReturns(return_date);',
     'CREATE INDEX IF NOT EXISTS idx_purchase_supplier ON $tablePurchaseInvoices(supplier_id);',
     'CREATE INDEX IF NOT EXISTS idx_purchase_date ON $tablePurchaseInvoices(invoice_date);',
+    'CREATE INDEX IF NOT EXISTS idx_purchase_orders_supp ON $tablePurchaseOrders(supplier_id);',
+    'CREATE INDEX IF NOT EXISTS idx_purchase_orders_date ON $tablePurchaseOrders(order_date);',
+    'CREATE INDEX IF NOT EXISTS idx_purchase_returns_supp ON $tablePurchaseReturns(supplier_id);',
+    'CREATE INDEX IF NOT EXISTS idx_purchase_returns_date ON $tablePurchaseReturns(return_date);',
     'CREATE INDEX IF NOT EXISTS idx_receipts_customer ON $tableReceipts(customer_id);',
     'CREATE INDEX IF NOT EXISTS idx_payments_supplier ON $tablePayments(supplier_id);',
     'CREATE INDEX IF NOT EXISTS idx_expenses_account ON $tableExpenses(account_id);',

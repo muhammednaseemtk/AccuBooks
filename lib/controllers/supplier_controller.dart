@@ -63,14 +63,22 @@ class SupplierController extends GetxController {
       isSubmitting.value = true;
       if (supplier.id == null) {
         await _supplierRepo.insertSupplier(supplier);
+        await loadSuppliers();
+        if (Get.context != null) {
+          Get.snackbar('Success', 'Supplier created successfully', snackPosition: SnackPosition.BOTTOM);
+        }
       } else {
         await _supplierRepo.updateSupplier(supplier);
+        await loadSuppliers();
+        if (Get.context != null) {
+          Get.snackbar('Success', 'Supplier updated successfully', snackPosition: SnackPosition.BOTTOM);
+        }
       }
-      await loadSuppliers();
-      Get.snackbar('Success', 'Supplier details saved', snackPosition: SnackPosition.BOTTOM);
       return true;
     } catch (e) {
-      Get.snackbar('Error', 'Failed to save supplier: $e', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Error', 'Failed to save supplier: $e', snackPosition: SnackPosition.BOTTOM);
+      }
       return false;
     } finally {
       isSubmitting.value = false;
