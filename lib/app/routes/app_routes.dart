@@ -12,8 +12,10 @@ class AppRoutes {
   static const String products = '/products';
   static const String sales = '/sales';
   static const String salesCreate = '/sales/create';
+  static const String salesOrders = '/sales/orders';
   static const String purchases = '/purchases';
   static const String purchasesCreate = '/purchases/create';
+  static const String purchaseOrders = '/purchases/orders';
   static const String receipts = '/receipts';
   static const String payments = '/payments';
   static const String expenses = '/expenses';

@@ -63,14 +63,22 @@ class CustomerController extends GetxController {
       isSubmitting.value = true;
       if (customer.id == null) {
         await _customerRepo.insertCustomer(customer);
+        await loadCustomers();
+        if (Get.context != null) {
+          Get.snackbar('Success', 'Customer created successfully', snackPosition: SnackPosition.BOTTOM);
+        }
       } else {
         await _customerRepo.updateCustomer(customer);
+        await loadCustomers();
+        if (Get.context != null) {
+          Get.snackbar('Success', 'Customer updated successfully', snackPosition: SnackPosition.BOTTOM);
+        }
       }
-      await loadCustomers();
-      Get.snackbar('Success', 'Customer details saved', snackPosition: SnackPosition.BOTTOM);
       return true;
     } catch (e) {
-      Get.snackbar('Error', 'Failed to save customer: $e', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Error', 'Failed to save customer: $e', snackPosition: SnackPosition.BOTTOM);
+      }
       return false;
     } finally {
       isSubmitting.value = false;

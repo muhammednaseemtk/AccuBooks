@@ -11,7 +11,9 @@ import '../bindings/purchase_binding.dart';
 import '../bindings/receipt_binding.dart';
 import '../bindings/report_binding.dart';
 import '../bindings/sales_binding.dart';
+import '../bindings/sales_order_binding.dart';
 import '../bindings/supplier_binding.dart';
+import '../bindings/purchase_order_binding.dart';
 import '../middleware/auth_middleware.dart';
 import '../../screens/accounts/accounts_screen.dart';
 import '../../screens/auth/forgot_password_screen.dart';
@@ -27,10 +29,12 @@ import '../../screens/payments/payments_screen.dart';
 import '../../screens/products/products_screen.dart';
 import '../../screens/purchases/purchases_create_screen.dart';
 import '../../screens/purchases/purchases_screen.dart';
+import '../../screens/purchases/purchase_orders_screen.dart';
 import '../../screens/receipts/receipts_screen.dart';
 import '../../screens/reports/reports_screen.dart';
 import '../../screens/sales/sales_create_screen.dart';
 import '../../screens/sales/sales_screen.dart';
+import '../../screens/sales/sales_orders_screen.dart';
 import '../../screens/settings/settings_screen.dart';
 import '../../screens/splash/splash_screen.dart';
 import '../../screens/suppliers/suppliers_screen.dart';
@@ -120,6 +124,12 @@ class AppPages {
       middlewares: [AuthMiddleware()],
     ),
     GetPage(
+      name: AppRoutes.salesOrders,
+      page: () => const SalesOrdersScreen(),
+      binding: SalesOrderBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
       name: AppRoutes.purchases,
       page: () => const PurchasesScreen(),
       binding: PurchaseBinding(),
@@ -129,6 +139,12 @@ class AppPages {
       name: AppRoutes.purchasesCreate,
       page: () => const PurchasesCreateScreen(),
       binding: PurchaseBinding(),
+      middlewares: [AuthMiddleware()],
+    ),
+    GetPage(
+      name: AppRoutes.purchaseOrders,
+      page: () => const PurchaseOrdersScreen(),
+      binding: PurchaseOrderBinding(),
       middlewares: [AuthMiddleware()],
     ),
     GetPage(

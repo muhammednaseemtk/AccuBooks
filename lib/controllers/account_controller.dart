@@ -76,14 +76,22 @@ class AccountController extends GetxController {
       isSubmitting.value = true;
       if (account.id == null) {
         await _accountRepo.insertAccount(account);
+        await loadAccounts();
+        if (Get.context != null) {
+          Get.snackbar('Success', 'Account created successfully', snackPosition: SnackPosition.BOTTOM);
+        }
       } else {
         await _accountRepo.updateAccount(account);
+        await loadAccounts();
+        if (Get.context != null) {
+          Get.snackbar('Success', 'Account updated successfully', snackPosition: SnackPosition.BOTTOM);
+        }
       }
-      await loadAccounts();
-      Get.snackbar('Success', 'Account saved successfully', snackPosition: SnackPosition.BOTTOM);
       return true;
     } catch (e) {
-      Get.snackbar('Error', 'Failed to save account: $e', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Error', 'Failed to save account: $e', snackPosition: SnackPosition.BOTTOM);
+      }
       return false;
     } finally {
       isSubmitting.value = false;
