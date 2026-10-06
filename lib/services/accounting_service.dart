@@ -40,7 +40,7 @@ class AccountingService {
       );
     }
 
-    final txNum = transactionNumber ?? await _journalRepo.getNextJournalNumber();
+    final txNum = transactionNumber ?? await _journalRepo.getNextJournalNumber(txn: txn);
 
     final entry = JournalEntryModel(
       transactionNumber: txNum,

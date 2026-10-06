@@ -197,6 +197,7 @@ class PurchasesCreateScreen extends GetView<PurchaseController> {
                                 child: AppTextField(
                                   initialValue: '0',
                                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  inputFormatters: [AppInputFormatters.decimal()],
                                   onChanged: (v) => controller.formPaidAmount.value = double.tryParse(v) ?? 0.0,
                                 ),
                               ),
@@ -307,12 +308,14 @@ class PurchasesCreateScreen extends GetView<PurchaseController> {
                         label: 'Quantity *',
                         controller: qtyCtrl,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        inputFormatters: [AppInputFormatters.decimal()],
                         validator: (v) => double.tryParse(v ?? '') == null ? 'Valid qty required' : null,
                       ),
                       AppTextField(
                         label: 'Purchase Cost/Rate *',
                         controller: rateCtrl,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        inputFormatters: [AppInputFormatters.decimal()],
                         validator: (v) => double.tryParse(v ?? '') == null ? 'Valid rate required' : null,
                       ),
                     ],
@@ -326,6 +329,7 @@ class PurchasesCreateScreen extends GetView<PurchaseController> {
                         label: 'Discount (₹)',
                         controller: discountCtrl,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        inputFormatters: [AppInputFormatters.decimal()],
                       ),
                       AppTextField(
                         label: 'Tax Rate (%)',

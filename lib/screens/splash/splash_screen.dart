@@ -5,6 +5,8 @@ import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
 import '../../core/database/database_helper.dart';
 
+import '../../controllers/auth_controller.dart';
+
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -23,18 +25,25 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Future<void> _bootstrap() async {
     try {
-      await Future.delayed(const Duration(milliseconds: 400));
-      setState(() => _statusMessage = 'Verifying local SQLite storage...');
+      await Future.delayed(const Duration(milliseconds: 300));
+      setState(() => _statusMessage = 'Connecting to workspace...');
 
       final db = await DatabaseHelper().database;
       await db.rawQuery('SELECT 1;');
 
-      setState(() => _statusMessage = 'Loading workspace...');
-      await Future.delayed(const Duration(milliseconds: 300));
+      setState(() => _statusMessage = 'Checking user session...');
+      await Future.delayed(const Duration(milliseconds: 200));
 
-      Get.offNamed(AppRoutes.dashboard);
+      final authController = Get.find<AuthController>();
+      final hasSession = await authController.checkSession();
+
+      if (hasSession) {
+        Get.offNamed(AppRoutes.dashboard);
+      } else {
+        Get.offNamed(AppRoutes.login);
+      }
     } catch (e) {
-      setState(() => _statusMessage = 'Database error: $e');
+      Get.offNamed(AppRoutes.login);
     }
   }
 

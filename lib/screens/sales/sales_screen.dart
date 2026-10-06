@@ -106,7 +106,7 @@ class SalesScreen extends GetView<SalesController> {
                   const AppTableColumn(title: 'Grand Total', width: 130, alignment: Alignment.centerRight),
                   const AppTableColumn(title: 'Balance Due', width: 130, alignment: Alignment.centerRight),
                   const AppTableColumn(title: 'Status', width: 110, alignment: Alignment.center),
-                  const AppTableColumn(title: 'Actions', width: 130, alignment: Alignment.centerRight),
+                  const AppTableColumn(title: 'Actions', width: 160, alignment: Alignment.centerRight),
                 ];
 
                 final rows = controller.invoices.map((inv) {
@@ -158,6 +158,12 @@ class SalesScreen extends GetView<SalesController> {
                             splashRadius: 16,
                             onPressed: () => _confirmCancelInvoice(context, inv),
                           ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.debit),
+                          tooltip: 'Delete Invoice',
+                          splashRadius: 16,
+                          onPressed: () => _confirmDeleteInvoice(context, inv),
+                        ),
                       ],
                     ),
                   ];
@@ -265,6 +271,15 @@ class SalesScreen extends GetView<SalesController> {
         ),
         actions: [
           AppButton(
+            label: 'Delete Invoice',
+            type: AppButtonType.danger,
+            icon: Icons.delete_outline,
+            onPressed: () {
+              Get.back();
+              _confirmDeleteInvoice(context, invoice);
+            },
+          ),
+          AppButton(
             label: 'Close',
             type: AppButtonType.text,
             onPressed: () => Get.back(),
@@ -327,6 +342,42 @@ class SalesScreen extends GetView<SalesController> {
             onPressed: () async {
               Get.back();
               await controller.cancelInvoice(invoice.id!, reasonCtrl.text.trim());
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteInvoice(BuildContext context, SalesInvoiceModel invoice) {
+    Get.dialog(
+      AppDialog(
+        title: 'Delete Invoice #${invoice.invoiceNumber}?',
+        maxWidth: 440,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Are you sure you want to permanently delete invoice #${invoice.invoiceNumber} for ${invoice.customerName ?? 'Customer'}?',
+              style: AppTextStyles.body1,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Deleting this invoice will restore inventory stock and remove associated journal entries.',
+              style: AppTextStyles.caption,
+            ),
+          ],
+        ),
+        actions: [
+          AppButton(label: 'Cancel', type: AppButtonType.text, onPressed: () => Get.back()),
+          AppButton(
+            label: 'Delete',
+            type: AppButtonType.danger,
+            icon: Icons.delete_outline,
+            onPressed: () async {
+              Get.back();
+              await controller.deleteInvoice(invoice);
             },
           ),
         ],

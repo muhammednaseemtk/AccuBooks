@@ -106,7 +106,7 @@ class PurchasesScreen extends GetView<PurchaseController> {
                   const AppTableColumn(title: 'Grand Total', width: 130, alignment: Alignment.centerRight),
                   const AppTableColumn(title: 'Balance Payable', width: 140, alignment: Alignment.centerRight),
                   const AppTableColumn(title: 'Status', width: 110, alignment: Alignment.center),
-                  const AppTableColumn(title: 'Actions', width: 110, alignment: Alignment.centerRight),
+                  const AppTableColumn(title: 'Actions', width: 140, alignment: Alignment.centerRight),
                 ];
 
                 final rows = controller.purchases.map((pur) {
@@ -152,6 +152,12 @@ class PurchasesScreen extends GetView<PurchaseController> {
                             splashRadius: 16,
                             onPressed: () => _confirmCancelPurchase(context, pur),
                           ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.debit),
+                          tooltip: 'Delete Purchase',
+                          splashRadius: 16,
+                          onPressed: () => _confirmDeletePurchase(context, pur),
+                        ),
                       ],
                     ),
                   ];
@@ -254,6 +260,22 @@ class PurchasesScreen extends GetView<PurchaseController> {
             ),
           ],
         ),
+        actions: [
+          AppButton(
+            label: 'Delete Purchase',
+            type: AppButtonType.danger,
+            icon: Icons.delete_outline,
+            onPressed: () {
+              Get.back();
+              _confirmDeletePurchase(context, purchase);
+            },
+          ),
+          AppButton(
+            label: 'Close',
+            type: AppButtonType.text,
+            onPressed: () => Get.back(),
+          ),
+        ],
       ),
     );
   }
@@ -300,6 +322,42 @@ class PurchasesScreen extends GetView<PurchaseController> {
             onPressed: () async {
               Get.back();
               await controller.cancelPurchase(purchase.id!, reasonCtrl.text.trim());
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeletePurchase(BuildContext context, PurchaseInvoiceModel purchase) {
+    Get.dialog(
+      AppDialog(
+        title: 'Delete Purchase #${purchase.invoiceNumber}?',
+        maxWidth: 440,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Are you sure you want to permanently delete purchase invoice #${purchase.invoiceNumber} from ${purchase.supplierName ?? 'Supplier'}?',
+              style: AppTextStyles.body1,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Deleting this purchase invoice will reverse the added inventory stock and remove associated journal entries.',
+              style: AppTextStyles.caption,
+            ),
+          ],
+        ),
+        actions: [
+          AppButton(label: 'Cancel', type: AppButtonType.text, onPressed: () => Get.back()),
+          AppButton(
+            label: 'Delete',
+            type: AppButtonType.danger,
+            icon: Icons.delete_outline,
+            onPressed: () async {
+              Get.back();
+              await controller.deletePurchase(purchase);
             },
           ),
         ],
