@@ -27,9 +27,9 @@ class JournalRepository {
     return entryId;
   }
 
-  Future<String> getNextJournalNumber() async {
-    final db = await _dbHelper.database;
-    final res = await db.rawQuery('''
+  Future<String> getNextJournalNumber({Transaction? txn}) async {
+    final executor = txn ?? await _dbHelper.database;
+    final res = await executor.rawQuery('''
       SELECT MAX(id) as max_id FROM ${DatabaseTables.tableJournalEntries}
     ''');
     final nextId = ((res.first['max_id'] as int?) ?? 0) + 1;
@@ -162,5 +162,13 @@ class JournalRepository {
     ''';
 
     return await db.rawQuery(query, whereArgs);
+  }
+
+  Future<void> deleteJournalEntry(int entryId) async {
+    final db = await _dbHelper.database;
+    await db.transaction((txn) async {
+      await txn.delete(DatabaseTables.tableJournalLines, where: 'journal_entry_id = ?', whereArgs: [entryId]);
+      await txn.delete(DatabaseTables.tableJournalEntries, where: 'id = ?', whereArgs: [entryId]);
+    });
   }
 }

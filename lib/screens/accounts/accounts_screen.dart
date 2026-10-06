@@ -90,7 +90,7 @@ class AccountsScreen extends GetView<AccountController> {
                   const AppTableColumn(title: 'Type', width: 120),
                   const AppTableColumn(title: 'Balance', width: 150, alignment: Alignment.centerRight),
                   const AppTableColumn(title: 'Status', width: 100, alignment: Alignment.center),
-                  const AppTableColumn(title: 'Actions', width: 120, alignment: Alignment.centerRight),
+                  const AppTableColumn(title: 'Actions', width: 140, alignment: Alignment.centerRight),
                 ];
 
                 final rows = controller.accounts.map((acc) {
@@ -159,6 +159,13 @@ class AccountsScreen extends GetView<AccountController> {
                           splashRadius: 16,
                           onPressed: () => _showAccountFormDialog(context, account: acc),
                         ),
+                        if (!acc.isSystemAccount)
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.debit),
+                            tooltip: 'Delete Account',
+                            splashRadius: 16,
+                            onPressed: () => _confirmDeleteAccount(context, acc),
+                          ),
                       ],
                     ),
                   ];
@@ -206,7 +213,13 @@ class AccountsScreen extends GetView<AccountController> {
                     hint: 'e.g. 1040',
                     controller: codeCtrl,
                     readOnly: isEdit && account.isSystemAccount,
-                    validator: (v) => v == null || v.isEmpty ? 'Code required' : null,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [AppInputFormatters.digitsOnly],
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return 'Code required';
+                      if (!RegExp(r'^\d+$').hasMatch(v.trim())) return 'Account Code must contain numbers only';
+                      return null;
+                    },
                   ),
                   Obx(() => AppDropdown<String>(
                         label: 'Account Type',
@@ -234,6 +247,7 @@ class AccountsScreen extends GetView<AccountController> {
                       hint: '0.00',
                       controller: openingCtrl,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      inputFormatters: [AppInputFormatters.decimal()],
                     ),
                     Obx(() => AppDropdown<String>(
                           label: 'Balance Type',
@@ -251,6 +265,16 @@ class AccountsScreen extends GetView<AccountController> {
           ),
         ),
         actions: [
+          if (isEdit && !account.isSystemAccount)
+            AppButton(
+              label: 'Delete',
+              type: AppButtonType.danger,
+              icon: Icons.delete_outline,
+              onPressed: () {
+                Get.back();
+                _confirmDeleteAccount(context, account);
+              },
+            ),
           AppButton(
             label: 'Cancel',
             type: AppButtonType.text,
@@ -261,10 +285,12 @@ class AccountsScreen extends GetView<AccountController> {
                 isLoading: controller.isSubmitting.value,
                 onPressed: () async {
                   if (!formKey.currentState!.validate()) return;
+                  final cleanCode = codeCtrl.text.trim();
+                  if (!RegExp(r'^\d+$').hasMatch(cleanCode)) return;
                   final opVal = double.tryParse(openingCtrl.text.replaceAll(',', '')) ?? 0.0;
                   final acc = AccountModel(
                     id: account?.id,
-                    accountCode: codeCtrl.text.trim(),
+                    accountCode: cleanCode,
                     accountName: nameCtrl.text.trim(),
                     accountType: selectedType.value,
                     openingBalance: opVal,
@@ -276,6 +302,46 @@ class AccountsScreen extends GetView<AccountController> {
                   if (ok) Get.back();
                 },
               )),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteAccount(BuildContext context, AccountModel account) {
+    Get.dialog(
+      AppDialog(
+        title: 'Delete Account?',
+        maxWidth: 440,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Are you sure you want to delete account "${account.accountName}" (${account.accountCode})?',
+              style: AppTextStyles.body1,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Accounts with existing transactions or ledger history cannot be deleted.',
+              style: AppTextStyles.caption.copyWith(color: AppColors.textSecondaryLight),
+            ),
+          ],
+        ),
+        actions: [
+          AppButton(
+            label: 'Cancel',
+            type: AppButtonType.text,
+            onPressed: () => Get.back(),
+          ),
+          AppButton(
+            label: 'Delete',
+            type: AppButtonType.danger,
+            icon: Icons.delete_outline,
+            onPressed: () async {
+              Get.back();
+              await controller.deleteAccount(account);
+            },
+          ),
         ],
       ),
     );

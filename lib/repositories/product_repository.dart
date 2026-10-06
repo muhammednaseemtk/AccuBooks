@@ -118,6 +118,35 @@ class ProductRepository {
     );
   }
 
+  Future<bool> canDeleteProduct(int id) async {
+    final db = await _dbHelper.database;
+    final sales = await db.query(
+      DatabaseTables.tableSalesInvoiceItems,
+      where: 'product_id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (sales.isNotEmpty) return false;
+
+    final pur = await db.query(
+      DatabaseTables.tablePurchaseInvoiceItems,
+      where: 'product_id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (pur.isNotEmpty) return false;
+
+    return true;
+  }
+
+  Future<int> deleteProduct(int id) async {
+    final db = await _dbHelper.database;
+    return await db.transaction((txn) async {
+      await txn.delete(DatabaseTables.tableStockTransactions, where: 'product_id = ?', whereArgs: [id]);
+      return await txn.delete(DatabaseTables.tableProducts, where: 'id = ?', whereArgs: [id]);
+    });
+  }
+
   Future<int> deactivateProduct(int id) async {
     final db = await _dbHelper.database;
     return await db.update(
@@ -224,6 +253,44 @@ class ProductRepository {
       where: 'id = ?',
       whereArgs: [category.id],
     );
+  }
+
+  Future<int> deleteCategory(int id) async {
+    final db = await _dbHelper.database;
+    return await db.transaction((txn) async {
+      await txn.update(
+        DatabaseTables.tableProducts,
+        {'category_id': null},
+        where: 'category_id = ?',
+        whereArgs: [id],
+      );
+      return await txn.delete(DatabaseTables.tableCategories, where: 'id = ?', whereArgs: [id]);
+    });
+  }
+
+  Future<int> deleteStockTransaction(int transactionId) async {
+    final db = await _dbHelper.database;
+    return await db.transaction((txn) async {
+      final tList = await txn.query(
+        DatabaseTables.tableStockTransactions,
+        where: 'id = ?',
+        whereArgs: [transactionId],
+      );
+      if (tList.isEmpty) return 0;
+      final t = tList.first;
+      final pId = t['product_id'] as int;
+      final qIn = (t['quantity_in'] as num?)?.toDouble() ?? 0.0;
+      final qOut = (t['quantity_out'] as num?)?.toDouble() ?? 0.0;
+      final delta = qOut - qIn; // reverse the effect
+
+      final pList = await txn.query(DatabaseTables.tableProducts, columns: ['stock_quantity'], where: 'id = ?', whereArgs: [pId]);
+      if (pList.isNotEmpty) {
+        final currentStock = (pList.first['stock_quantity'] as num).toDouble();
+        await txn.update(DatabaseTables.tableProducts, {'stock_quantity': currentStock + delta}, where: 'id = ?', whereArgs: [pId]);
+      }
+
+      return await txn.delete(DatabaseTables.tableStockTransactions, where: 'id = ?', whereArgs: [transactionId]);
+    });
   }
 
   // --- Taxes ---

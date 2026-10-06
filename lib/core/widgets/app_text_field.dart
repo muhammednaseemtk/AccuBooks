@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
 
+export '../utils/input_formatters.dart';
+
 class AppTextField extends StatelessWidget {
   final String? label;
   final String? hint;
@@ -86,6 +88,7 @@ class AppTextField extends StatelessWidget {
           maxLines: maxLines,
           focusNode: focusNode,
           autofocus: autofocus,
+          inputFormatters: inputFormatters,
           style: AppTextStyles.body1.copyWith(
             color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
           ),

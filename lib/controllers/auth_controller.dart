@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import '../app/routes/app_routes.dart';
 import '../app/theme/app_colors.dart';
 import '../core/widgets/app_dialog.dart';
+import '../models/country_model.dart';
 import '../models/organization_model.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
@@ -42,6 +43,12 @@ class AuthController extends GetxController {
   final signupPasswordController = TextEditingController();
   final signupConfirmPasswordController = TextEditingController();
   final signupCompanyController = TextEditingController();
+  final Rx<Country> signupCountry = Countries.defaultCountry.obs;
+
+  String get fullSignupPhoneNumber => Countries.formatFullPhoneNumber(
+        signupPhoneController.text.trim(),
+        signupCountry.value.dialCode,
+      );
 
   // Controllers: Forgot Password
   final forgotEmailController = TextEditingController();
@@ -144,7 +151,10 @@ class AuthController extends GetxController {
     return emailRegex.hasMatch(email.trim());
   }
 
-  static bool isValidPhone(String phone) {
+  static bool isValidPhone(String phone, [Country? country]) {
+    if (country != null) {
+      return country.isValid(phone);
+    }
     final cleaned = phone.replaceAll(RegExp(r'[\s\-\+\(\)]'), '');
     return cleaned.length >= 7 && cleaned.length <= 15;
   }
@@ -244,8 +254,8 @@ class AuthController extends GetxController {
     }
 
     // 3. Phone Validation
-    if (phone.isEmpty || !isValidPhone(phone)) {
-      _showError('Please enter a valid phone number.');
+    if (phone.isEmpty || !signupCountry.value.isValid(phone)) {
+      _showError('Enter a valid phone number');
       return;
     }
 
@@ -268,12 +278,17 @@ class AuthController extends GetxController {
       return;
     }
 
+    final fullPhoneNumber = Countries.formatFullPhoneNumber(
+      phone,
+      signupCountry.value.dialCode,
+    );
+
     try {
       isLoading.value = true;
       await _authService.signup(
         fullName: fullName,
         email: email,
-        phone: phone,
+        phone: fullPhoneNumber,
         password: password,
         companyName: companyName,
       );

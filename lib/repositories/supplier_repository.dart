@@ -150,6 +150,36 @@ class SupplierRepository {
     );
   }
 
+  Future<bool> canDeleteSupplier(int id) async {
+    final db = await _dbHelper.database;
+    final purchases = await db.query(
+      DatabaseTables.tablePurchaseInvoices,
+      where: 'supplier_id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (purchases.isNotEmpty) return false;
+
+    final pay = await db.query(
+      DatabaseTables.tablePayments,
+      where: 'supplier_id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (pay.isNotEmpty) return false;
+
+    return true;
+  }
+
+  Future<int> deleteSupplier(int id) async {
+    final db = await _dbHelper.database;
+    return await db.delete(
+      DatabaseTables.tableSuppliers,
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
   Future<int> deactivateSupplier(int id) async {
     final db = await _dbHelper.database;
     return await db.update(
