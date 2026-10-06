@@ -17,6 +17,7 @@ import '../../core/widgets/app_text_field.dart';
 import '../../core/widgets/empty_state.dart';
 import '../../core/widgets/loading_widget.dart';
 import '../../models/account_model.dart';
+import '../../models/expense_model.dart';
 import '../navigation/app_scaffold.dart';
 
 class ExpensesScreen extends GetView<ExpenseController> {
@@ -93,6 +94,7 @@ class ExpensesScreen extends GetView<ExpenseController> {
                   const AppTableColumn(title: 'Description'),
                   const AppTableColumn(title: 'Paid Via', width: 140),
                   const AppTableColumn(title: 'Amount', width: 130, alignment: Alignment.centerRight),
+                  const AppTableColumn(title: 'Actions', width: 80, alignment: Alignment.centerRight),
                 ];
 
                 final rows = controller.expenses.map((e) {
@@ -105,6 +107,12 @@ class ExpensesScreen extends GetView<ExpenseController> {
                     Text(
                       CurrencyUtils.format(e.amount + e.taxAmount),
                       style: AppTextStyles.tableCellBold.copyWith(color: AppColors.debit),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.debit),
+                      tooltip: 'Delete Expense',
+                      splashRadius: 16,
+                      onPressed: () => _confirmDeleteExpense(context, e),
                     ),
                   ];
                 }).toList();
@@ -194,6 +202,7 @@ class ExpensesScreen extends GetView<ExpenseController> {
                     hint: '0.00',
                     controller: amountCtrl,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [AppInputFormatters.decimal()],
                     validator: (v) => double.tryParse(v ?? '') == null ? 'Valid amount required' : null,
                     onChanged: (v) => controller.formAmount.value = double.tryParse(v) ?? 0.0,
                   ),
@@ -202,6 +211,7 @@ class ExpensesScreen extends GetView<ExpenseController> {
                     hint: '0.00',
                     controller: taxCtrl,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [AppInputFormatters.decimal()],
                     onChanged: (v) => controller.formTaxAmount.value = double.tryParse(v) ?? 0.0,
                   ),
                   Obx(() => AppDropdown<String>(
@@ -242,6 +252,42 @@ class ExpensesScreen extends GetView<ExpenseController> {
                   if (ok) Get.back();
                 },
               )),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteExpense(BuildContext context, ExpenseModel expense) {
+    Get.dialog(
+      AppDialog(
+        title: 'Delete Expense #${expense.expenseNumber}?',
+        maxWidth: 440,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Are you sure you want to delete expense #${expense.expenseNumber} (${CurrencyUtils.format(expense.amount + expense.taxAmount)}) for ${expense.expenseAccountName ?? 'Expense'}?',
+              style: AppTextStyles.body1,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Deleting this expense will reverse the payment account deduction and associated journal entries.',
+              style: AppTextStyles.caption,
+            ),
+          ],
+        ),
+        actions: [
+          AppButton(label: 'Cancel', type: AppButtonType.text, onPressed: () => Get.back()),
+          AppButton(
+            label: 'Delete',
+            type: AppButtonType.danger,
+            icon: Icons.delete_outline,
+            onPressed: () async {
+              Get.back();
+              await controller.deleteExpense(expense);
+            },
+          ),
         ],
       ),
     );

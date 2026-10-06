@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import '../../app/routes/app_routes.dart';
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
+import '../../controllers/auth_controller.dart';
 import '../../controllers/settings_controller.dart';
 import '../../core/utils/responsive_utils.dart';
 
@@ -174,6 +175,32 @@ class AppScaffold extends StatelessWidget {
                                     side: BorderSide.none,
                                   );
                                 }),
+                                if (Get.isRegistered<AuthController>()) ...[
+                                  const SizedBox(width: 8),
+                                  Obx(() {
+                                    final user = Get.find<AuthController>().currentUser;
+                                    return InkWell(
+                                      onTap: () => Get.toNamed(AppRoutes.profile),
+                                      borderRadius: BorderRadius.circular(16),
+                                      child: Chip(
+                                        avatar: CircleAvatar(
+                                          radius: 12,
+                                          backgroundColor: AppColors.primary,
+                                          child: Text(
+                                            (user?.fullName.isNotEmpty ?? false) ? user!.fullName[0].toUpperCase() : 'U',
+                                            style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                                          ),
+                                        ),
+                                        label: Text(
+                                          user?.roleDisplayName ?? 'Owner',
+                                          style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.w600),
+                                        ),
+                                        backgroundColor: isDark ? AppColors.surfaceVariantDark : AppColors.surfaceVariantLight,
+                                        side: BorderSide.none,
+                                      ),
+                                    );
+                                  }),
+                                ],
                               ],
                             ),
                           ),
@@ -334,8 +361,82 @@ class AppScaffold extends StatelessWidget {
           ),
         ),
 
-        // Bottom status / Quick Info
-        if (!isCollapsed)
+        // Bottom status / User profile & Logout
+        if (Get.isRegistered<AuthController>())
+          Obx(() {
+            final authCtrl = Get.find<AuthController>();
+            final user = authCtrl.currentUser;
+
+            if (isCollapsed) {
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                child: IconButton(
+                  icon: const Icon(Icons.logout_rounded, size: 20, color: Colors.grey),
+                  tooltip: 'Logout (${user?.fullName ?? 'User'})',
+                  onPressed: () => authCtrl.confirmLogout(),
+                ),
+              );
+            }
+
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                border: Border(
+                  top: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight),
+                ),
+              ),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 16,
+                    backgroundColor: AppColors.primary,
+                    child: Text(
+                      (user?.fullName.isNotEmpty ?? false) ? user!.fullName[0].toUpperCase() : 'U',
+                      style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: InkWell(
+                      onTap: () => Get.toNamed(AppRoutes.profile),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            user?.fullName ?? 'AccuBooks User',
+                            style: AppTextStyles.button.copyWith(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          Text(
+                            user?.roleDisplayName ?? 'Owner',
+                            style: AppTextStyles.caption.copyWith(
+                              fontSize: 11,
+                              color: isDark ? AppColors.primaryLight : AppColors.primary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.logout_rounded, size: 18, color: Colors.grey),
+                    tooltip: 'Logout',
+                    onPressed: () => authCtrl.confirmLogout(),
+                  ),
+                ],
+              ),
+            );
+          })
+        else if (!isCollapsed)
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
@@ -345,10 +446,10 @@ class AppScaffold extends StatelessWidget {
             ),
             child: Row(
               children: [
-                const Icon(Icons.cloud_off_outlined, size: 16, color: AppColors.credit),
+                const Icon(Icons.verified_user_outlined, size: 16, color: AppColors.credit),
                 const SizedBox(width: 8),
                 Text(
-                  '100% Local & Offline',
+                  'AccuBooks SaaS',
                   style: AppTextStyles.caption.copyWith(
                     color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
                   ),

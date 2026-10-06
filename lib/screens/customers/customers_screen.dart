@@ -79,7 +79,7 @@ class CustomersScreen extends GetView<CustomerController> {
                   const AppTableColumn(title: 'Total Sales', width: 130, alignment: Alignment.centerRight),
                   const AppTableColumn(title: 'Receipts', width: 130, alignment: Alignment.centerRight),
                   const AppTableColumn(title: 'Outstanding', width: 140, alignment: Alignment.centerRight),
-                  const AppTableColumn(title: 'Actions', width: 120, alignment: Alignment.centerRight),
+                  const AppTableColumn(title: 'Actions', width: 140, alignment: Alignment.centerRight),
                 ];
 
                 final rows = controller.customers.map((c) {
@@ -119,6 +119,12 @@ class CustomersScreen extends GetView<CustomerController> {
                           tooltip: 'Edit Customer',
                           splashRadius: 16,
                           onPressed: () => _showCustomerFormDialog(context, customer: c),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.debit),
+                          tooltip: 'Delete Customer',
+                          splashRadius: 16,
+                          onPressed: () => _confirmDeleteCustomer(context, c),
                         ),
                       ],
                     ),
@@ -189,6 +195,8 @@ class CustomersScreen extends GetView<CustomerController> {
                     label: 'Phone Number',
                     hint: '+91 98765 00000',
                     controller: phoneCtrl,
+                    keyboardType: TextInputType.phone,
+                    inputFormatters: [AppInputFormatters.digitsOnly],
                   ),
                   AppTextField(
                     label: 'Email',
@@ -213,6 +221,14 @@ class CustomersScreen extends GetView<CustomerController> {
                     label: 'GSTIN / Tax ID',
                     hint: 'e.g. 29ABCDE1234F1Z5',
                     controller: taxNumCtrl,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [AppInputFormatters.digitsOnly],
+                    validator: (v) {
+                      if (v != null && v.trim().isNotEmpty && !RegExp(r'^\d+$').hasMatch(v.trim())) {
+                        return 'Tax ID must contain numbers only';
+                      }
+                      return null;
+                    },
                   ),
                   if (!isEdit)
                     AppTextField(
@@ -220,6 +236,7 @@ class CustomersScreen extends GetView<CustomerController> {
                       hint: '0.00',
                       controller: openingCtrl,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      inputFormatters: [AppInputFormatters.decimal()],
                     ),
                   if (!isEdit)
                     Obx(() => AppDropdown<String>(
@@ -237,6 +254,16 @@ class CustomersScreen extends GetView<CustomerController> {
           ),
         ),
         actions: [
+          if (isEdit)
+            AppButton(
+              label: 'Delete',
+              type: AppButtonType.danger,
+              icon: Icons.delete_outline,
+              onPressed: () {
+                Get.back();
+                _confirmDeleteCustomer(context, customer);
+              },
+            ),
           AppButton(
             label: 'Cancel',
             type: AppButtonType.text,
@@ -247,6 +274,8 @@ class CustomersScreen extends GetView<CustomerController> {
                 isLoading: controller.isSubmitting.value,
                 onPressed: () async {
                   if (!formKey.currentState!.validate()) return;
+                  final cleanTax = taxNumCtrl.text.trim();
+                  if (cleanTax.isNotEmpty && !RegExp(r'^\d+$').hasMatch(cleanTax)) return;
                   final opVal = double.tryParse(openingCtrl.text.replaceAll(',', '')) ?? 0.0;
                   final cust = CustomerModel(
                     id: customer?.id,
@@ -255,7 +284,7 @@ class CustomersScreen extends GetView<CustomerController> {
                     phone: phoneCtrl.text.trim(),
                     email: emailCtrl.text.trim(),
                     address: addressCtrl.text.trim(),
-                    taxNumber: taxNumCtrl.text.trim(),
+                    taxNumber: cleanTax,
                     openingBalance: opVal,
                     openingBalanceType: selectedObType.value,
                   );
@@ -264,6 +293,46 @@ class CustomersScreen extends GetView<CustomerController> {
                   if (ok) Get.back();
                 },
               )),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteCustomer(BuildContext context, CustomerModel customer) {
+    Get.dialog(
+      AppDialog(
+        title: 'Delete Customer?',
+        maxWidth: 440,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Are you sure you want to delete customer "${customer.name}" (${customer.customerCode})?',
+              style: AppTextStyles.body1,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Customers with active sales invoices or receipts cannot be deleted.',
+              style: AppTextStyles.caption.copyWith(color: AppColors.textSecondaryLight),
+            ),
+          ],
+        ),
+        actions: [
+          AppButton(
+            label: 'Cancel',
+            type: AppButtonType.text,
+            onPressed: () => Get.back(),
+          ),
+          AppButton(
+            label: 'Delete',
+            type: AppButtonType.danger,
+            icon: Icons.delete_outline,
+            onPressed: () async {
+              Get.back();
+              await controller.deleteCustomer(customer);
+            },
+          ),
         ],
       ),
     );

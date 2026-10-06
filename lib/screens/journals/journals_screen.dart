@@ -4,6 +4,7 @@ import '../../app/routes/app_routes.dart';
 import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
 import '../../controllers/journal_controller.dart';
+import '../../core/constants/accounting_constants.dart';
 import '../../core/utils/currency_utils.dart';
 import '../../core/utils/date_utils.dart';
 import '../../core/widgets/responsive_layout.dart';
@@ -91,7 +92,7 @@ class JournalsScreen extends GetView<JournalController> {
                   const AppTableColumn(title: 'Type', width: 110),
                   const AppTableColumn(title: 'Description'),
                   const AppTableColumn(title: 'Total Amount', width: 130, alignment: Alignment.centerRight),
-                  const AppTableColumn(title: 'Actions', width: 90, alignment: Alignment.centerRight),
+                  const AppTableColumn(title: 'Actions', width: 110, alignment: Alignment.centerRight),
                 ];
 
                 final rows = controller.journalEntries.map((j) {
@@ -111,11 +112,22 @@ class JournalsScreen extends GetView<JournalController> {
                       CurrencyUtils.format(j.totalDebit),
                       style: AppTextStyles.tableCellBold,
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.visibility_outlined, size: 18),
-                      tooltip: 'View Journal Lines',
-                      splashRadius: 16,
-                      onPressed: () => _showJournalDetailsDialog(context, j),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.visibility_outlined, size: 18),
+                          tooltip: 'View Journal Lines',
+                          splashRadius: 16,
+                          onPressed: () => _showJournalDetailsDialog(context, j),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.debit),
+                          tooltip: 'Delete Journal Entry',
+                          splashRadius: 16,
+                          onPressed: () => _confirmDeleteJournal(context, j),
+                        ),
+                      ],
                     ),
                   ];
                 }).toList();
@@ -257,6 +269,7 @@ class JournalsScreen extends GetView<JournalController> {
                                         hint: 'Debit',
                                         controller: debitCtrl,
                                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                        inputFormatters: [AppInputFormatters.decimal()],
                                         onChanged: (v) {
                                           line.debit = double.tryParse(v) ?? 0.0;
                                           if (line.debit > 0) {
@@ -273,6 +286,7 @@ class JournalsScreen extends GetView<JournalController> {
                                         hint: 'Credit',
                                         controller: creditCtrl,
                                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                        inputFormatters: [AppInputFormatters.decimal()],
                                         onChanged: (v) {
                                           line.credit = double.tryParse(v) ?? 0.0;
                                           if (line.credit > 0) {
@@ -308,6 +322,7 @@ class JournalsScreen extends GetView<JournalController> {
                                   hint: 'Debit',
                                   controller: debitCtrl,
                                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  inputFormatters: [AppInputFormatters.decimal()],
                                   onChanged: (v) {
                                     line.debit = double.tryParse(v) ?? 0.0;
                                     if (line.debit > 0) {
@@ -325,6 +340,7 @@ class JournalsScreen extends GetView<JournalController> {
                                   hint: 'Credit',
                                   controller: creditCtrl,
                                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  inputFormatters: [AppInputFormatters.decimal()],
                                   onChanged: (v) {
                                     line.credit = double.tryParse(v) ?? 0.0;
                                     if (line.credit > 0) {
@@ -464,6 +480,60 @@ class JournalsScreen extends GetView<JournalController> {
             ),
           ],
         ),
+        actions: [
+          AppButton(
+            label: 'Delete Entry',
+            type: AppButtonType.danger,
+            icon: Icons.delete_outline,
+            onPressed: () {
+              Get.back();
+              _confirmDeleteJournal(context, entry);
+            },
+          ),
+          AppButton(
+            label: 'Close',
+            type: AppButtonType.text,
+            onPressed: () => Get.back(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteJournal(BuildContext context, JournalEntryModel entry) {
+    Get.dialog(
+      AppDialog(
+        title: 'Delete Journal Entry #${entry.transactionNumber}?',
+        maxWidth: 440,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Are you sure you want to delete journal voucher #${entry.transactionNumber} (${CurrencyUtils.format(entry.totalDebit)})?',
+              style: AppTextStyles.body1,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              entry.referenceId != null && entry.transactionType != AccountingConstants.transTypeJournal
+                  ? 'Note: Automatically generated entries cannot be deleted here. Delete or cancel the source ${entry.transactionType} document.'
+                  : 'This double-entry transaction and all its line items will be permanently removed.',
+              style: AppTextStyles.caption.copyWith(color: AppColors.textSecondaryLight),
+            ),
+          ],
+        ),
+        actions: [
+          AppButton(label: 'Cancel', type: AppButtonType.text, onPressed: () => Get.back()),
+          AppButton(
+            label: 'Delete',
+            type: AppButtonType.danger,
+            icon: Icons.delete_outline,
+            onPressed: () async {
+              Get.back();
+              await controller.deleteJournal(entry);
+            },
+          ),
+        ],
       ),
     );
   }

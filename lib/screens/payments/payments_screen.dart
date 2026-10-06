@@ -17,6 +17,7 @@ import '../../core/widgets/app_text_field.dart';
 import '../../core/widgets/empty_state.dart';
 import '../../core/widgets/loading_widget.dart';
 import '../../models/account_model.dart';
+import '../../models/payment_model.dart';
 import '../../models/supplier_model.dart';
 import '../navigation/app_scaffold.dart';
 
@@ -94,6 +95,7 @@ class PaymentsScreen extends GetView<PaymentController> {
                   const AppTableColumn(title: 'Paid From', width: 150),
                   const AppTableColumn(title: 'Method', width: 90),
                   const AppTableColumn(title: 'Amount Paid', width: 140, alignment: Alignment.centerRight),
+                  const AppTableColumn(title: 'Actions', width: 80, alignment: Alignment.centerRight),
                 ];
 
                 final rows = controller.payments.map((p) {
@@ -113,6 +115,12 @@ class PaymentsScreen extends GetView<PaymentController> {
                     Text(
                       CurrencyUtils.format(p.amount),
                       style: AppTextStyles.tableCellBold.copyWith(color: AppColors.debit),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.debit),
+                      tooltip: 'Delete Payment',
+                      splashRadius: 16,
+                      onPressed: () => _confirmDeletePayment(context, p),
                     ),
                   ];
                 }).toList();
@@ -219,6 +227,7 @@ class PaymentsScreen extends GetView<PaymentController> {
                     hint: '0.00',
                     controller: amountCtrl,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [AppInputFormatters.decimal()],
                     validator: (v) => double.tryParse(v ?? '') == null ? 'Valid amount required' : null,
                     onChanged: (v) => controller.formAmount.value = double.tryParse(v) ?? 0.0,
                   ),
@@ -249,6 +258,42 @@ class PaymentsScreen extends GetView<PaymentController> {
                   if (ok) Get.back();
                 },
               )),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeletePayment(BuildContext context, PaymentModel payment) {
+    Get.dialog(
+      AppDialog(
+        title: 'Delete Payment #${payment.paymentNumber}?',
+        maxWidth: 440,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Are you sure you want to delete payment #${payment.paymentNumber} (${CurrencyUtils.format(payment.amount)}) to ${payment.supplierName ?? 'Supplier'}?',
+              style: AppTextStyles.body1,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Deleting this payment will reverse the supplier balance disbursement and associated journal entries.',
+              style: AppTextStyles.caption,
+            ),
+          ],
+        ),
+        actions: [
+          AppButton(label: 'Cancel', type: AppButtonType.text, onPressed: () => Get.back()),
+          AppButton(
+            label: 'Delete',
+            type: AppButtonType.danger,
+            icon: Icons.delete_outline,
+            onPressed: () async {
+              Get.back();
+              await controller.deletePayment(payment);
+            },
+          ),
         ],
       ),
     );

@@ -131,7 +131,7 @@ class ProductsScreen extends GetView<ProductController> {
                   const AppTableColumn(title: 'Purchase Price', width: 130, alignment: Alignment.centerRight),
                   const AppTableColumn(title: 'Sales Price', width: 130, alignment: Alignment.centerRight),
                   const AppTableColumn(title: 'Stock Qty', width: 130, alignment: Alignment.centerRight),
-                  const AppTableColumn(title: 'Actions', width: 140, alignment: Alignment.centerRight),
+                  const AppTableColumn(title: 'Actions', width: 170, alignment: Alignment.centerRight),
                 ];
 
                 final rows = controller.products.map((p) {
@@ -186,6 +186,12 @@ class ProductsScreen extends GetView<ProductController> {
                           tooltip: 'Edit Product',
                           splashRadius: 16,
                           onPressed: () => _showProductFormDialog(context, product: p),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.debit),
+                          tooltip: 'Delete Product',
+                          splashRadius: 16,
+                          onPressed: () => _confirmDeleteProduct(context, p),
                         ),
                       ],
                     ),
@@ -244,6 +250,14 @@ class ProductsScreen extends GetView<ProductController> {
                   AppTextField(
                     label: 'Barcode',
                     controller: barcodeCtrl,
+                    keyboardType: TextInputType.number,
+                    inputFormatters: [AppInputFormatters.digitsOnly],
+                    validator: (v) {
+                      if (v != null && v.trim().isNotEmpty && !RegExp(r'^\d+$').hasMatch(v.trim())) {
+                        return 'Barcode must contain numbers only';
+                      }
+                      return null;
+                    },
                   ),
                 ],
               ),
@@ -277,6 +291,7 @@ class ProductsScreen extends GetView<ProductController> {
                     hint: '18',
                     controller: taxRateCtrl,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [AppInputFormatters.decimal()],
                   ),
                 ],
               ),
@@ -290,12 +305,14 @@ class ProductsScreen extends GetView<ProductController> {
                     hint: '0.00',
                     controller: purchasePriceCtrl,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [AppInputFormatters.decimal()],
                   ),
                   AppTextField(
                     label: 'Sales Price *',
                     hint: '0.00',
                     controller: salesPriceCtrl,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [AppInputFormatters.decimal()],
                     validator: (v) => v == null || v.isEmpty ? 'Sales price required' : null,
                   ),
                 ],
@@ -311,12 +328,14 @@ class ProductsScreen extends GetView<ProductController> {
                       hint: '0',
                       controller: stockCtrl,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      inputFormatters: [AppInputFormatters.decimal()],
                     ),
                   AppTextField(
                     label: 'Minimum Stock Alert',
                     hint: '5',
                     controller: minStockCtrl,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [AppInputFormatters.decimal()],
                   ),
                 ],
               ),
@@ -324,6 +343,16 @@ class ProductsScreen extends GetView<ProductController> {
           ),
         ),
         actions: [
+          if (isEdit)
+            AppButton(
+              label: 'Delete',
+              type: AppButtonType.danger,
+              icon: Icons.delete_outline,
+              onPressed: () {
+                Get.back();
+                _confirmDeleteProduct(context, product);
+              },
+            ),
           AppButton(
             label: 'Cancel',
             type: AppButtonType.text,
@@ -334,6 +363,8 @@ class ProductsScreen extends GetView<ProductController> {
                 isLoading: controller.isSubmitting.value,
                 onPressed: () async {
                   if (!formKey.currentState!.validate()) return;
+                  final cleanBarcode = barcodeCtrl.text.trim();
+                  if (cleanBarcode.isNotEmpty && !RegExp(r'^\d+$').hasMatch(cleanBarcode)) return;
                   final pPrice = double.tryParse(purchasePriceCtrl.text.replaceAll(',', '')) ?? 0.0;
                   final sPrice = double.tryParse(salesPriceCtrl.text.replaceAll(',', '')) ?? 0.0;
                   final tRate = double.tryParse(taxRateCtrl.text.replaceAll(',', '')) ?? 0.0;
@@ -343,7 +374,7 @@ class ProductsScreen extends GetView<ProductController> {
                   final prod = ProductModel(
                     id: product?.id,
                     productCode: codeCtrl.text.trim(),
-                    barcode: barcodeCtrl.text.trim().isNotEmpty ? barcodeCtrl.text.trim() : null,
+                    barcode: cleanBarcode.isNotEmpty ? cleanBarcode : null,
                     name: nameCtrl.text.trim(),
                     categoryId: selectedCat.value,
                     unit: unitCtrl.text.trim().isNotEmpty ? unitCtrl.text.trim() : 'Nos',
@@ -369,33 +400,136 @@ class ProductsScreen extends GetView<ProductController> {
 
     Get.dialog(
       AppDialog(
-        title: 'Add Category',
+        title: 'Manage Categories',
+        maxWidth: 550,
         content: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Text('Add New Category', style: AppTextStyles.subtitle2),
+            const SizedBox(height: 10),
             AppTextField(
-              label: 'Category Name',
+              label: 'Category Name *',
               hint: 'e.g. Electronics, Hardware, Furniture',
               controller: nameCtrl,
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             AppTextField(
               label: 'Description',
               controller: descCtrl,
+            ),
+            const SizedBox(height: 12),
+            Align(
+              alignment: Alignment.centerRight,
+              child: AppButton(
+                label: 'Save Category',
+                icon: Icons.add,
+                onPressed: () async {
+                  if (nameCtrl.text.trim().isEmpty) return;
+                  await controller.saveCategory(CategoryModel(
+                    name: nameCtrl.text.trim(),
+                    description: descCtrl.text.trim(),
+                  ));
+                  nameCtrl.clear();
+                  descCtrl.clear();
+                },
+              ),
+            ),
+            const Divider(height: 28),
+            Text('Existing Categories', style: AppTextStyles.subtitle2),
+            const SizedBox(height: 10),
+            Obx(() {
+              if (controller.categories.isEmpty) {
+                return const Text('No categories added yet.', style: AppTextStyles.caption);
+              }
+              return Container(
+                constraints: const BoxConstraints(maxHeight: 200),
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: controller.categories.length,
+                  separatorBuilder: (context, index) => const Divider(height: 1),
+                  itemBuilder: (ctx, idx) {
+                    final cat = controller.categories[idx];
+                    return ListTile(
+                      dense: true,
+                      contentPadding: EdgeInsets.zero,
+                      title: Text(cat.name, style: AppTextStyles.body1.copyWith(fontWeight: FontWeight.w600)),
+                      subtitle: cat.description != null && cat.description!.isNotEmpty
+                          ? Text(cat.description!, style: AppTextStyles.caption)
+                          : null,
+                      trailing: IconButton(
+                        icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.debit),
+                        tooltip: 'Delete Category',
+                        onPressed: () => _confirmDeleteCategory(context, cat),
+                      ),
+                    );
+                  },
+                ),
+              );
+            }),
+          ],
+        ),
+        actions: [
+          AppButton(label: 'Done', type: AppButtonType.text, onPressed: () => Get.back()),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteCategory(BuildContext context, CategoryModel category) {
+    Get.dialog(
+      AppDialog(
+        title: 'Delete Category?',
+        maxWidth: 420,
+        content: Text(
+          'Are you sure you want to delete category "${category.name}"? Products in this category will remain, but will no longer be assigned to this category.',
+          style: AppTextStyles.body1,
+        ),
+        actions: [
+          AppButton(label: 'Cancel', type: AppButtonType.text, onPressed: () => Get.back()),
+          AppButton(
+            label: 'Delete',
+            type: AppButtonType.danger,
+            icon: Icons.delete_outline,
+            onPressed: () async {
+              Get.back();
+              await controller.deleteCategory(category.id!);
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteProduct(BuildContext context, ProductModel product) {
+    Get.dialog(
+      AppDialog(
+        title: 'Delete Product?',
+        maxWidth: 440,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Are you sure you want to delete "${product.name}" (${product.productCode})?',
+              style: AppTextStyles.body1,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Products used in sales or purchase invoices cannot be deleted.',
+              style: AppTextStyles.caption.copyWith(color: AppColors.textSecondaryLight),
             ),
           ],
         ),
         actions: [
           AppButton(label: 'Cancel', type: AppButtonType.text, onPressed: () => Get.back()),
           AppButton(
-            label: 'Save',
+            label: 'Delete',
+            type: AppButtonType.danger,
+            icon: Icons.delete_outline,
             onPressed: () async {
-              if (nameCtrl.text.trim().isEmpty) return;
-              await controller.saveCategory(CategoryModel(
-                name: nameCtrl.text.trim(),
-                description: descCtrl.text.trim(),
-              ));
               Get.back();
+              await controller.deleteProduct(product);
             },
           ),
         ],
@@ -419,6 +553,7 @@ class ProductsScreen extends GetView<ProductController> {
               label: 'New Physical Quantity',
               controller: qtyCtrl,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              inputFormatters: [AppInputFormatters.decimal()],
             ),
             const SizedBox(height: 12),
             AppTextField(
@@ -467,6 +602,7 @@ class ProductsScreen extends GetView<ProductController> {
             AppTableColumn(title: 'Qty In', width: 90, alignment: Alignment.centerRight),
             AppTableColumn(title: 'Qty Out', width: 90, alignment: Alignment.centerRight),
             AppTableColumn(title: 'Balance', width: 110, alignment: Alignment.centerRight),
+            AppTableColumn(title: 'Action', width: 70, alignment: Alignment.center),
           ];
 
           final rows = controller.stockTransactions.map((t) {
@@ -476,11 +612,42 @@ class ProductsScreen extends GetView<ProductController> {
               Text(t.quantityIn > 0 ? '+${t.quantityIn}' : '-', style: AppTextStyles.tableCell.copyWith(color: AppColors.credit)),
               Text(t.quantityOut > 0 ? '-${t.quantityOut}' : '-', style: AppTextStyles.tableCell.copyWith(color: AppColors.debit)),
               Text('${t.balanceQuantity} ${product.unit}', style: AppTextStyles.tableCellBold),
+              IconButton(
+                icon: const Icon(Icons.delete_outline, size: 16, color: AppColors.debit),
+                tooltip: 'Delete Movement',
+                splashRadius: 14,
+                onPressed: () => _confirmDeleteStockTransaction(context, t.id!, product),
+              ),
             ];
           }).toList();
 
-          return AppTable(columns: columns, rows: rows, minWidth: 650);
+          return AppTable(columns: columns, rows: rows, minWidth: 700);
         }),
+      ),
+    );
+  }
+
+  void _confirmDeleteStockTransaction(BuildContext context, int transactionId, ProductModel product) {
+    Get.dialog(
+      AppDialog(
+        title: 'Delete Stock Movement?',
+        maxWidth: 420,
+        content: const Text(
+          'Are you sure you want to delete this stock movement record? The product stock quantity will be reversed accordingly.',
+          style: AppTextStyles.body1,
+        ),
+        actions: [
+          AppButton(label: 'Cancel', type: AppButtonType.text, onPressed: () => Get.back()),
+          AppButton(
+            label: 'Delete',
+            type: AppButtonType.danger,
+            icon: Icons.delete_outline,
+            onPressed: () async {
+              Get.back();
+              await controller.deleteStockTransaction(transactionId, product);
+            },
+          ),
+        ],
       ),
     );
   }
