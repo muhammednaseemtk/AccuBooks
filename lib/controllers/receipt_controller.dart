@@ -112,15 +112,21 @@ class ReceiptController extends GetxController {
 
   Future<bool> submitReceipt() async {
     if (formSelectedCustomer.value == null) {
-      Get.snackbar('Error', 'Please select a customer', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Error', 'Please select a customer', snackPosition: SnackPosition.BOTTOM);
+      }
       return false;
     }
     if (formSelectedAccount.value == null) {
-      Get.snackbar('Error', 'Please select deposit account (Cash/Bank)', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Error', 'Please select deposit account (Cash/Bank)', snackPosition: SnackPosition.BOTTOM);
+      }
       return false;
     }
     if (formAmount.value <= 0) {
-      Get.snackbar('Error', 'Amount must be greater than zero', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Error', 'Amount must be greater than zero', snackPosition: SnackPosition.BOTTOM);
+      }
       return false;
     }
 
@@ -139,11 +145,15 @@ class ReceiptController extends GetxController {
 
       await _receiptService.createReceipt(receipt);
       await loadReceipts();
-      Get.snackbar('Success', 'Receipt #${receipt.receiptNumber} recorded successfully',
-          snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Success', 'Receipt created successfully',
+            snackPosition: SnackPosition.BOTTOM);
+      }
       return true;
     } catch (e) {
-      Get.snackbar('Error', 'Failed to save receipt: $e', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Error', 'Failed to save receipt: $e', snackPosition: SnackPosition.BOTTOM);
+      }
       return false;
     } finally {
       isSubmitting.value = false;
@@ -154,10 +164,14 @@ class ReceiptController extends GetxController {
     try {
       await _receiptService.deleteReceipt(receipt.id!);
       await loadReceipts();
-      Get.snackbar('Success', 'Receipt #${receipt.receiptNumber} deleted successfully', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Success', 'Receipt #${receipt.receiptNumber} deleted successfully', snackPosition: SnackPosition.BOTTOM);
+      }
       return true;
     } catch (e) {
-      Get.snackbar('Error', 'Failed to delete receipt: $e', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Error', 'Failed to delete receipt: $e', snackPosition: SnackPosition.BOTTOM);
+      }
       return false;
     }
   }

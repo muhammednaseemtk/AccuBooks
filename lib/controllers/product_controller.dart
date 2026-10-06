@@ -99,14 +99,22 @@ class ProductController extends GetxController {
       isSubmitting.value = true;
       if (product.id == null) {
         await _productRepo.insertProduct(product);
+        await loadProducts();
+        if (Get.context != null) {
+          Get.snackbar('Success', 'Product created successfully', snackPosition: SnackPosition.BOTTOM);
+        }
       } else {
         await _productRepo.updateProduct(product);
+        await loadProducts();
+        if (Get.context != null) {
+          Get.snackbar('Success', 'Product updated successfully', snackPosition: SnackPosition.BOTTOM);
+        }
       }
-      await loadProducts();
-      Get.snackbar('Success', 'Product saved successfully', snackPosition: SnackPosition.BOTTOM);
       return true;
     } catch (e) {
-      Get.snackbar('Error', 'Failed to save product: $e', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Error', 'Failed to save product: $e', snackPosition: SnackPosition.BOTTOM);
+      }
       return false;
     } finally {
       isSubmitting.value = false;

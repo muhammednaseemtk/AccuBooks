@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
+import '../core/utils/currency_utils.dart';
 import '../models/company_model.dart';
 import '../models/customer_model.dart';
 import '../models/product_model.dart';
@@ -56,16 +58,27 @@ class SalesController extends GetxController {
   final formNotes = ''.obs;
 
   // Form calculations
-  double get formSubtotal => formItems.fold(0.0, (sum, i) => sum + ((i.quantity * i.rate) - i.discount));
-  double get formTaxTotal => formItems.fold(0.0, (sum, i) => sum + i.taxAmount);
-  double get formGrandTotal => (formSubtotal - formDiscount.value) + formTaxTotal;
-  double get formBalanceAmount => formGrandTotal - formPaidAmount.value;
+  double get formSubtotal => CurrencyUtils.round(
+        formItems.fold(0.0, (sum, i) => sum + ((i.quantity * i.rate) - i.discount)),
+      );
+  double get formTaxTotal => CurrencyUtils.round(
+        formItems.fold(0.0, (sum, i) => sum + i.taxAmount),
+      );
+  double get formGrandTotal => CurrencyUtils.round(
+        (formSubtotal - formDiscount.value) + formTaxTotal,
+      );
+  double get formBalanceAmount => CurrencyUtils.round(
+        formGrandTotal - formPaidAmount.value,
+      );
 
   @override
   void onReady() {
     super.onReady();
     loadMetadata();
     loadInvoices();
+    if (formNextInvoiceNumber.value.isEmpty) {
+      prepareNewInvoiceForm();
+    }
   }
 
   Future<void> loadMetadata() async {
@@ -141,6 +154,18 @@ class SalesController extends GetxController {
     formNotes.value = '';
   }
 
+  void resetForm() {
+    formSelectedCustomer.value = null;
+    formItems.clear();
+    formDiscount.value = 0.0;
+    formPaidAmount.value = 0.0;
+    formNotes.value = '';
+    formInvoiceDate.value = DateTime.now();
+    _salesService.getNextInvoiceNumber().then((val) {
+      formNextInvoiceNumber.value = val;
+    }).catchError((_) {});
+  }
+
   void addFormItem(ProductModel product, double quantity, double rate, double discount) {
     final taxRate = product.taxRate;
     final taxAmount = SalesInvoiceItemModel.calculateTax(quantity, rate, discount, taxRate);
@@ -167,17 +192,28 @@ class SalesController extends GetxController {
   }
 
   Future<bool> submitInvoice({int? paymentAccountId}) async {
+    if (isSubmitting.value) return false;
+
     if (formSelectedCustomer.value == null) {
-      Get.snackbar('Error', 'Please select a customer', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Error', 'Please select a customer', snackPosition: SnackPosition.BOTTOM);
+      }
       return false;
     }
     if (formItems.isEmpty) {
-      Get.snackbar('Error', 'Please add at least one product item', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Error', 'Please add at least one product item', snackPosition: SnackPosition.BOTTOM);
+      }
       return false;
     }
 
     try {
       isSubmitting.value = true;
+
+      if (formNextInvoiceNumber.value.trim().isEmpty) {
+        formNextInvoiceNumber.value = await _salesService.getNextInvoiceNumber();
+      }
+
       final invoice = SalesInvoiceModel(
         invoiceNumber: formNextInvoiceNumber.value,
         invoiceDate: formInvoiceDate.value,
@@ -193,7 +229,7 @@ class SalesController extends GetxController {
 
       final id = await _salesService.createSalesInvoice(
         invoice: invoice,
-        items: formItems,
+        items: List.from(formItems),
         paymentAccountId: paymentAccountId,
       );
 
@@ -201,11 +237,21 @@ class SalesController extends GetxController {
       final created = await _salesService.getInvoiceById(id);
       selectedInvoice.value = created;
 
-      Get.snackbar('Success', 'Invoice #${invoice.invoiceNumber} saved successfully!',
-          snackPosition: SnackPosition.BOTTOM);
+      resetForm();
+
+      if (Get.context != null) {
+        Get.snackbar(
+          'Success',
+          'Sales invoice created successfully',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      }
       return true;
-    } catch (e) {
-      Get.snackbar('Error', 'Failed to save invoice: $e', snackPosition: SnackPosition.BOTTOM);
+    } catch (e, stack) {
+      debugPrint('Failed to save invoice: $e\n$stack');
+      if (Get.context != null) {
+        Get.snackbar('Error', 'Failed to save invoice: $e', snackPosition: SnackPosition.BOTTOM);
+      }
       return false;
     } finally {
       isSubmitting.value = false;
@@ -219,9 +265,13 @@ class SalesController extends GetxController {
       if (selectedInvoice.value?.id == invoiceId) {
         selectedInvoice.value = await _salesService.getInvoiceById(invoiceId);
       }
-      Get.snackbar('Success', 'Invoice cancelled and inventory restored', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Success', 'Invoice cancelled and inventory restored', snackPosition: SnackPosition.BOTTOM);
+      }
     } catch (e) {
-      Get.snackbar('Error', 'Failed to cancel invoice: $e', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Error', 'Failed to cancel invoice: $e', snackPosition: SnackPosition.BOTTOM);
+      }
     }
   }
 
@@ -232,10 +282,14 @@ class SalesController extends GetxController {
       if (selectedInvoice.value?.id == invoice.id) {
         selectedInvoice.value = null;
       }
-      Get.snackbar('Success', 'Invoice #${invoice.invoiceNumber} deleted successfully', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Success', 'Invoice #${invoice.invoiceNumber} deleted successfully', snackPosition: SnackPosition.BOTTOM);
+      }
       return true;
     } catch (e) {
-      Get.snackbar('Error', 'Failed to delete invoice: $e', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Error', 'Failed to delete invoice: $e', snackPosition: SnackPosition.BOTTOM);
+      }
       return false;
     }
   }
@@ -246,7 +300,9 @@ class SalesController extends GetxController {
       if (comp == null) throw Exception('Company info missing');
       await PdfService.printInvoice(company: comp, invoice: invoice);
     } catch (e) {
-      Get.snackbar('Error', 'Unable to print invoice: $e', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Error', 'Unable to print invoice: $e', snackPosition: SnackPosition.BOTTOM);
+      }
     }
   }
 
@@ -256,7 +312,9 @@ class SalesController extends GetxController {
       if (comp == null) throw Exception('Company info missing');
       await PdfService.shareInvoicePdf(company: comp, invoice: invoice);
     } catch (e) {
-      Get.snackbar('Error', 'Unable to export PDF: $e', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Error', 'Unable to export PDF: $e', snackPosition: SnackPosition.BOTTOM);
+      }
     }
   }
 }

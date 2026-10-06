@@ -326,15 +326,19 @@ class ReportController extends GetxController {
       );
 
       if (path != null) {
-        Get.snackbar(
-          'Export Successful',
-          'Excel file saved at: $path',
-          snackPosition: SnackPosition.BOTTOM,
-          duration: const Duration(seconds: 4),
-        );
+        if (Get.context != null) {
+          Get.snackbar(
+            'Success',
+            'Excel exported successfully',
+            snackPosition: SnackPosition.BOTTOM,
+            duration: const Duration(seconds: 3),
+          );
+        }
       }
     } catch (e) {
-      Get.snackbar('Error', 'Failed to export report: $e', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Error', 'Failed to export report: $e', snackPosition: SnackPosition.BOTTOM);
+      }
     } finally {
       isExporting.value = false;
     }

@@ -155,25 +155,33 @@ class JournalController extends GetxController {
 
   Future<bool> submitJournalEntry() async {
     if (!isFormBalanced) {
-      Get.snackbar(
-        'Validation Error',
-        'Journal entry must be balanced (Total Debit == Total Credit). Difference: $formDifference',
-        snackPosition: SnackPosition.BOTTOM,
-      );
+      if (Get.context != null) {
+        Get.snackbar(
+          'Validation Error',
+          'Journal entry must be balanced (Total Debit == Total Credit). Difference: $formDifference',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      }
       return false;
     }
 
     for (final line in formLines) {
       if (line.account == null) {
-        Get.snackbar('Error', 'Please select an account for all lines', snackPosition: SnackPosition.BOTTOM);
+        if (Get.context != null) {
+          Get.snackbar('Error', 'Please select an account for all lines', snackPosition: SnackPosition.BOTTOM);
+        }
         return false;
       }
       if (line.debit == 0 && line.credit == 0) {
-        Get.snackbar('Error', 'Each line must have either a debit or credit amount', snackPosition: SnackPosition.BOTTOM);
+        if (Get.context != null) {
+          Get.snackbar('Error', 'Each line must have either a debit or credit amount', snackPosition: SnackPosition.BOTTOM);
+        }
         return false;
       }
       if (line.debit > 0 && line.credit > 0) {
-        Get.snackbar('Error', 'A single line cannot have both debit and credit amounts', snackPosition: SnackPosition.BOTTOM);
+        if (Get.context != null) {
+          Get.snackbar('Error', 'A single line cannot have both debit and credit amounts', snackPosition: SnackPosition.BOTTOM);
+        }
         return false;
       }
     }
@@ -196,10 +204,14 @@ class JournalController extends GetxController {
       );
 
       await loadJournalEntries();
-      Get.snackbar('Success', 'Journal entry posted successfully', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Success', 'Journal created successfully', snackPosition: SnackPosition.BOTTOM);
+      }
       return true;
     } catch (e) {
-      Get.snackbar('Error', 'Failed to post journal entry: $e', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Error', 'Failed to post journal entry: $e', snackPosition: SnackPosition.BOTTOM);
+      }
       return false;
     } finally {
       isSubmitting.value = false;

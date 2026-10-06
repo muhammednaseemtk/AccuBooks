@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
+import '../core/utils/currency_utils.dart';
 import '../models/product_model.dart';
 import '../models/purchase_invoice_item_model.dart';
 import '../models/purchase_invoice_model.dart';
@@ -48,16 +50,27 @@ class PurchaseController extends GetxController {
   final formPaidAmount = 0.0.obs;
   final formNotes = ''.obs;
 
-  double get formSubtotal => formItems.fold(0.0, (sum, i) => sum + ((i.quantity * i.rate) - i.discount));
-  double get formTaxTotal => formItems.fold(0.0, (sum, i) => sum + i.taxAmount);
-  double get formGrandTotal => (formSubtotal - formDiscount.value) + formTaxTotal;
-  double get formBalanceAmount => formGrandTotal - formPaidAmount.value;
+  double get formSubtotal => CurrencyUtils.round(
+        formItems.fold(0.0, (sum, i) => sum + ((i.quantity * i.rate) - i.discount)),
+      );
+  double get formTaxTotal => CurrencyUtils.round(
+        formItems.fold(0.0, (sum, i) => sum + i.taxAmount),
+      );
+  double get formGrandTotal => CurrencyUtils.round(
+        (formSubtotal - formDiscount.value) + formTaxTotal,
+      );
+  double get formBalanceAmount => CurrencyUtils.round(
+        formGrandTotal - formPaidAmount.value,
+      );
 
   @override
   void onReady() {
     super.onReady();
     loadMetadata();
     loadPurchases();
+    if (formNextPurchaseNumber.value.isEmpty) {
+      prepareNewPurchaseForm();
+    }
   }
 
   Future<void> loadMetadata() async {
@@ -131,6 +144,18 @@ class PurchaseController extends GetxController {
     formNotes.value = '';
   }
 
+  void resetForm() {
+    formSelectedSupplier.value = null;
+    formItems.clear();
+    formDiscount.value = 0.0;
+    formPaidAmount.value = 0.0;
+    formNotes.value = '';
+    formPurchaseDate.value = DateTime.now();
+    _purchaseService.getNextPurchaseNumber().then((val) {
+      formNextPurchaseNumber.value = val;
+    }).catchError((_) {});
+  }
+
   void addFormItem(ProductModel product, double quantity, double rate, double discount) {
     final taxRate = product.taxRate;
     final taxAmount = PurchaseInvoiceItemModel.calculateTax(quantity, rate, discount, taxRate);
@@ -157,17 +182,28 @@ class PurchaseController extends GetxController {
   }
 
   Future<bool> submitPurchase({int? paymentAccountId}) async {
+    if (isSubmitting.value) return false;
+
     if (formSelectedSupplier.value == null) {
-      Get.snackbar('Error', 'Please select a supplier', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Error', 'Please select a supplier', snackPosition: SnackPosition.BOTTOM);
+      }
       return false;
     }
     if (formItems.isEmpty) {
-      Get.snackbar('Error', 'Please add at least one product item', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Error', 'Please add at least one product item', snackPosition: SnackPosition.BOTTOM);
+      }
       return false;
     }
 
     try {
       isSubmitting.value = true;
+
+      if (formNextPurchaseNumber.value.trim().isEmpty) {
+        formNextPurchaseNumber.value = await _purchaseService.getNextPurchaseNumber();
+      }
+
       final invoice = PurchaseInvoiceModel(
         invoiceNumber: formNextPurchaseNumber.value,
         invoiceDate: formPurchaseDate.value,
@@ -183,7 +219,7 @@ class PurchaseController extends GetxController {
 
       final id = await _purchaseService.createPurchaseInvoice(
         invoice: invoice,
-        items: formItems,
+        items: List.from(formItems),
         paymentAccountId: paymentAccountId,
       );
 
@@ -191,11 +227,18 @@ class PurchaseController extends GetxController {
       final created = await _purchaseService.getPurchaseById(id);
       selectedPurchase.value = created;
 
-      Get.snackbar('Success', 'Purchase #${invoice.invoiceNumber} recorded successfully!',
-          snackPosition: SnackPosition.BOTTOM);
+      resetForm();
+
+      if (Get.context != null) {
+        Get.snackbar('Success', 'Purchase invoice created successfully',
+            snackPosition: SnackPosition.BOTTOM);
+      }
       return true;
-    } catch (e) {
-      Get.snackbar('Error', 'Failed to save purchase: $e', snackPosition: SnackPosition.BOTTOM);
+    } catch (e, stack) {
+      debugPrint('[PurchaseController] submitPurchase error: $e\n$stack');
+      if (Get.context != null) {
+        Get.snackbar('Error', 'Failed to save purchase: $e', snackPosition: SnackPosition.BOTTOM);
+      }
       return false;
     } finally {
       isSubmitting.value = false;
@@ -209,9 +252,13 @@ class PurchaseController extends GetxController {
       if (selectedPurchase.value?.id == invoiceId) {
         selectedPurchase.value = await _purchaseService.getPurchaseById(invoiceId);
       }
-      Get.snackbar('Success', 'Purchase cancelled and stock updated', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Success', 'Purchase cancelled and stock updated', snackPosition: SnackPosition.BOTTOM);
+      }
     } catch (e) {
-      Get.snackbar('Error', 'Failed to cancel purchase: $e', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Error', 'Failed to cancel purchase: $e', snackPosition: SnackPosition.BOTTOM);
+      }
     }
   }
 
@@ -222,10 +269,14 @@ class PurchaseController extends GetxController {
       if (selectedPurchase.value?.id == invoice.id) {
         selectedPurchase.value = null;
       }
-      Get.snackbar('Success', 'Purchase invoice #${invoice.invoiceNumber} deleted successfully', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Success', 'Purchase invoice #${invoice.invoiceNumber} deleted successfully', snackPosition: SnackPosition.BOTTOM);
+      }
       return true;
     } catch (e) {
-      Get.snackbar('Error', 'Failed to delete purchase invoice: $e', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Error', 'Failed to delete purchase invoice: $e', snackPosition: SnackPosition.BOTTOM);
+      }
       return false;
     }
   }

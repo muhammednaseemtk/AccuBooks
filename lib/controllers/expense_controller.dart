@@ -116,15 +116,21 @@ class ExpenseController extends GetxController {
 
   Future<bool> submitExpense() async {
     if (formSelectedExpenseAccount.value == null) {
-      Get.snackbar('Error', 'Please select an expense account', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Error', 'Please select an expense account', snackPosition: SnackPosition.BOTTOM);
+      }
       return false;
     }
     if (formSelectedPaymentAccount.value == null) {
-      Get.snackbar('Error', 'Please select a payment account', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Error', 'Please select a payment account', snackPosition: SnackPosition.BOTTOM);
+      }
       return false;
     }
     if (formAmount.value <= 0) {
-      Get.snackbar('Error', 'Expense amount must be greater than zero', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Error', 'Expense amount must be greater than zero', snackPosition: SnackPosition.BOTTOM);
+      }
       return false;
     }
 
@@ -191,11 +197,15 @@ class ExpenseController extends GetxController {
       });
 
       await loadExpenses();
-      Get.snackbar('Success', 'Expense #${expense.expenseNumber} recorded successfully',
-          snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Success', 'Expense created successfully',
+            snackPosition: SnackPosition.BOTTOM);
+      }
       return true;
     } catch (e) {
-      Get.snackbar('Error', 'Failed to save expense: $e', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Error', 'Failed to save expense: $e', snackPosition: SnackPosition.BOTTOM);
+      }
       return false;
     } finally {
       isSubmitting.value = false;

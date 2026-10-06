@@ -111,15 +111,21 @@ class PaymentController extends GetxController {
 
   Future<bool> submitPayment() async {
     if (formSelectedSupplier.value == null) {
-      Get.snackbar('Error', 'Please select a supplier', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Error', 'Please select a supplier', snackPosition: SnackPosition.BOTTOM);
+      }
       return false;
     }
     if (formSelectedAccount.value == null) {
-      Get.snackbar('Error', 'Please select payment account (Cash/Bank)', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Error', 'Please select payment account (Cash/Bank)', snackPosition: SnackPosition.BOTTOM);
+      }
       return false;
     }
     if (formAmount.value <= 0) {
-      Get.snackbar('Error', 'Amount must be greater than zero', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Error', 'Amount must be greater than zero', snackPosition: SnackPosition.BOTTOM);
+      }
       return false;
     }
 
@@ -138,11 +144,15 @@ class PaymentController extends GetxController {
 
       await _paymentService.createPayment(payment);
       await loadPayments();
-      Get.snackbar('Success', 'Payment #${payment.paymentNumber} recorded successfully',
-          snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Success', 'Payment created successfully',
+            snackPosition: SnackPosition.BOTTOM);
+      }
       return true;
     } catch (e) {
-      Get.snackbar('Error', 'Failed to save payment: $e', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Error', 'Failed to save payment: $e', snackPosition: SnackPosition.BOTTOM);
+      }
       return false;
     } finally {
       isSubmitting.value = false;
@@ -153,10 +163,14 @@ class PaymentController extends GetxController {
     try {
       await _paymentService.deletePayment(payment.id!);
       await loadPayments();
-      Get.snackbar('Success', 'Payment #${payment.paymentNumber} deleted successfully', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Success', 'Payment #${payment.paymentNumber} deleted successfully', snackPosition: SnackPosition.BOTTOM);
+      }
       return true;
     } catch (e) {
-      Get.snackbar('Error', 'Failed to delete payment: $e', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Error', 'Failed to delete payment: $e', snackPosition: SnackPosition.BOTTOM);
+      }
       return false;
     }
   }
