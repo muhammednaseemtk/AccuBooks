@@ -327,7 +327,7 @@ class CustomersScreen extends GetView<CustomerController> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Customers with active sales invoices or receipts cannot be deleted.',
+              'Customers with active invoices, receipts, or sales returns cannot be deleted.',
               style: AppTextStyles.caption.copyWith(color: AppColors.textSecondaryLight),
             ),
           ],

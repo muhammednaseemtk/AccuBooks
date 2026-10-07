@@ -180,16 +180,47 @@ class CustomerRepository {
     );
     if (rec.isNotEmpty) return false;
 
+    final returns = await db.query(
+      DatabaseTables.tableSalesReturns,
+      where: 'customer_id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (returns.isNotEmpty) return false;
+
     return true;
   }
 
   Future<int> deleteCustomer(int id) async {
     final db = await _dbHelper.database;
-    return await db.delete(
-      DatabaseTables.tableCustomers,
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    return await db.transaction<int>((txn) async {
+      // Clean up any non-posting sales orders and items for this customer
+      final orders = await txn.query(
+        DatabaseTables.tableSalesOrders,
+        columns: ['id'],
+        where: 'customer_id = ?',
+        whereArgs: [id],
+      );
+      for (final o in orders) {
+        final orderId = o['id'] as int;
+        await txn.delete(
+          DatabaseTables.tableSalesOrderItems,
+          where: 'order_id = ?',
+          whereArgs: [orderId],
+        );
+      }
+      await txn.delete(
+        DatabaseTables.tableSalesOrders,
+        where: 'customer_id = ?',
+        whereArgs: [id],
+      );
+
+      return await txn.delete(
+        DatabaseTables.tableCustomers,
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+    });
   }
 
   Future<int> deactivateCustomer(int id) async {

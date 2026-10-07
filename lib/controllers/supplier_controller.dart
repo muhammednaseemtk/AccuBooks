@@ -91,7 +91,7 @@ class SupplierController extends GetxController {
       if (!canDelete) {
         Get.snackbar(
           'Cannot Delete',
-          'Supplier "${supplier.name}" has active purchase invoices or payments. Please delete or cancel those records first.',
+          'Supplier "${supplier.name}" has active invoices, payments, or purchase returns. Please delete or cancel those records first.',
           snackPosition: SnackPosition.BOTTOM,
         );
         return false;

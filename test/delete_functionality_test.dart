@@ -12,12 +12,18 @@ import 'package:accubooks/models/receipt_model.dart';
 import 'package:accubooks/models/payment_model.dart';
 import 'package:accubooks/models/journal_entry_model.dart';
 import 'package:accubooks/models/journal_line_model.dart';
+import 'package:accubooks/models/sales_order_model.dart';
+import 'package:accubooks/models/sales_order_item_model.dart';
+import 'package:accubooks/models/purchase_order_model.dart';
+import 'package:accubooks/models/purchase_order_item_model.dart';
 import 'package:accubooks/repositories/account_repository.dart';
 import 'package:accubooks/repositories/customer_repository.dart';
 import 'package:accubooks/repositories/supplier_repository.dart';
 import 'package:accubooks/repositories/product_repository.dart';
 import 'package:accubooks/repositories/expense_repository.dart';
 import 'package:accubooks/repositories/journal_repository.dart';
+import 'package:accubooks/repositories/sales_order_repository.dart';
+import 'package:accubooks/repositories/purchase_order_repository.dart';
 import 'package:accubooks/services/receipt_service.dart';
 import 'package:accubooks/services/payment_service.dart';
 
@@ -83,6 +89,48 @@ void main() {
       expect(fetched, isNull);
     });
 
+    test('Customer deletion: cascades non-posting sales orders and deletes customer cleanly', () async {
+      final ts = DateTime.now().microsecondsSinceEpoch;
+      final cust = CustomerModel(
+        customerCode: 'CUST-SO-$ts',
+        name: 'SO Customer $ts',
+      );
+      final custId = await customerRepo.insertCustomer(cust);
+
+      final prodId = await productRepo.insertProduct(ProductModel(
+        productCode: 'PRD-SO-$ts',
+        name: 'SO Product $ts',
+        purchasePrice: 100,
+        salesPrice: 250,
+      ));
+
+      final salesOrderRepo = SalesOrderRepository();
+      final orderId = await salesOrderRepo.insertSalesOrder(SalesOrderModel(
+        orderNumber: 'SO-TEST-$ts',
+        orderDate: DateTime.now(),
+        customerId: custId,
+        subtotal: 500,
+        taxAmount: 0.0,
+        grandTotal: 500,
+      ));
+      await salesOrderRepo.insertSalesOrderItems(orderId, [
+        SalesOrderItemModel(
+          orderId: orderId,
+          productId: prodId,
+          quantity: 2,
+          rate: 250,
+          total: 500,
+        ),
+      ]);
+
+      expect(await customerRepo.canDeleteCustomer(custId), isTrue);
+      final deleted = await customerRepo.deleteCustomer(custId);
+      expect(deleted, 1);
+
+      expect(await customerRepo.getCustomerById(custId), isNull);
+      expect(await salesOrderRepo.getSalesOrderById(orderId), isNull);
+    });
+
     test('Supplier deletion: can delete supplier with no purchases/payments', () async {
       final ts = DateTime.now().microsecondsSinceEpoch;
       final sup = SupplierModel(
@@ -97,6 +145,48 @@ void main() {
 
       final fetched = await supplierRepo.getSupplierById(id);
       expect(fetched, isNull);
+    });
+
+    test('Supplier deletion: cascades non-posting purchase orders and deletes supplier cleanly', () async {
+      final ts = DateTime.now().microsecondsSinceEpoch;
+      final sup = SupplierModel(
+        supplierCode: 'SUPP-PO-$ts',
+        name: 'PO Supplier $ts',
+      );
+      final supId = await supplierRepo.insertSupplier(sup);
+
+      final prodId = await productRepo.insertProduct(ProductModel(
+        productCode: 'PRD-PO-$ts',
+        name: 'PO Product $ts',
+        purchasePrice: 100,
+        salesPrice: 250,
+      ));
+
+      final purchaseOrderRepo = PurchaseOrderRepository();
+      final orderId = await purchaseOrderRepo.insertPurchaseOrder(PurchaseOrderModel(
+        orderNumber: 'PO-TEST-$ts',
+        orderDate: DateTime.now(),
+        supplierId: supId,
+        subtotal: 400,
+        taxAmount: 0.0,
+        grandTotal: 400,
+      ));
+      await purchaseOrderRepo.insertPurchaseOrderItems(orderId, [
+        PurchaseOrderItemModel(
+          orderId: orderId,
+          productId: prodId,
+          quantity: 4,
+          rate: 100,
+          total: 400,
+        ),
+      ]);
+
+      expect(await supplierRepo.canDeleteSupplier(supId), isTrue);
+      final deleted = await supplierRepo.deleteSupplier(supId);
+      expect(deleted, 1);
+
+      expect(await supplierRepo.getSupplierById(supId), isNull);
+      expect(await purchaseOrderRepo.getPurchaseOrderById(orderId), isNull);
     });
 
     test('Product and Category deletion', () async {

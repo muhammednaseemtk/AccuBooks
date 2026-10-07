@@ -91,7 +91,7 @@ class CustomerController extends GetxController {
       if (!canDelete) {
         Get.snackbar(
           'Cannot Delete',
-          'Customer "${customer.name}" has active sales invoices or receipts. Please delete or cancel those records first.',
+          'Customer "${customer.name}" has active invoices, receipts, or sales returns. Please delete or cancel those records first.',
           snackPosition: SnackPosition.BOTTOM,
         );
         return false;

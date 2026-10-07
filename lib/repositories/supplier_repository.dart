@@ -180,16 +180,47 @@ class SupplierRepository {
     );
     if (pay.isNotEmpty) return false;
 
+    final returns = await db.query(
+      DatabaseTables.tablePurchaseReturns,
+      where: 'supplier_id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (returns.isNotEmpty) return false;
+
     return true;
   }
 
   Future<int> deleteSupplier(int id) async {
     final db = await _dbHelper.database;
-    return await db.delete(
-      DatabaseTables.tableSuppliers,
-      where: 'id = ?',
-      whereArgs: [id],
-    );
+    return await db.transaction<int>((txn) async {
+      // Clean up any non-posting purchase orders and items for this supplier
+      final orders = await txn.query(
+        DatabaseTables.tablePurchaseOrders,
+        columns: ['id'],
+        where: 'supplier_id = ?',
+        whereArgs: [id],
+      );
+      for (final o in orders) {
+        final orderId = o['id'] as int;
+        await txn.delete(
+          DatabaseTables.tablePurchaseOrderItems,
+          where: 'order_id = ?',
+          whereArgs: [orderId],
+        );
+      }
+      await txn.delete(
+        DatabaseTables.tablePurchaseOrders,
+        where: 'supplier_id = ?',
+        whereArgs: [id],
+      );
+
+      return await txn.delete(
+        DatabaseTables.tableSuppliers,
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+    });
   }
 
   Future<int> deactivateSupplier(int id) async {

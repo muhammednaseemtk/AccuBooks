@@ -330,8 +330,9 @@ class SuppliersScreen extends GetView<SupplierController> {
               onPressed: () async {
                 if (!formKey.currentState!.validate()) return;
                 final cleanTax = taxNumCtrl.text.trim();
-                if (cleanTax.isNotEmpty && !RegExp(r'^\d+$').hasMatch(cleanTax))
+                if (cleanTax.isNotEmpty && !RegExp(r'^\d+$').hasMatch(cleanTax)) {
                   return;
+                }
                 final opVal =
                     double.tryParse(openingCtrl.text.replaceAll(',', '')) ??
                     0.0;
@@ -386,7 +387,7 @@ class SuppliersScreen extends GetView<SupplierController> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Suppliers with active purchase invoices or payments cannot be deleted.',
+              'Suppliers with active invoices, payments, or purchase returns cannot be deleted.',
               style: AppTextStyles.caption.copyWith(
                 color: AppColors.textSecondaryLight,
               ),
