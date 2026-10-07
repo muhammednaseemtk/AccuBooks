@@ -2,13 +2,14 @@ import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:accubooks/core/constants/auth_constants.dart';
 import 'package:accubooks/core/constants/accounting_constants.dart';
 import 'package:accubooks/controllers/auth_controller.dart';
 import 'package:accubooks/repositories/account_repository.dart';
 import 'package:accubooks/repositories/auth_repository.dart';
 import 'package:accubooks/services/auth_service.dart';
+
+import 'package:accubooks/core/database/database_helper.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -20,8 +21,7 @@ void main() {
       return Directory.systemTemp.path;
     });
 
-    sqfliteFfiInit();
-    databaseFactory = databaseFactoryFfi;
+    DatabaseHelper.initializeFfi();
   });
 
   setUp(() {

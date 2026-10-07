@@ -1,7 +1,6 @@
 import 'dart:io';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:accubooks/core/constants/accounting_constants.dart';
 import 'package:accubooks/models/account_model.dart';
 import 'package:accubooks/models/customer_model.dart';
@@ -22,6 +21,8 @@ import 'package:accubooks/repositories/journal_repository.dart';
 import 'package:accubooks/services/receipt_service.dart';
 import 'package:accubooks/services/payment_service.dart';
 
+import 'package:accubooks/core/database/database_helper.dart';
+
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
 
@@ -32,8 +33,7 @@ void main() {
       return Directory.systemTemp.path;
     });
 
-    sqfliteFfiInit();
-    databaseFactory = databaseFactoryFfi;
+    DatabaseHelper.initializeFfi();
   });
 
   group('Delete Functionality Tests', () {
