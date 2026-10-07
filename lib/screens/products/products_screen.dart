@@ -386,7 +386,23 @@ class ProductsScreen extends GetView<ProductController> {
                   );
 
                   final ok = await controller.saveProduct(prod);
-                  if (ok) Get.back();
+                  if (ok) {
+                    if (isEdit) {
+                      Get.back();
+                    } else {
+                      codeCtrl.text = 'PRD-${DateTime.now().millisecondsSinceEpoch % 100000}';
+                      barcodeCtrl.clear();
+                      nameCtrl.clear();
+                      unitCtrl.text = 'Nos';
+                      purchasePriceCtrl.text = '0';
+                      salesPriceCtrl.text = '0';
+                      taxRateCtrl.text = '18';
+                      stockCtrl.text = '0';
+                      minStockCtrl.text = '5';
+                      selectedCat.value = controller.categories.isNotEmpty ? controller.categories.first.id : null;
+                      formKey.currentState?.reset();
+                    }
+                  }
                 },
               )),
         ],

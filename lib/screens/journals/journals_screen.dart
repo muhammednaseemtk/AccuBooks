@@ -152,6 +152,7 @@ class JournalsScreen extends GetView<JournalController> {
 
   void _showJournalEntryDialog(BuildContext context) {
     controller.prepareNewJournalForm();
+    final descCtrl = TextEditingController();
 
     Get.dialog(
       AppDialog(
@@ -165,6 +166,7 @@ class JournalsScreen extends GetView<JournalController> {
               breakpoint: 480,
               children: [
                 Obx(() => AppTextField(
+                      key: ValueKey('jv_${controller.formNextNumber.value}'),
                       label: 'Voucher #',
                       initialValue: controller.formNextNumber.value,
                       readOnly: true,
@@ -192,6 +194,7 @@ class JournalsScreen extends GetView<JournalController> {
             AppTextField(
               label: 'Narration / Description *',
               hint: 'Describe transaction or adjusting entry reason...',
+              controller: descCtrl,
               onChanged: (v) => controller.formDescription.value = v,
             ),
             const SizedBox(height: 16),
@@ -423,7 +426,10 @@ class JournalsScreen extends GetView<JournalController> {
                 onPressed: controller.isFormBalanced
                     ? () async {
                         final ok = await controller.submitJournalEntry();
-                        if (ok) Get.back();
+                        if (ok) {
+                          await controller.prepareNewJournalForm();
+                          descCtrl.clear();
+                        }
                       }
                     : null,
               )),

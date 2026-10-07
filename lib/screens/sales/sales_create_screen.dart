@@ -22,6 +22,14 @@ class SalesCreateScreen extends GetView<SalesController> {
 
   @override
   Widget build(BuildContext context) {
+    if (controller.formNextInvoiceNumber.value.isEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (controller.formNextInvoiceNumber.value.isEmpty) {
+          controller.prepareNewInvoiceForm();
+        }
+      });
+    }
+
     return AppScaffold(
       title: 'New Sales Invoice',
       currentRoute: AppRoutes.salesCreate,
@@ -36,10 +44,11 @@ class SalesCreateScreen extends GetView<SalesController> {
               label: 'Save Invoice',
               icon: Icons.check,
               isLoading: controller.isSubmitting.value,
-              onPressed: () async {
-                final ok = await controller.submitInvoice();
-                if (ok) Get.back();
-              },
+              onPressed: controller.isSubmitting.value
+                  ? null
+                  : () async {
+                      await controller.submitInvoice();
+                    },
             )),
       ],
       body: SingleChildScrollView(
@@ -54,6 +63,7 @@ class SalesCreateScreen extends GetView<SalesController> {
                 spacing: 16,
                 children: [
                   Obx(() => AppTextField(
+                        key: ValueKey('sales_inv_${controller.formNextInvoiceNumber.value}'),
                         label: 'Invoice Number',
                         initialValue: controller.formNextInvoiceNumber.value,
                         readOnly: true,
@@ -68,6 +78,7 @@ class SalesCreateScreen extends GetView<SalesController> {
                         onChanged: (c) => controller.formSelectedCustomer.value = c,
                       )),
                   Obx(() => AppTextField(
+                        key: ValueKey('sales_date_${controller.formInvoiceDate.value.millisecondsSinceEpoch}_${controller.formNextInvoiceNumber.value}'),
                         label: 'Invoice Date',
                         initialValue: AppDateUtils.format(controller.formInvoiceDate.value),
                         readOnly: true,
@@ -159,17 +170,19 @@ class SalesCreateScreen extends GetView<SalesController> {
               builder: (context, constraints) {
                 final isDesktop = constraints.maxWidth >= 800;
 
-                final notesWidget = Column(
+                final notesWidget = Obx(() => Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     AppTextField(
+                      key: ValueKey('sales_notes_${controller.formNextInvoiceNumber.value}'),
                       label: 'Notes / Memo',
+                      initialValue: controller.formNotes.value,
                       hint: 'Special terms, payment instructions, delivery address...',
                       maxLines: 3,
                       onChanged: (v) => controller.formNotes.value = v,
                     ),
                   ],
-                );
+                ));
 
                 final totalsWidget = Obx(() => Container(
                       padding: const EdgeInsets.all(16),
@@ -193,6 +206,7 @@ class SalesCreateScreen extends GetView<SalesController> {
                               SizedBox(
                                 width: 110,
                                 child: AppTextField(
+                                  key: ValueKey('sales_disc_${controller.formNextInvoiceNumber.value}'),
                                   initialValue: '0',
                                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                   inputFormatters: [AppInputFormatters.decimal()],
@@ -216,6 +230,7 @@ class SalesCreateScreen extends GetView<SalesController> {
                               SizedBox(
                                 width: 110,
                                 child: AppTextField(
+                                  key: ValueKey('sales_paid_${controller.formNextInvoiceNumber.value}'),
                                   initialValue: '0',
                                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                   inputFormatters: [AppInputFormatters.decimal()],

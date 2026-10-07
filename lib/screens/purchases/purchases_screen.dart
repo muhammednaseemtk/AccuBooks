@@ -41,6 +41,45 @@ class PurchasesScreen extends GetView<PurchaseController> {
         padding: const EdgeInsets.all(20),
         child: Column(
           children: [
+            // Tabs Bar: Purchase Orders, Purchase Invoices, Purchase Returns
+            AppCard(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    ChoiceChip(
+                      label: const Text('Purchase Orders'),
+                      selected: false,
+                      onSelected: (_) => Get.offNamed(AppRoutes.purchaseOrders, arguments: {'tab': 0}),
+                      selectedColor: AppColors.primary,
+                      labelStyle: AppTextStyles.button,
+                    ),
+                    const SizedBox(width: 12),
+                    ChoiceChip(
+                      label: const Text('Purchase Invoices'),
+                      selected: true,
+                      onSelected: (_) {},
+                      selectedColor: AppColors.primary,
+                      labelStyle: AppTextStyles.button.copyWith(
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    ChoiceChip(
+                      label: const Text('Purchase Returns'),
+                      selected: false,
+                      onSelected: (_) => Get.offNamed(AppRoutes.purchaseOrders, arguments: {'tab': 1}),
+                      selectedColor: AppColors.primary,
+                      labelStyle: AppTextStyles.button,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 16),
+
             // Filters
             AppCard(
               padding: const EdgeInsets.all(12),

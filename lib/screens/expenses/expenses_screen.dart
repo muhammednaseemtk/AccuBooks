@@ -157,6 +157,7 @@ class ExpensesScreen extends GetView<ExpenseController> {
                 breakpoint: 480,
                 children: [
                   Obx(() => AppTextField(
+                        key: ValueKey('exp_${controller.formNextExpenseNumber.value}'),
                         label: 'Expense #',
                         initialValue: controller.formNextExpenseNumber.value,
                         readOnly: true,
@@ -249,7 +250,14 @@ class ExpensesScreen extends GetView<ExpenseController> {
                 onPressed: () async {
                   if (!formKey.currentState!.validate()) return;
                   final ok = await controller.submitExpense();
-                  if (ok) Get.back();
+                  if (ok) {
+                    await controller.prepareNewExpenseForm();
+                    amountCtrl.clear();
+                    taxCtrl.clear();
+                    descCtrl.clear();
+                    refCtrl.clear();
+                    formKey.currentState?.reset();
+                  }
                 },
               )),
         ],

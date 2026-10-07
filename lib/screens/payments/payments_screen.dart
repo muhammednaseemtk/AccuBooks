@@ -164,6 +164,7 @@ class PaymentsScreen extends GetView<PaymentController> {
                 breakpoint: 480,
                 children: [
                   Obx(() => AppTextField(
+                        key: ValueKey('pmt_${controller.formNextPaymentNumber.value}'),
                         label: 'Payment #',
                         initialValue: controller.formNextPaymentNumber.value,
                         readOnly: true,
@@ -255,7 +256,13 @@ class PaymentsScreen extends GetView<PaymentController> {
                 onPressed: () async {
                   if (!formKey.currentState!.validate()) return;
                   final ok = await controller.submitPayment();
-                  if (ok) Get.back();
+                  if (ok) {
+                    await controller.prepareNewPaymentForm();
+                    amountCtrl.clear();
+                    refCtrl.clear();
+                    notesCtrl.clear();
+                    formKey.currentState?.reset();
+                  }
                 },
               )),
         ],

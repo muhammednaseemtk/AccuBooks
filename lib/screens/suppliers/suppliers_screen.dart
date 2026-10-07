@@ -290,7 +290,21 @@ class SuppliersScreen extends GetView<SupplierController> {
                   );
 
                   final ok = await controller.saveSupplier(sup);
-                  if (ok) Get.back();
+                  if (ok) {
+                    if (isEdit) {
+                      Get.back();
+                    } else {
+                      codeCtrl.clear();
+                      nameCtrl.clear();
+                      phoneCtrl.clear();
+                      emailCtrl.clear();
+                      addressCtrl.clear();
+                      taxNumCtrl.clear();
+                      openingCtrl.clear();
+                      selectedObType.value = AccountingConstants.balanceCredit;
+                      formKey.currentState?.reset();
+                    }
+                  }
                 },
               )),
         ],

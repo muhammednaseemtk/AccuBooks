@@ -79,13 +79,13 @@ class PurchaseRepository {
       SELECT pii.*, p.name as product_name, p.product_code, p.unit
       FROM ${DatabaseTables.tablePurchaseInvoiceItems} pii
       LEFT JOIN ${DatabaseTables.tableProducts} p ON pii.product_id = p.id
-      WHERE pii.purchase_invoice_id IN ($placeholders)
+      WHERE pii.invoice_id IN ($placeholders)
       ORDER BY pii.id ASC
     ''', purchaseIds);
 
     final itemsByPurchaseId = <int, List<PurchaseInvoiceItemModel>>{};
     for (final itemMap in itemsMaps) {
-      final pId = itemMap['purchase_invoice_id'] as int;
+      final pId = itemMap['invoice_id'] as int;
       itemsByPurchaseId.putIfAbsent(pId, () => []).add(PurchaseInvoiceItemModel.fromMap(itemMap));
     }
 
@@ -120,7 +120,7 @@ class PurchaseRepository {
     final query = '''
       SELECT pii.*, p.name as product_name, p.product_code, p.unit
       FROM ${DatabaseTables.tablePurchaseInvoiceItems} pii
-      JOIN ${DatabaseTables.tableProducts} p ON pii.product_id = p.id
+      LEFT JOIN ${DatabaseTables.tableProducts} p ON pii.product_id = p.id
       WHERE pii.invoice_id = ?
       ORDER BY pii.id ASC
     ''';

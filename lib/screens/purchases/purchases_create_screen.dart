@@ -22,6 +22,14 @@ class PurchasesCreateScreen extends GetView<PurchaseController> {
 
   @override
   Widget build(BuildContext context) {
+    if (controller.formNextPurchaseNumber.value.isEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (controller.formNextPurchaseNumber.value.isEmpty) {
+          controller.prepareNewPurchaseForm();
+        }
+      });
+    }
+
     return AppScaffold(
       title: 'Record Purchase Bill',
       currentRoute: AppRoutes.purchasesCreate,
@@ -36,10 +44,11 @@ class PurchasesCreateScreen extends GetView<PurchaseController> {
               label: 'Save Bill',
               icon: Icons.check,
               isLoading: controller.isSubmitting.value,
-              onPressed: () async {
-                final ok = await controller.submitPurchase();
-                if (ok) Get.back();
-              },
+              onPressed: controller.isSubmitting.value
+                  ? null
+                  : () async {
+                      await controller.submitPurchase();
+                    },
             )),
       ],
       body: SingleChildScrollView(
@@ -54,6 +63,7 @@ class PurchasesCreateScreen extends GetView<PurchaseController> {
                 spacing: 16,
                 children: [
                   Obx(() => AppTextField(
+                        key: ValueKey('purch_num_${controller.formNextPurchaseNumber.value}'),
                         label: 'Purchase Bill #',
                         initialValue: controller.formNextPurchaseNumber.value,
                         readOnly: true,
@@ -68,6 +78,7 @@ class PurchasesCreateScreen extends GetView<PurchaseController> {
                         onChanged: (s) => controller.formSelectedSupplier.value = s,
                       )),
                   Obx(() => AppTextField(
+                        key: ValueKey('purch_date_${controller.formPurchaseDate.value.millisecondsSinceEpoch}_${controller.formNextPurchaseNumber.value}'),
                         label: 'Date',
                         initialValue: AppDateUtils.format(controller.formPurchaseDate.value),
                         readOnly: true,
@@ -157,17 +168,19 @@ class PurchasesCreateScreen extends GetView<PurchaseController> {
               builder: (context, constraints) {
                 final isDesktop = constraints.maxWidth >= 800;
 
-                final notesWidget = Column(
+                final notesWidget = Obx(() => Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     AppTextField(
+                      key: ValueKey('purch_notes_${controller.formNextPurchaseNumber.value}'),
                       label: 'Notes / References',
+                      initialValue: controller.formNotes.value,
                       hint: 'Supplier reference #, challan #, transport details...',
                       maxLines: 3,
                       onChanged: (v) => controller.formNotes.value = v,
                     ),
                   ],
-                );
+                ));
 
                 final totalsWidget = Obx(() => Container(
                       padding: const EdgeInsets.all(16),
@@ -195,6 +208,7 @@ class PurchasesCreateScreen extends GetView<PurchaseController> {
                               SizedBox(
                                 width: 110,
                                 child: AppTextField(
+                                  key: ValueKey('purch_paid_${controller.formNextPurchaseNumber.value}'),
                                   initialValue: '0',
                                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                   inputFormatters: [AppInputFormatters.decimal()],

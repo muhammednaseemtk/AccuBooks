@@ -1,3 +1,4 @@
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../core/constants/accounting_constants.dart';
 import '../core/database/database_helper.dart';
 import '../core/database/database_tables.dart';
@@ -75,15 +76,15 @@ class SupplierRepository {
     return results;
   }
 
-  Future<SupplierModel?> getSupplierById(int id) async {
-    final db = await _dbHelper.database;
-    final List<Map<String, dynamic>> maps = await db.query(
+  Future<SupplierModel?> getSupplierById(int id, {Transaction? txn}) async {
+    final executor = txn ?? await _dbHelper.database;
+    final List<Map<String, dynamic>> maps = await executor.query(
       DatabaseTables.tableSuppliers,
       where: 'id = ?',
       whereArgs: [id],
     );
     if (maps.isNotEmpty) {
-      final summary = await getSupplierFinancialSummary(id);
+      final summary = await getSupplierFinancialSummary(id, txn: txn);
       return SupplierModel.fromMap(
         maps.first,
         outstanding: summary.outstanding,
@@ -94,11 +95,11 @@ class SupplierRepository {
     return null;
   }
 
-  Future<({double totalPurchases, double totalPayments, double outstanding})> getSupplierFinancialSummary(int supplierId) async {
-    final db = await _dbHelper.database;
+  Future<({double totalPurchases, double totalPayments, double outstanding})> getSupplierFinancialSummary(int supplierId, {Transaction? txn}) async {
+    final executor = txn ?? await _dbHelper.database;
 
     // Supplier opening balance
-    final supMap = await db.query(
+    final supMap = await executor.query(
       DatabaseTables.tableSuppliers,
       columns: ['opening_balance', 'opening_balance_type'],
       where: 'id = ?',
@@ -113,7 +114,7 @@ class SupplierRepository {
     }
 
     // Purchases sum (excluding cancelled)
-    final purRes = await db.rawQuery('''
+    final purRes = await executor.rawQuery('''
       SELECT COALESCE(SUM(grand_total), 0.0) as total_purchases
       FROM ${DatabaseTables.tablePurchaseInvoices}
       WHERE supplier_id = ? AND payment_status != ?
@@ -121,14 +122,25 @@ class SupplierRepository {
     final totalPurchases = (purRes.first['total_purchases'] as num?)?.toDouble() ?? 0.0;
 
     // Payments sum
-    final payRes = await db.rawQuery('''
+    final payRes = await executor.rawQuery('''
       SELECT COALESCE(SUM(amount), 0.0) as total_payments
       FROM ${DatabaseTables.tablePayments}
       WHERE supplier_id = ?
     ''', [supplierId]);
     final totalPayments = (payRes.first['total_payments'] as num?)?.toDouble() ?? 0.0;
 
-    final outstanding = CurrencyUtils.round(opening + totalPurchases - totalPayments);
+    // Purchase returns sum (excluding cancelled)
+    double totalReturns = 0.0;
+    try {
+      final returnRes = await executor.rawQuery('''
+        SELECT COALESCE(SUM(grand_total), 0.0) as total_returns
+        FROM ${DatabaseTables.tablePurchaseReturns}
+        WHERE supplier_id = ? AND status != ?
+      ''', [supplierId, AccountingConstants.statusCancelled]);
+      totalReturns = (returnRes.first['total_returns'] as num?)?.toDouble() ?? 0.0;
+    } catch (_) {}
+
+    final outstanding = CurrencyUtils.round(opening + totalPurchases - totalPayments - totalReturns);
     return (totalPurchases: totalPurchases, totalPayments: totalPayments, outstanding: outstanding);
   }
 

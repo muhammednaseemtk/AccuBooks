@@ -164,6 +164,7 @@ class ReceiptsScreen extends GetView<ReceiptController> {
                 breakpoint: 480,
                 children: [
                   Obx(() => AppTextField(
+                        key: ValueKey('rcpt_${controller.formNextReceiptNumber.value}'),
                         label: 'Receipt #',
                         initialValue: controller.formNextReceiptNumber.value,
                         readOnly: true,
@@ -255,7 +256,13 @@ class ReceiptsScreen extends GetView<ReceiptController> {
                 onPressed: () async {
                   if (!formKey.currentState!.validate()) return;
                   final ok = await controller.submitReceipt();
-                  if (ok) Get.back();
+                  if (ok) {
+                    await controller.prepareNewReceiptForm();
+                    amountCtrl.clear();
+                    refCtrl.clear();
+                    notesCtrl.clear();
+                    formKey.currentState?.reset();
+                  }
                 },
               )),
         ],

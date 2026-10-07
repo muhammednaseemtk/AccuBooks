@@ -290,7 +290,21 @@ class CustomersScreen extends GetView<CustomerController> {
                   );
 
                   final ok = await controller.saveCustomer(cust);
-                  if (ok) Get.back();
+                  if (ok) {
+                    if (isEdit) {
+                      Get.back();
+                    } else {
+                      codeCtrl.clear();
+                      nameCtrl.clear();
+                      phoneCtrl.clear();
+                      emailCtrl.clear();
+                      addressCtrl.clear();
+                      taxNumCtrl.clear();
+                      openingCtrl.clear();
+                      selectedObType.value = AccountingConstants.balanceDebit;
+                      formKey.currentState?.reset();
+                    }
+                  }
                 },
               )),
         ],

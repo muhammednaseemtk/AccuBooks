@@ -299,7 +299,18 @@ class AccountsScreen extends GetView<AccountController> {
                   );
 
                   final ok = await controller.saveAccount(acc);
-                  if (ok) Get.back();
+                  if (ok) {
+                    if (isEdit) {
+                      Get.back();
+                    } else {
+                      codeCtrl.clear();
+                      nameCtrl.clear();
+                      openingCtrl.clear();
+                      selectedType.value = AccountingConstants.typeAsset;
+                      selectedObType.value = AccountingConstants.balanceDebit;
+                      formKey.currentState?.reset();
+                    }
+                  }
                 },
               )),
         ],
