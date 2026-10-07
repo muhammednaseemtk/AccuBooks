@@ -1,9 +1,7 @@
 import 'dart:io';
 import 'package:excel/excel.dart';
 import 'package:file_picker/file_picker.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as p;
-import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import '../repositories/report_repository.dart';
 
 class ReportService {
@@ -50,6 +48,13 @@ class ReportService {
     required String fileName,
     required List<String> headers,
     required List<List<dynamic>> dataRows,
+    Future<Uri?> Function({
+      required String fileName,
+      required Uint8List bytes,
+      FileType type,
+      List<String>? allowedExtensions,
+      String? dialogTitle,
+    })? fileSaver,
   }) async {
     final excel = Excel.createExcel();
     final Sheet sheet = excel[sheetName];
@@ -90,30 +95,55 @@ class ReportService {
     if (fileBytes == null) throw Exception('Unable to generate Excel file');
 
     final uint8Bytes = Uint8List.fromList(fileBytes);
-    String? selectedPath;
+    Uri? savedUri;
     try {
-      final uri = await FilePicker.saveFile(
-        dialogTitle: 'Save Excel Report',
-        fileName: '$fileName.xlsx',
-        bytes: uint8Bytes,
-        type: FileType.custom,
-        allowedExtensions: ['xlsx'],
-      );
-      if (uri != null) {
-        selectedPath = uri.toFilePath();
+      if (fileSaver != null) {
+        savedUri = await fileSaver(
+          dialogTitle: 'Save Excel Report',
+          fileName: '$fileName.xlsx',
+          type: FileType.custom,
+          allowedExtensions: ['xlsx'],
+          bytes: uint8Bytes,
+        );
+      } else {
+        savedUri = await FilePicker.saveFile(
+          dialogTitle: 'Save Excel Report',
+          fileName: '$fileName.xlsx',
+          type: FileType.custom,
+          allowedExtensions: ['xlsx'],
+          bytes: uint8Bytes,
+        );
       }
-    } catch (_) {
-      // Fallback if dialog is unavailable
+    } catch (e) {
+      debugPrint('[ReportService] Save dialog error: $e');
+      rethrow;
     }
 
-    if (selectedPath == null || selectedPath.isEmpty) {
-      final docDir = await getApplicationDocumentsDirectory();
-      selectedPath = p.join(docDir.path, 'AccuBooks', '$fileName.xlsx');
-      final file = File(selectedPath);
-      if (!await file.parent.exists()) {
-        await file.parent.create(recursive: true);
-      }
-      await file.writeAsBytes(fileBytes);
+    // If user cancelled, closed the dialog, or no path chosen, return null without showing success
+    if (savedUri == null) {
+      return null;
+    }
+
+    String selectedPath = savedUri.toFilePath();
+    if (selectedPath.trim().isEmpty) {
+      return null;
+    }
+
+    // Ensure the filename has .xlsx extension
+    if (!selectedPath.toLowerCase().endsWith('.xlsx')) {
+      selectedPath = '$selectedPath.xlsx';
+    }
+
+    // Actually write the generated Excel bytes to the selected location
+    final file = File(selectedPath);
+    if (!await file.parent.exists()) {
+      await file.parent.create(recursive: true);
+    }
+    await file.writeAsBytes(fileBytes, flush: true);
+
+    // Verify that the file genuinely exists and is non-empty
+    if (!await file.exists() || await file.length() == 0) {
+      throw Exception('Failed to verify saved Excel file at $selectedPath');
     }
 
     return selectedPath;

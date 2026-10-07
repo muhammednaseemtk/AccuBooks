@@ -1,15 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../app/routes/app_routes.dart';
-import '../../controllers/auth_controller.dart';
 import '../../controllers/settings_controller.dart';
-import '../../core/utils/date_utils.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_dialog.dart';
-import '../../core/widgets/app_text_field.dart';
 import '../../core/widgets/loading_widget.dart';
-import '../../models/company_model.dart';
 import '../navigation/app_scaffold.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -18,7 +14,6 @@ class SettingsScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = Get.find<SettingsController>();
-    final authController = Get.find<AuthController>();
     final theme = Theme.of(context);
 
     return AppScaffold(
@@ -29,8 +24,6 @@ class SettingsScreen extends StatelessWidget {
           return const LoadingWidget(message: 'Loading settings...');
         }
 
-        final comp = controller.company.value;
-
         return SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Center(
@@ -39,11 +32,7 @@ class SettingsScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _buildUserProfileSection(context, authController, theme),
-                  const SizedBox(height: 24),
                   _buildThemeSection(context, controller, theme),
-                  const SizedBox(height: 24),
-                  _buildCompanySection(context, controller, comp, theme),
                   const SizedBox(height: 24),
                   _buildDatabaseSection(context, controller, theme),
                   const SizedBox(height: 24),
@@ -97,7 +86,9 @@ class SettingsScreen extends StatelessWidget {
                       Text(
                         'Switch between sleek modern dark mode and light theme',
                         style: theme.textTheme.bodySmall?.copyWith(
-                          color: theme.textTheme.bodySmall?.color?.withValues(alpha: 0.7),
+                          color: theme.textTheme.bodySmall?.color?.withValues(
+                            alpha: 0.7,
+                          ),
                         ),
                       ),
                     ],
@@ -114,102 +105,6 @@ class SettingsScreen extends StatelessWidget {
             ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildCompanySection(
-    BuildContext context,
-    SettingsController controller,
-    CompanyModel? comp,
-    ThemeData theme,
-  ) {
-    return AppCard(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Wrap(
-              alignment: WrapAlignment.spaceBetween,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              spacing: 12,
-              runSpacing: 8,
-              children: [
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.business_outlined, color: theme.colorScheme.primary),
-                    const SizedBox(width: 12),
-                    Text(
-                      'Company Information',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                AppButton(
-                  text: 'Edit Company',
-                  icon: Icons.edit_outlined,
-                  type: AppButtonType.secondary,
-                  onPressed: () => _showEditCompanyDialog(context, controller, comp),
-                ),
-              ],
-            ),
-            const Divider(height: 24),
-            if (comp == null)
-              const Text('No company profile found')
-            else
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final isWide = constraints.maxWidth > 650;
-                  return Wrap(
-                    spacing: 32,
-                    runSpacing: 16,
-                    children: [
-                      _buildInfoTile('Company Name', comp.name, isWide),
-                      _buildInfoTile('Tax / GST Number', comp.taxNumber?.isNotEmpty == true ? comp.taxNumber! : 'N/A', isWide),
-                      _buildInfoTile('Phone', comp.phone?.isNotEmpty == true ? comp.phone! : 'N/A', isWide),
-                      _buildInfoTile('Email', comp.email?.isNotEmpty == true ? comp.email! : 'N/A', isWide),
-                      _buildInfoTile('Address', comp.address?.isNotEmpty == true ? comp.address! : 'N/A', isWide),
-                      _buildInfoTile('Currency Symbol', comp.currency, isWide),
-                      _buildInfoTile(
-                        'Financial Year Start',
-                        comp.financialYearStart != null ? AppDateUtils.formatDisplay(comp.financialYearStart!) : '01-04-2026',
-                        isWide,
-                      ),
-                      _buildInfoTile(
-                        'Financial Year End',
-                        comp.financialYearEnd != null ? AppDateUtils.formatDisplay(comp.financialYearEnd!) : '31-03-2027',
-                        isWide,
-                      ),
-                    ],
-                  );
-                },
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInfoTile(String label, String value, bool isWide) {
-    return SizedBox(
-      width: isWide ? 220 : double.infinity,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.grey),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-          ),
-        ],
       ),
     );
   }
@@ -245,12 +140,16 @@ class SettingsScreen extends StatelessWidget {
                 children: [
                   Text(
                     'Path: ${info['path'] ?? 'Local Database'}',
-                    style: theme.textTheme.bodySmall?.copyWith(fontFamily: 'monospace'),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      fontFamily: 'monospace',
+                    ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     'Size: ${info['size'] ?? '0 KB'}   •   Modified: ${info['lastModified'] ?? 'N/A'}',
-                    style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: Colors.grey,
+                    ),
                   ),
                 ],
               );
@@ -301,7 +200,9 @@ class SettingsScreen extends StatelessWidget {
             const Divider(height: 24),
             Text(
               'AccuBooks - Desktop Accounting Application',
-              style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+              style: theme.textTheme.titleSmall?.copyWith(
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 4),
             Text(
@@ -329,246 +230,6 @@ class SettingsScreen extends StatelessWidget {
       confirmText: 'Choose Backup File',
       isDestructive: true,
       onConfirm: () => controller.restoreBackup(),
-    );
-  }
-
-  void _showEditCompanyDialog(
-    BuildContext context,
-    SettingsController controller,
-    CompanyModel? comp,
-  ) {
-    final nameCtrl = TextEditingController(text: comp?.name ?? '');
-    final taxCtrl = TextEditingController(text: comp?.taxNumber ?? '');
-    final phoneCtrl = TextEditingController(text: comp?.phone ?? '');
-    final emailCtrl = TextEditingController(text: comp?.email ?? '');
-    final addrCtrl = TextEditingController(text: comp?.address ?? '');
-    final currCtrl = TextEditingController(text: comp?.currency ?? '₹');
-
-    AppDialog.showFormDialog(
-      context: context,
-      title: 'Edit Company Profile',
-      confirmText: 'Save Changes',
-      content: SingleChildScrollView(
-        child: Column(
-          children: [
-            AppTextField(
-              label: 'Company Name',
-              controller: nameCtrl,
-              prefixIcon: const Icon(Icons.business_outlined),
-              isRequired: true,
-            ),
-            const SizedBox(height: 16),
-            AppTextField(
-              label: 'GST / Tax Number',
-              controller: taxCtrl,
-              keyboardType: TextInputType.number,
-              inputFormatters: [AppInputFormatters.digitsOnly],
-              prefixIcon: const Icon(Icons.numbers_outlined),
-              validator: (v) {
-                if (v != null && v.trim().isNotEmpty && !RegExp(r'^\d+$').hasMatch(v.trim())) {
-                  return 'Tax Number must contain numbers only';
-                }
-                return null;
-              },
-            ),
-            const SizedBox(height: 16),
-            AppTextField(
-              label: 'Phone Number',
-              controller: phoneCtrl,
-              keyboardType: TextInputType.phone,
-              inputFormatters: [AppInputFormatters.digitsOnly],
-              prefixIcon: const Icon(Icons.phone_outlined),
-            ),
-            const SizedBox(height: 16),
-            AppTextField(
-              label: 'Email Address',
-              controller: emailCtrl,
-              prefixIcon: const Icon(Icons.email_outlined),
-            ),
-            const SizedBox(height: 16),
-            AppTextField(
-              label: 'Business Address',
-              controller: addrCtrl,
-              prefixIcon: const Icon(Icons.location_on_outlined),
-              maxLines: 2,
-            ),
-            const SizedBox(height: 16),
-            AppTextField(
-              label: 'Currency Symbol',
-              controller: currCtrl,
-              prefixIcon: const Icon(Icons.currency_rupee_outlined),
-            ),
-          ],
-        ),
-      ),
-      onConfirm: () async {
-        if (nameCtrl.text.trim().isEmpty) return;
-        final cleanTax = taxCtrl.text.trim();
-        if (cleanTax.isNotEmpty && !RegExp(r'^\d+$').hasMatch(cleanTax)) return;
-        final updated = (comp ?? CompanyModel(name: nameCtrl.text.trim())).copyWith(
-          name: nameCtrl.text.trim(),
-          taxNumber: cleanTax,
-          phone: phoneCtrl.text.trim(),
-          email: emailCtrl.text.trim(),
-          address: addrCtrl.text.trim(),
-          currency: currCtrl.text.trim(),
-          updatedAt: DateTime.now(),
-        );
-        await controller.updateCompany(updated);
-      },
-    );
-  }
-
-  Widget _buildUserProfileSection(
-    BuildContext context,
-    AuthController authCtrl,
-    ThemeData theme,
-  ) {
-    final user = authCtrl.currentUser;
-    final org = authCtrl.currentOrganization;
-
-    return AppCard(
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 22,
-                      backgroundColor: theme.colorScheme.primary,
-                      child: Text(
-                        (user?.fullName.isNotEmpty ?? false) ? user!.fullName[0].toUpperCase() : 'U',
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
-                      ),
-                    ),
-                    const SizedBox(width: 14),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'User Profile & SaaS Session',
-                          style: theme.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.bold),
-                        ),
-                        Text(
-                          'Authenticated Cloud Account',
-                          style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                Wrap(
-                  spacing: 8,
-                  children: [
-                    AppButton(
-                      text: 'Edit Profile',
-                      icon: Icons.edit_outlined,
-                      type: AppButtonType.outline,
-                      height: 36,
-                      onPressed: () => _showEditProfileDialog(context, authCtrl),
-                    ),
-                    AppButton(
-                      text: 'Logout',
-                      icon: Icons.logout_rounded,
-                      type: AppButtonType.danger,
-                      height: 36,
-                      onPressed: () => authCtrl.confirmLogout(),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-            const Divider(height: 24),
-            Wrap(
-              spacing: 32,
-              runSpacing: 16,
-              children: [
-                _buildProfileItem(theme, 'Name', user?.fullName ?? 'N/A', Icons.person_outline),
-                _buildProfileItem(theme, 'Email', user?.email ?? 'N/A', Icons.email_outlined),
-                _buildProfileItem(theme, 'Phone', (user?.phone?.isNotEmpty ?? false) ? user!.phone! : 'Not specified', Icons.phone_outlined),
-                _buildProfileItem(theme, 'Company', org?.name ?? 'AccuBooks', Icons.business_outlined),
-                _buildProfileItem(theme, 'Role', user?.roleDisplayName ?? 'Owner', Icons.shield_outlined),
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildProfileItem(ThemeData theme, String label, String value, IconData icon) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, size: 18, color: Colors.grey),
-        const SizedBox(width: 8),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: theme.textTheme.bodySmall?.copyWith(color: Colors.grey),
-            ),
-            Text(
-              value,
-              style: theme.textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  void _showEditProfileDialog(BuildContext context, AuthController authCtrl) {
-    final nameCtrl = TextEditingController(text: authCtrl.currentUser?.fullName ?? '');
-    final phoneCtrl = TextEditingController(text: authCtrl.currentUser?.phone ?? '');
-
-    showDialog(
-      context: context,
-      builder: (ctx) => AppDialog(
-        title: 'Edit Profile',
-        maxWidth: 440,
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AppTextField(
-              label: 'Full Name',
-              controller: nameCtrl,
-              prefixIcon: const Icon(Icons.person_outline, size: 20),
-            ),
-            const SizedBox(height: 16),
-            AppTextField(
-              label: 'Phone Number',
-              controller: phoneCtrl,
-              keyboardType: TextInputType.phone,
-              inputFormatters: [AppInputFormatters.digitsOnly],
-              prefixIcon: const Icon(Icons.phone_outlined, size: 20),
-            ),
-          ],
-        ),
-        actions: [
-          AppButton(
-            text: 'Cancel',
-            type: AppButtonType.secondary,
-            onPressed: () => Navigator.of(ctx).pop(),
-          ),
-          AppButton(
-            text: 'Save Changes',
-            onPressed: () async {
-              if (nameCtrl.text.trim().isEmpty) return;
-              authCtrl.profileNameController.text = nameCtrl.text.trim();
-              authCtrl.profilePhoneController.text = phoneCtrl.text.trim();
-              await authCtrl.updateProfile();
-              if (ctx.mounted) Navigator.of(ctx).pop();
-            },
-          ),
-        ],
-      ),
     );
   }
 }

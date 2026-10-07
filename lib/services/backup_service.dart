@@ -22,15 +22,23 @@ class BackupService {
     String? destPath = targetFilePath;
     if (destPath == null || destPath.isEmpty) {
       try {
-        final uri = await FilePicker.saveFile(
+        final chosenUri = await FilePicker.saveFile(
           dialogTitle: 'Select Backup Destination',
           fileName: defaultFileName,
           bytes: bytes,
           type: FileType.custom,
           allowedExtensions: ['db', 'sqlite'],
         );
-        if (uri != null) {
-          destPath = uri.toFilePath();
+        if (chosenUri != null) {
+          final filePath = chosenUri.toFilePath();
+          if (filePath.isNotEmpty) {
+            destPath = filePath;
+            final destFile = File(destPath);
+            if (!await destFile.parent.exists()) {
+              await destFile.parent.create(recursive: true);
+            }
+            await destFile.writeAsBytes(bytes);
+          }
         }
       } catch (_) {
         // Fallback to Documents directory

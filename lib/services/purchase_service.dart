@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import '../core/constants/accounting_constants.dart';
 import '../core/database/database_helper.dart';
 import '../core/database/database_tables.dart';
 import '../core/utils/currency_utils.dart';
+import '../core/utils/date_utils.dart';
 import '../models/journal_line_model.dart';
 import '../models/purchase_invoice_item_model.dart';
 import '../models/purchase_invoice_model.dart';
@@ -67,6 +69,7 @@ class PurchaseService {
 
     double subtotal = 0.0;
     double taxAmount = 0.0;
+    final totalDiscount = CurrencyUtils.round(invoice.discount);
 
     final processedItems = <PurchaseInvoiceItemModel>[];
     for (final item in items) {
@@ -89,12 +92,19 @@ class PurchaseService {
 
     subtotal = CurrencyUtils.round(subtotal);
     taxAmount = CurrencyUtils.round(taxAmount);
-    final grandTotal = CurrencyUtils.round(subtotal + taxAmount);
+    final grandTotal = CurrencyUtils.round((subtotal - totalDiscount) + taxAmount);
     final paidAmount = CurrencyUtils.round(invoice.paidAmount);
     final balanceAmount = CurrencyUtils.round(grandTotal - paidAmount);
 
+    String invoiceNumber = invoice.invoiceNumber.trim();
+    if (invoiceNumber.isEmpty) {
+      invoiceNumber = await getNextPurchaseNumber();
+    }
+
     final finalInvoice = invoice.copyWith(
+      invoiceNumber: invoiceNumber,
       subtotal: subtotal,
+      discount: totalDiscount,
       taxAmount: taxAmount,
       grandTotal: grandTotal,
       paidAmount: paidAmount,
@@ -102,116 +112,188 @@ class PurchaseService {
       paymentStatus: PurchaseInvoiceModel.determineStatus(grandTotal, paidAmount),
     );
 
-    return await _dbHelper.transaction<int>((txn) async {
-      // Step A: Save purchase invoice
-      final invoiceId = await _purchaseRepo.insertPurchaseInvoice(finalInvoice, txn: txn);
+    // 2. Pre-transaction validation and account lookups to eliminate SQLite deadlocks
+    final supplier = await _supplierRepo.getSupplierById(finalInvoice.supplierId);
+    if (supplier == null) {
+      throw Exception('Supplier not found with ID: ${finalInvoice.supplierId}');
+    }
 
-      // Step B: Save items
-      await _purchaseRepo.insertPurchaseInvoiceItems(invoiceId, processedItems, txn: txn);
-
-      // Step C: Increase stock for each item
-      for (final item in processedItems) {
-        await _productRepo.updateStock(
-          item.productId,
-          item.quantity, // positive delta increases inventory
-          transactionType: AccountingConstants.stockPurchase,
-          referenceId: invoiceId,
-          rate: item.rate,
-          txn: txn,
-        );
+    for (final item in processedItems) {
+      final p = await _productRepo.getProductById(item.productId);
+      if (p == null) {
+        throw Exception('Product not found with ID: ${item.productId}');
       }
+    }
 
-      // Step D: Accounts mapping
-      final supplier = await _supplierRepo.getSupplierById(finalInvoice.supplierId);
-      if (supplier == null) throw Exception('Supplier not found: ${finalInvoice.supplierId}');
+    // Accounts mapping
+    int payableAccountId;
+    if (supplier.accountId != null) {
+      payableAccountId = supplier.accountId!;
+    } else {
+      final payAcc = await _accountRepo.getAccountByCode(AccountingConstants.codeAccountsPayable);
+      payableAccountId = payAcc?.id ?? 5;
+    }
 
-      // Payable Account
-      int payableAccountId;
-      if (supplier.accountId != null) {
-        payableAccountId = supplier.accountId!;
+    // Purchases Account (5000)
+    final purchasesAcc = await _accountRepo.getAccountByCode(AccountingConstants.codePurchases);
+    final purchasesAccountId = purchasesAcc?.id ?? 13;
+
+    // GST Input Credit Account (2020)
+    final gstInputAcc = await _accountRepo.getAccountByCode(AccountingConstants.codeGstInputCredit);
+    final gstInputAccountId = gstInputAcc?.id ?? 7;
+
+    // Discount Received Account (4020)
+    int discountReceivedAccountId = 12;
+    if (totalDiscount > 0) {
+      final discAcc = await _accountRepo.getAccountByCode(AccountingConstants.codeDiscountReceived);
+      discountReceivedAccountId = discAcc?.id ?? 12;
+    }
+
+    // Immediate payment account (default to Cash 1000 if not specified)
+    int effectivePaymentAccountId = 1;
+    if (paidAmount > 0) {
+      if (paymentAccountId != null) {
+        effectivePaymentAccountId = paymentAccountId;
       } else {
-        final payAcc = await _accountRepo.getAccountByCode(AccountingConstants.codeAccountsPayable);
-        payableAccountId = payAcc?.id ?? 5;
+        final cashAcc = await _accountRepo.getAccountByCode(AccountingConstants.codeCash);
+        effectivePaymentAccountId = cashAcc?.id ?? 1;
       }
+    }
 
-      // Purchases Account (5000)
-      final purchasesAcc = await _accountRepo.getAccountByCode(AccountingConstants.codePurchases);
-      final purchasesAccountId = purchasesAcc?.id ?? 13;
+    try {
+      return await _dbHelper.transaction<int>((txn) async {
+        // Step A: Save purchase invoice
+        final invoiceId = await _purchaseRepo.insertPurchaseInvoice(finalInvoice, txn: txn);
 
-      // GST Input Credit Account (2020)
-      final gstInputAcc = await _accountRepo.getAccountByCode(AccountingConstants.codeGstInputCredit);
-      final gstInputAccountId = gstInputAcc?.id ?? 7;
+        // Step B: Save items
+        await _purchaseRepo.insertPurchaseInvoiceItems(invoiceId, processedItems, txn: txn);
 
-      // Step E: Create Journal Lines
-      final journalLines = <JournalLineModel>[];
+        // Step C: Increase stock for each item
+        for (final item in processedItems) {
+          await _productRepo.updateStock(
+            item.productId,
+            item.quantity, // positive delta increases inventory
+            transactionType: AccountingConstants.stockPurchase,
+            referenceId: invoiceId,
+            rate: item.rate,
+            txn: txn,
+          );
+        }
 
-      // Purchases A/C Debit = Net Subtotal
-      journalLines.add(JournalLineModel(
-        accountId: purchasesAccountId,
-        debit: subtotal,
-        credit: 0.0,
-        description: 'Purchases from #${finalInvoice.invoiceNumber}',
-      ));
+        // Step D: Create Journal Lines
+        final journalLines = <JournalLineModel>[];
 
-      // GST Input Credit A/C Debit = Tax Amount
-      if (taxAmount > 0) {
+        // Purchases A/C Debit = Net Subtotal
         journalLines.add(JournalLineModel(
-          accountId: gstInputAccountId,
-          debit: taxAmount,
+          accountId: purchasesAccountId,
+          debit: subtotal,
           credit: 0.0,
-          description: 'GST Input Tax Credit on #${finalInvoice.invoiceNumber}',
+          description: 'Purchases from #${finalInvoice.invoiceNumber}',
         ));
-      }
 
-      // Supplier A/C (Payables) Credit = Grand Total
-      journalLines.add(JournalLineModel(
-        accountId: payableAccountId,
-        debit: 0.0,
-        credit: grandTotal,
-        description: 'Purchase Invoice #${finalInvoice.invoiceNumber} from ${supplier.name}',
-      ));
-
-      // Step F: Post balanced Journal Entry
-      await _accountingService.createJournalEntry(
-        date: finalInvoice.invoiceDate,
-        type: AccountingConstants.transTypePurchase,
-        description: 'Purchase Invoice #${finalInvoice.invoiceNumber} from ${supplier.name}',
-        referenceId: invoiceId,
-        transactionNumber: 'JV-PUR-$invoiceId',
-        lines: journalLines,
-        txn: txn,
-      );
-
-      // Step G: If payment is disbursed immediately
-      if (paidAmount > 0 && paymentAccountId != null) {
-        final payLines = [
-          JournalLineModel(
-            accountId: payableAccountId,
-            debit: paidAmount,
+        // GST Input Credit A/C Debit = Tax Amount
+        if (taxAmount > 0) {
+          journalLines.add(JournalLineModel(
+            accountId: gstInputAccountId,
+            debit: taxAmount,
             credit: 0.0,
-            description: 'Payment made on Purchase #${finalInvoice.invoiceNumber}',
-          ),
-          JournalLineModel(
-            accountId: paymentAccountId,
-            debit: 0.0,
-            credit: paidAmount,
-            description: 'Bank/Cash disbursement for Purchase #${finalInvoice.invoiceNumber}',
-          ),
-        ];
+            description: 'GST Input Tax Credit on #${finalInvoice.invoiceNumber}',
+          ));
+        }
 
+        // Supplier A/C (Payables) Credit = Grand Total
+        journalLines.add(JournalLineModel(
+          accountId: payableAccountId,
+          debit: 0.0,
+          credit: grandTotal,
+          description: 'Purchase Invoice #${finalInvoice.invoiceNumber} from ${supplier.name}',
+        ));
+
+        // Discount Received A/C Credit = Total Discount (if > 0)
+        if (totalDiscount > 0) {
+          journalLines.add(JournalLineModel(
+            accountId: discountReceivedAccountId,
+            debit: 0.0,
+            credit: totalDiscount,
+            description: 'Discount received on Purchase #${finalInvoice.invoiceNumber}',
+          ));
+        }
+
+        // Step E: Post balanced Journal Entry
         await _accountingService.createJournalEntry(
           date: finalInvoice.invoiceDate,
-          type: AccountingConstants.transTypePayment,
-          description: 'Payment on Purchase #${finalInvoice.invoiceNumber}',
+          type: AccountingConstants.transTypePurchase,
+          description: 'Purchase Invoice #${finalInvoice.invoiceNumber} from ${supplier.name}',
           referenceId: invoiceId,
-          transactionNumber: 'JV-PAY-PUR-$invoiceId',
-          lines: payLines,
+          transactionNumber: 'JV-PUR-$invoiceId',
+          lines: journalLines,
           txn: txn,
         );
-      }
 
-      return invoiceId;
-    });
+        // Step F: If payment is disbursed immediately
+        if (paidAmount > 0) {
+          final paymentNumber = 'PAY-PUR-$invoiceId';
+          await txn.insert(DatabaseTables.tablePayments, {
+            'payment_number': paymentNumber,
+            'payment_date': AppDateUtils.formatDb(finalInvoice.invoiceDate),
+            'supplier_id': finalInvoice.supplierId,
+            'account_id': effectivePaymentAccountId,
+            'amount': paidAmount,
+            'payment_method': AccountingConstants.methodCash,
+            'reference': finalInvoice.invoiceNumber,
+            'notes': 'Payment on Purchase #${finalInvoice.invoiceNumber}',
+            'created_at': AppDateUtils.formatDb(DateTime.now()),
+          });
+
+          final payLines = [
+            JournalLineModel(
+              accountId: payableAccountId,
+              debit: paidAmount,
+              credit: 0.0,
+              description: 'Payment made on Purchase #${finalInvoice.invoiceNumber}',
+            ),
+            JournalLineModel(
+              accountId: effectivePaymentAccountId,
+              debit: 0.0,
+              credit: paidAmount,
+              description: 'Disbursement for Purchase #${finalInvoice.invoiceNumber}',
+            ),
+          ];
+
+          await _accountingService.createJournalEntry(
+            date: finalInvoice.invoiceDate,
+            type: AccountingConstants.transTypePayment,
+            description: 'Payment on Purchase #${finalInvoice.invoiceNumber}',
+            referenceId: invoiceId,
+            transactionNumber: 'JV-PAY-PUR-$invoiceId',
+            lines: payLines,
+            txn: txn,
+          );
+        }
+
+        return invoiceId;
+      });
+    } catch (e, stackTrace) {
+      debugPrint('================= PURCHASE INVOICE CREATION ERROR =================');
+      debugPrint('Location: PurchaseService.createPurchaseInvoice');
+      debugPrint('Invoice Number: ${finalInvoice.invoiceNumber}');
+      debugPrint('Supplier ID: ${finalInvoice.supplierId} (${supplier.name})');
+      debugPrint('Item Count: ${processedItems.length}');
+      for (int i = 0; i < processedItems.length; i++) {
+        final it = processedItems[i];
+        debugPrint('  Item #$i: Product ID=${it.productId}, Qty=${it.quantity}, Rate=${it.rate}, Discount=${it.discount}, TaxAmount=${it.taxAmount}, Total=${it.total}');
+      }
+      debugPrint('Subtotal: $subtotal');
+      debugPrint('Discount: $totalDiscount');
+      debugPrint('Tax Amount: $taxAmount');
+      debugPrint('Grand Total: $grandTotal');
+      debugPrint('Paid Amount: $paidAmount');
+      debugPrint('Balance Amount: $balanceAmount');
+      debugPrint('DB Error / Exception: $e');
+      debugPrint('Stack Trace:\n$stackTrace');
+      debugPrint('===================================================================');
+      rethrow;
+    }
   }
 
   /// Cancel purchase invoice
@@ -219,6 +301,14 @@ class PurchaseService {
     final invoice = await _purchaseRepo.getPurchaseInvoiceById(invoiceId);
     if (invoice == null) throw Exception('Purchase invoice not found: $invoiceId');
     if (invoice.isCancelled) throw Exception('Purchase is already cancelled');
+
+    final supplier = await _supplierRepo.getSupplierById(invoice.supplierId);
+    final payableAccountId = supplier?.accountId ??
+        (await _accountRepo.getAccountByCode(AccountingConstants.codeAccountsPayable))?.id ??
+        5;
+    final purchasesAccountId = (await _accountRepo.getAccountByCode(AccountingConstants.codePurchases))?.id ?? 13;
+    final gstInputAccountId = (await _accountRepo.getAccountByCode(AccountingConstants.codeGstInputCredit))?.id ?? 7;
+    final discountReceivedAccountId = (await _accountRepo.getAccountByCode(AccountingConstants.codeDiscountReceived))?.id ?? 12;
 
     await _dbHelper.transaction((txn) async {
       await _purchaseRepo.cancelPurchaseInvoice(invoiceId, txn: txn);
@@ -236,11 +326,6 @@ class PurchaseService {
       }
 
       // Reverse journal
-      final supplier = await _supplierRepo.getSupplierById(invoice.supplierId);
-      final payableAccountId = supplier?.accountId ?? (await _accountRepo.getAccountByCode(AccountingConstants.codeAccountsPayable))?.id ?? 5;
-      final purchasesAccountId = (await _accountRepo.getAccountByCode(AccountingConstants.codePurchases))?.id ?? 13;
-      final gstInputAccountId = (await _accountRepo.getAccountByCode(AccountingConstants.codeGstInputCredit))?.id ?? 7;
-
       final reverseLines = <JournalLineModel>[
         JournalLineModel(
           accountId: payableAccountId,
@@ -248,13 +333,23 @@ class PurchaseService {
           credit: 0.0,
           description: 'Cancellation reversal: ${invoice.invoiceNumber}',
         ),
-        JournalLineModel(
-          accountId: purchasesAccountId,
-          debit: 0.0,
-          credit: invoice.subtotal,
-          description: 'Purchases reversal: ${invoice.invoiceNumber}',
-        ),
       ];
+
+      if (invoice.discount > 0) {
+        reverseLines.add(JournalLineModel(
+          accountId: discountReceivedAccountId,
+          debit: invoice.discount,
+          credit: 0.0,
+          description: 'Discount reversal: ${invoice.invoiceNumber}',
+        ));
+      }
+
+      reverseLines.add(JournalLineModel(
+        accountId: purchasesAccountId,
+        debit: 0.0,
+        credit: invoice.subtotal,
+        description: 'Purchases reversal: ${invoice.invoiceNumber}',
+      ));
 
       if (invoice.taxAmount > 0) {
         reverseLines.add(JournalLineModel(
@@ -316,7 +411,14 @@ class PurchaseService {
         await txn.delete(DatabaseTables.tableJournalEntries, where: 'id = ?', whereArgs: [eId]);
       }
 
-      // 4. Delete items and invoice
+      // 4. Remove immediate payments linked to this purchase
+      await txn.delete(
+        DatabaseTables.tablePayments,
+        where: "reference = ? OR notes LIKE ?",
+        whereArgs: [invoice.invoiceNumber, '%#${invoice.invoiceNumber}%'],
+      );
+
+      // 5. Delete items and invoice
       await txn.delete(DatabaseTables.tablePurchaseInvoiceItems, where: 'invoice_id = ?', whereArgs: [invoiceId]);
       await txn.delete(DatabaseTables.tablePurchaseInvoices, where: 'id = ?', whereArgs: [invoiceId]);
     });
