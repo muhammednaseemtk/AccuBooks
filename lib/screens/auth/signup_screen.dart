@@ -10,8 +10,29 @@ import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_text_field.dart';
 import 'widgets/country_picker_dialog.dart';
 
-class SignUpScreen extends StatelessWidget {
+class SignUpScreen extends StatefulWidget {
   const SignUpScreen({super.key});
+
+  @override
+  State<SignUpScreen> createState() => _SignUpScreenState();
+}
+
+class _SignUpScreenState extends State<SignUpScreen> {
+  final _fullNameFocusNode = FocusNode();
+  final _companyFocusNode = FocusNode();
+  final _emailFocusNode = FocusNode();
+  final _passwordFocusNode = FocusNode();
+  final _createButtonFocusNode = FocusNode();
+
+  @override
+  void dispose() {
+    _fullNameFocusNode.dispose();
+    _companyFocusNode.dispose();
+    _emailFocusNode.dispose();
+    _passwordFocusNode.dispose();
+    _createButtonFocusNode.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -101,10 +122,13 @@ class SignUpScreen extends StatelessWidget {
                     // Full Name Field
                     AppTextField(
                       label: 'Full Name',
-                      hint: 'Muhammed Naseem',
+                      hint: 'Full Name',
                       controller: controller.signupFullNameController,
+                      focusNode: _fullNameFocusNode,
+                      textInputAction: TextInputAction.next,
                       prefixIcon: const Icon(Icons.person_outline, size: 20),
                       isRequired: true,
+                      onSubmitted: (_) => _companyFocusNode.requestFocus(),
                     ),
                     const SizedBox(height: 16),
 
@@ -113,19 +137,25 @@ class SignUpScreen extends StatelessWidget {
                       label: 'Company Name',
                       hint: 'ABC Traders Ltd.',
                       controller: controller.signupCompanyController,
+                      focusNode: _companyFocusNode,
+                      textInputAction: TextInputAction.next,
                       prefixIcon: const Icon(Icons.business_outlined, size: 20),
                       isRequired: true,
+                      onSubmitted: (_) => _emailFocusNode.requestFocus(),
                     ),
                     const SizedBox(height: 16),
 
                     // Email Field
                     AppTextField(
                       label: 'Email',
-                      hint: 'name@company.com',
+                      hint: 'Email',
                       controller: controller.signupEmailController,
+                      focusNode: _emailFocusNode,
                       keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
                       prefixIcon: const Icon(Icons.email_outlined, size: 20),
                       isRequired: true,
+                      onSubmitted: (_) => _passwordFocusNode.requestFocus(),
                     ),
                     const SizedBox(height: 16),
 
@@ -262,6 +292,8 @@ class SignUpScreen extends StatelessWidget {
                           label: 'Password',
                           hint: 'Min 8 chars, 1 uppercase, 1 lowercase, 1 number',
                           controller: controller.signupPasswordController,
+                          focusNode: _passwordFocusNode,
+                          textInputAction: TextInputAction.done,
                           obscureText: controller.signupObscurePassword.value,
                           prefixIcon: const Icon(Icons.lock_outline, size: 20),
                           isRequired: true,
@@ -276,81 +308,13 @@ class SignUpScreen extends StatelessWidget {
                             onPressed: () => controller.signupObscurePassword.toggle(),
                             tooltip: controller.signupObscurePassword.value ? 'Show password' : 'Hide password',
                           ),
-                        )),
-                    const SizedBox(height: 8),
-
-                    // Dynamic Password Strength Meter
-                    Obx(() {
-                      final strength = controller.passwordStrength.value;
-                      final progress = controller.passwordStrengthProgress.value;
-                      final color = controller.passwordStrengthColor.value;
-
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Wrap(
-                            alignment: WrapAlignment.spaceBetween,
-                            crossAxisAlignment: WrapCrossAlignment.center,
-                            spacing: 8,
-                            runSpacing: 2,
-                            children: [
-                              Text(
-                                'Password Strength:',
-                                style: AppTextStyles.caption.copyWith(
-                                  fontSize: 11,
-                                  color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-                                ),
-                              ),
-                              Text(
-                                strength,
-                                style: AppTextStyles.caption.copyWith(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  color: color,
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          ClipRRect(
-                            borderRadius: BorderRadius.circular(4),
-                            child: LinearProgressIndicator(
-                              value: progress,
-                              backgroundColor: isDark ? AppColors.surfaceVariantDark : Colors.grey.shade200,
-                              valueColor: AlwaysStoppedAnimation<Color>(color),
-                              minHeight: 4,
-                            ),
-                          ),
-                        ],
-                      );
-                    }),
-                    const SizedBox(height: 16),
-
-                    // Confirm Password Field
-                    Obx(() => AppTextField(
-                          label: 'Confirm Password',
-                          hint: 'Re-enter your password',
-                          controller: controller.signupConfirmPasswordController,
-                          obscureText: controller.signupObscureConfirmPassword.value,
-                          prefixIcon: const Icon(Icons.lock_reset_outlined, size: 20),
-                          isRequired: true,
-                          suffixIcon: IconButton(
-                            icon: Icon(
-                              controller.signupObscureConfirmPassword.value
-                                  ? Icons.visibility_outlined
-                                  : Icons.visibility_off_outlined,
-                              size: 20,
-                              color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-                            ),
-                            onPressed: () => controller.signupObscureConfirmPassword.toggle(),
-                            tooltip: controller.signupObscureConfirmPassword.value ? 'Show password' : 'Hide password',
-                          ),
-                          onSubmitted: (_) => controller.signup(),
+                          onSubmitted: (_) => _createButtonFocusNode.requestFocus(),
                         )),
                     const SizedBox(height: 28),
 
                     // Submit Button
                     Obx(() => AppButton(
+                          focusNode: _createButtonFocusNode,
                           text: controller.isLoading.value ? 'Creating Account...' : 'Create Account',
                           icon: controller.isLoading.value ? null : Icons.arrow_forward_rounded,
                           isLoading: controller.isLoading.value,

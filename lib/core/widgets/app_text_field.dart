@@ -4,6 +4,7 @@ import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
 
 export '../utils/input_formatters.dart';
+export 'app_date_picker_field.dart';
 
 class AppTextField extends StatelessWidget {
   final String? label;
@@ -13,7 +14,9 @@ class AppTextField extends StatelessWidget {
   final String? Function(String?)? validator;
   final void Function(String)? onChanged;
   final void Function(String)? onSubmitted;
+  final VoidCallback? onTap;
   final TextInputType keyboardType;
+  final TextInputAction? textInputAction;
   final bool obscureText;
   final bool readOnly;
   final bool enabled;
@@ -24,6 +27,7 @@ class AppTextField extends StatelessWidget {
   final bool autofocus;
   final bool isRequired;
   final List<TextInputFormatter>? inputFormatters;
+  final MouseCursor? mouseCursor;
 
   const AppTextField({
     super.key,
@@ -34,7 +38,9 @@ class AppTextField extends StatelessWidget {
     this.validator,
     this.onChanged,
     this.onSubmitted,
+    this.onTap,
     this.keyboardType = TextInputType.text,
+    this.textInputAction,
     this.obscureText = false,
     this.readOnly = false,
     this.enabled = true,
@@ -45,6 +51,7 @@ class AppTextField extends StatelessWidget {
     this.autofocus = false,
     this.isRequired = false,
     this.inputFormatters,
+    this.mouseCursor,
   });
 
   @override
@@ -81,10 +88,13 @@ class AppTextField extends StatelessWidget {
           validator: validator,
           onChanged: onChanged,
           onFieldSubmitted: onSubmitted,
+          onTap: onTap,
           keyboardType: keyboardType,
+          textInputAction: textInputAction,
           obscureText: obscureText,
           readOnly: readOnly,
           enabled: enabled,
+          mouseCursor: mouseCursor ?? (readOnly && onTap != null ? SystemMouseCursors.click : null),
           maxLines: maxLines,
           focusNode: focusNode,
           autofocus: autofocus,

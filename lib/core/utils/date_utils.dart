@@ -1,10 +1,49 @@
+import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../app/theme/app_colors.dart';
 
 class AppDateUtils {
   static final DateFormat _displayFormat = DateFormat('dd-MM-yyyy');
   static final DateFormat _dbFormat = DateFormat('yyyy-MM-dd HH:mm:ss');
   static final DateFormat _shortDate = DateFormat('dd MMM yyyy');
   static final DateFormat _invoiceDate = DateFormat('dd/MM/yyyy');
+
+  /// Open standard themed date picker dialog
+  static Future<DateTime?> pickDate({
+    required BuildContext context,
+    DateTime? initialDate,
+    DateTime? firstDate,
+    DateTime? lastDate,
+  }) async {
+    final first = firstDate ?? DateTime(2000);
+    final last = lastDate ?? DateTime(2100);
+    final baseInitial = initialDate ?? DateTime.now();
+    final safeInitial = baseInitial.isBefore(first)
+        ? first
+        : (baseInitial.isAfter(last) ? last : baseInitial);
+
+    return await showDatePicker(
+      context: context,
+      initialDate: safeInitial,
+      firstDate: first,
+      lastDate: last,
+      builder: (context, child) {
+        final theme = Theme.of(context);
+        final isDark = theme.brightness == Brightness.dark;
+        return Theme(
+          data: theme.copyWith(
+            colorScheme: theme.colorScheme.copyWith(
+              primary: isDark ? AppColors.primaryLight : AppColors.primary,
+              onPrimary: Colors.white,
+              surface: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+              onSurface: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+            ),
+          ),
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
+    );
+  }
 
   /// Format DateTime to dd-MM-yyyy
   static String format(DateTime? date) {

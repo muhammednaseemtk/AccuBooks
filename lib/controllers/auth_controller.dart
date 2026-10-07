@@ -238,7 +238,6 @@ class AuthController extends GetxController {
     final email = signupEmailController.text.trim();
     final phone = signupPhoneController.text.trim();
     final password = signupPasswordController.text;
-    final confirmPassword = signupConfirmPasswordController.text;
     final companyName = signupCompanyController.text.trim();
 
     // 1. Full Name Validation
@@ -266,13 +265,7 @@ class AuthController extends GetxController {
       return;
     }
 
-    // 5. Confirm Password Validation
-    if (password != confirmPassword) {
-      _showError('Passwords do not match.');
-      return;
-    }
-
-    // 6. Company Name Validation
+    // 5. Company Name Validation
     if (companyName.isEmpty || companyName.length < 2) {
       _showError('Please enter your company / organization name.');
       return;

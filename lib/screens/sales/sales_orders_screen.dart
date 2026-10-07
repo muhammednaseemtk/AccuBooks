@@ -316,41 +316,17 @@ class SalesOrdersScreen extends GetView<SalesOrderController> {
                     spacing: 12,
                     breakpoint: 450,
                     children: [
-                      Obx(() => AppTextField(
+                      Obx(() => AppDatePickerField(
                             label: 'Order Date',
-                            initialValue: AppDateUtils.format(controller.formOrderDate.value),
-                            readOnly: true,
-                            suffixIcon: IconButton(
-                              icon: const Icon(Icons.calendar_today, size: 18),
-                              onPressed: () async {
-                                final picked = await showDatePicker(
-                                  context: context,
-                                  initialDate: controller.formOrderDate.value,
-                                  firstDate: DateTime(2020),
-                                  lastDate: DateTime(2035),
-                                );
-                                if (picked != null) controller.formOrderDate.value = picked;
-                              },
-                            ),
+                            value: controller.formOrderDate.value,
+                            onDateSelected: (d) => controller.formOrderDate.value = d,
                           )),
-                      Obx(() => AppTextField(
+                      Obx(() => AppDatePickerField(
                             label: 'Expected Delivery Date',
-                            initialValue: controller.formExpectedDeliveryDate.value != null
-                                ? AppDateUtils.format(controller.formExpectedDeliveryDate.value!)
-                                : 'Select date (Optional)',
-                            readOnly: true,
-                            suffixIcon: IconButton(
-                              icon: const Icon(Icons.event, size: 18),
-                              onPressed: () async {
-                                final picked = await showDatePicker(
-                                  context: context,
-                                  initialDate: controller.formExpectedDeliveryDate.value ?? DateTime.now().add(const Duration(days: 7)),
-                                  firstDate: DateTime(2020),
-                                  lastDate: DateTime(2035),
-                                );
-                                if (picked != null) controller.formExpectedDeliveryDate.value = picked;
-                              },
-                            ),
+                            hint: 'Select date (Optional)',
+                            value: controller.formExpectedDeliveryDate.value,
+                            initialPickerDate: DateTime.now().add(const Duration(days: 7)),
+                            onDateSelected: (d) => controller.formExpectedDeliveryDate.value = d,
                           )),
                     ],
                   ),
@@ -621,22 +597,10 @@ class SalesOrdersScreen extends GetView<SalesOrderController> {
                     spacing: 12,
                     breakpoint: 450,
                     children: [
-                      Obx(() => AppTextField(
+                      Obx(() => AppDatePickerField(
                             label: 'Return Date',
-                            initialValue: AppDateUtils.format(controller.formReturnDate.value),
-                            readOnly: true,
-                            suffixIcon: IconButton(
-                              icon: const Icon(Icons.calendar_today, size: 18),
-                              onPressed: () async {
-                                final picked = await showDatePicker(
-                                  context: context,
-                                  initialDate: controller.formReturnDate.value,
-                                  firstDate: DateTime(2020),
-                                  lastDate: DateTime(2035),
-                                );
-                                if (picked != null) controller.formReturnDate.value = picked;
-                              },
-                            ),
+                            value: controller.formReturnDate.value,
+                            onDateSelected: (d) => controller.formReturnDate.value = d,
                           )),
                       Obx(() => AppDropdown<SalesInvoiceModel>(
                             label: 'Reference Invoice (Optional)',

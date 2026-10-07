@@ -162,10 +162,10 @@ class ExpensesScreen extends GetView<ExpenseController> {
                         initialValue: controller.formNextExpenseNumber.value,
                         readOnly: true,
                       )),
-                  Obx(() => AppTextField(
+                  Obx(() => AppDatePickerField(
                         label: 'Expense Date',
-                        initialValue: AppDateUtils.format(controller.formExpenseDate.value),
-                        readOnly: true,
+                        value: controller.formExpenseDate.value,
+                        onDateSelected: (d) => controller.formExpenseDate.value = d,
                       )),
                 ],
               ),

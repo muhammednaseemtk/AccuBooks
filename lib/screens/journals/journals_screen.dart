@@ -171,22 +171,10 @@ class JournalsScreen extends GetView<JournalController> {
                       initialValue: controller.formNextNumber.value,
                       readOnly: true,
                     )),
-                Obx(() => AppTextField(
+                Obx(() => AppDatePickerField(
                       label: 'Date',
-                      initialValue: AppDateUtils.format(controller.formDate.value),
-                      readOnly: true,
-                      suffixIcon: IconButton(
-                        icon: const Icon(Icons.calendar_today, size: 18),
-                        onPressed: () async {
-                          final picked = await showDatePicker(
-                            context: context,
-                            initialDate: controller.formDate.value,
-                            firstDate: DateTime(2020),
-                            lastDate: DateTime(2035),
-                          );
-                          if (picked != null) controller.formDate.value = picked;
-                        },
-                      ),
+                      value: controller.formDate.value,
+                      onDateSelected: (d) => controller.formDate.value = d,
                     )),
               ],
             ),

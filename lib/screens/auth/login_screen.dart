@@ -8,8 +8,25 @@ import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_text_field.dart';
 
-class LoginScreen extends StatelessWidget {
+class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
+
+  @override
+  State<LoginScreen> createState() => _LoginScreenState();
+}
+
+class _LoginScreenState extends State<LoginScreen> {
+  final _emailFocusNode = FocusNode();
+  final _passwordFocusNode = FocusNode();
+  final _loginButtonFocusNode = FocusNode();
+
+  @override
+  void dispose() {
+    _emailFocusNode.dispose();
+    _passwordFocusNode.dispose();
+    _loginButtonFocusNode.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -98,12 +115,14 @@ class LoginScreen extends StatelessWidget {
                     // Email Field
                     AppTextField(
                       label: 'Email',
-                      hint: 'name@company.com',
+                      hint: 'Email',
                       controller: controller.loginEmailController,
+                      focusNode: _emailFocusNode,
                       keyboardType: TextInputType.emailAddress,
+                      textInputAction: TextInputAction.next,
                       prefixIcon: const Icon(Icons.email_outlined, size: 20),
                       isRequired: true,
-                      onSubmitted: (_) => controller.login(),
+                      onSubmitted: (_) => _passwordFocusNode.requestFocus(),
                     ),
                     const SizedBox(height: 18),
 
@@ -112,6 +131,8 @@ class LoginScreen extends StatelessWidget {
                           label: 'Password',
                           hint: '••••••••',
                           controller: controller.loginPasswordController,
+                          focusNode: _passwordFocusNode,
+                          textInputAction: TextInputAction.done,
                           obscureText: controller.loginObscurePassword.value,
                           prefixIcon: const Icon(Icons.lock_outline, size: 20),
                           isRequired: true,
@@ -126,7 +147,7 @@ class LoginScreen extends StatelessWidget {
                             onPressed: () => controller.loginObscurePassword.toggle(),
                             tooltip: controller.loginObscurePassword.value ? 'Show password' : 'Hide password',
                           ),
-                          onSubmitted: (_) => controller.login(),
+                          onSubmitted: (_) => _loginButtonFocusNode.requestFocus(),
                         )),
                     const SizedBox(height: 12),
 
@@ -188,6 +209,7 @@ class LoginScreen extends StatelessWidget {
 
                     // Submit Button
                     Obx(() => AppButton(
+                          focusNode: _loginButtonFocusNode,
                           text: controller.isLoading.value ? 'Logging in...' : 'Login',
                           icon: controller.isLoading.value ? null : Icons.login_rounded,
                           isLoading: controller.isLoading.value,

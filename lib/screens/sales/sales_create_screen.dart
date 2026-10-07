@@ -5,7 +5,6 @@ import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
 import '../../controllers/sales_controller.dart';
 import '../../core/utils/currency_utils.dart';
-import '../../core/utils/date_utils.dart';
 import '../../core/widgets/responsive_layout.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
@@ -77,23 +76,10 @@ class SalesCreateScreen extends GetView<SalesController> {
                         }).toList(),
                         onChanged: (c) => controller.formSelectedCustomer.value = c,
                       )),
-                  Obx(() => AppTextField(
-                        key: ValueKey('sales_date_${controller.formInvoiceDate.value.millisecondsSinceEpoch}_${controller.formNextInvoiceNumber.value}'),
+                  Obx(() => AppDatePickerField(
                         label: 'Invoice Date',
-                        initialValue: AppDateUtils.format(controller.formInvoiceDate.value),
-                        readOnly: true,
-                        suffixIcon: IconButton(
-                          icon: const Icon(Icons.calendar_today, size: 18),
-                          onPressed: () async {
-                            final picked = await showDatePicker(
-                              context: context,
-                              initialDate: controller.formInvoiceDate.value,
-                              firstDate: DateTime(2020),
-                              lastDate: DateTime(2035),
-                            );
-                            if (picked != null) controller.formInvoiceDate.value = picked;
-                          },
-                        ),
+                        value: controller.formInvoiceDate.value,
+                        onDateSelected: (d) => controller.formInvoiceDate.value = d,
                       )),
                 ],
               ),

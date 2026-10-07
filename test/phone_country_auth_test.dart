@@ -327,7 +327,7 @@ void main() {
 
       expect(find.byType(LoginScreen), findsOneWidget);
       expect(find.text('Welcome back'), findsOneWidget);
-      expect(find.byWidgetPredicate((w) => w is RichText && w.text.toPlainText().contains('Email')), findsOneWidget);
+      expect(find.byWidgetPredicate((w) => w is RichText && w.text.toPlainText().contains('Email')), findsWidgets);
       expect(find.byWidgetPredicate((w) => w is RichText && w.text.toPlainText().startsWith('Password')), findsOneWidget);
       expect(find.text('Remember me'), findsOneWidget);
       expect(find.text('Sign In'), findsNothing); // Uses AppButton

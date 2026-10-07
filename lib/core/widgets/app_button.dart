@@ -14,6 +14,7 @@ class AppButton extends StatelessWidget {
   final bool isFullWidth;
   final double? width;
   final double height;
+  final FocusNode? focusNode;
 
   const AppButton({
     super.key,
@@ -26,6 +27,7 @@ class AppButton extends StatelessWidget {
     this.isFullWidth = false,
     this.width,
     this.height = 42,
+    this.focusNode,
   });
 
   String get effectiveLabel => label ?? text ?? '';
@@ -63,6 +65,7 @@ class AppButton extends StatelessWidget {
     switch (type) {
       case AppButtonType.primary:
         button = ElevatedButton(
+          focusNode: focusNode,
           onPressed: isLoading ? null : onPressed,
           style: ElevatedButton.styleFrom(
             backgroundColor: isDark ? AppColors.primaryLight : AppColors.primary,
@@ -75,6 +78,7 @@ class AppButton extends StatelessWidget {
 
       case AppButtonType.secondary:
         button = ElevatedButton(
+          focusNode: focusNode,
           onPressed: isLoading ? null : onPressed,
           style: ElevatedButton.styleFrom(
             backgroundColor: isDark ? AppColors.surfaceVariantDark : AppColors.surfaceVariantLight,
@@ -87,6 +91,7 @@ class AppButton extends StatelessWidget {
 
       case AppButtonType.outline:
         button = OutlinedButton(
+          focusNode: focusNode,
           onPressed: isLoading ? null : onPressed,
           style: OutlinedButton.styleFrom(
             foregroundColor: isDark ? AppColors.primaryLight : AppColors.primary,
@@ -99,6 +104,7 @@ class AppButton extends StatelessWidget {
 
       case AppButtonType.danger:
         button = ElevatedButton(
+          focusNode: focusNode,
           onPressed: isLoading ? null : onPressed,
           style: ElevatedButton.styleFrom(
             backgroundColor: AppColors.debit,
@@ -111,6 +117,7 @@ class AppButton extends StatelessWidget {
 
       case AppButtonType.text:
         button = TextButton(
+          focusNode: focusNode,
           onPressed: isLoading ? null : onPressed,
           style: TextButton.styleFrom(
             minimumSize: Size(width ?? (isFullWidth ? double.infinity : 60), height),

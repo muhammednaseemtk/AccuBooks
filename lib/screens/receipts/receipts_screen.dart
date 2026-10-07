@@ -169,10 +169,10 @@ class ReceiptsScreen extends GetView<ReceiptController> {
                         initialValue: controller.formNextReceiptNumber.value,
                         readOnly: true,
                       )),
-                  Obx(() => AppTextField(
+                  Obx(() => AppDatePickerField(
                         label: 'Date',
-                        initialValue: AppDateUtils.format(controller.formReceiptDate.value),
-                        readOnly: true,
+                        value: controller.formReceiptDate.value,
+                        onDateSelected: (d) => controller.formReceiptDate.value = d,
                       )),
                 ],
               ),

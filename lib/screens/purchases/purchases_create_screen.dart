@@ -5,7 +5,6 @@ import '../../app/theme/app_colors.dart';
 import '../../app/theme/app_text_styles.dart';
 import '../../controllers/purchase_controller.dart';
 import '../../core/utils/currency_utils.dart';
-import '../../core/utils/date_utils.dart';
 import '../../core/widgets/responsive_layout.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
@@ -77,23 +76,10 @@ class PurchasesCreateScreen extends GetView<PurchaseController> {
                         }).toList(),
                         onChanged: (s) => controller.formSelectedSupplier.value = s,
                       )),
-                  Obx(() => AppTextField(
-                        key: ValueKey('purch_date_${controller.formPurchaseDate.value.millisecondsSinceEpoch}_${controller.formNextPurchaseNumber.value}'),
+                  Obx(() => AppDatePickerField(
                         label: 'Date',
-                        initialValue: AppDateUtils.format(controller.formPurchaseDate.value),
-                        readOnly: true,
-                        suffixIcon: IconButton(
-                          icon: const Icon(Icons.calendar_today, size: 18),
-                          onPressed: () async {
-                            final picked = await showDatePicker(
-                              context: context,
-                              initialDate: controller.formPurchaseDate.value,
-                              firstDate: DateTime(2020),
-                              lastDate: DateTime(2035),
-                            );
-                            if (picked != null) controller.formPurchaseDate.value = picked;
-                          },
-                        ),
+                        value: controller.formPurchaseDate.value,
+                        onDateSelected: (d) => controller.formPurchaseDate.value = d,
                       )),
                 ],
               ),

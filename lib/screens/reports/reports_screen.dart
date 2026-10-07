@@ -144,11 +144,9 @@ class ReportsScreen extends GetView<ReportController> {
                   icon: Icons.calendar_today,
                   type: AppButtonType.outline,
                   onPressed: () async {
-                    final picked = await showDatePicker(
+                    final picked = await AppDateUtils.pickDate(
                       context: context,
                       initialDate: controller.selectedDate.value,
-                      firstDate: DateTime(2020),
-                      lastDate: DateTime(2035),
                     );
                     if (picked != null) {
                       controller.selectedDate.value = picked;

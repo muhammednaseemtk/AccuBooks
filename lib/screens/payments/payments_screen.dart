@@ -169,10 +169,10 @@ class PaymentsScreen extends GetView<PaymentController> {
                         initialValue: controller.formNextPaymentNumber.value,
                         readOnly: true,
                       )),
-                  Obx(() => AppTextField(
+                  Obx(() => AppDatePickerField(
                         label: 'Date',
-                        initialValue: AppDateUtils.format(controller.formPaymentDate.value),
-                        readOnly: true,
+                        value: controller.formPaymentDate.value,
+                        onDateSelected: (d) => controller.formPaymentDate.value = d,
                       )),
                 ],
               ),

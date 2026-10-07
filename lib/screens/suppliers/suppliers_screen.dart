@@ -66,7 +66,8 @@ class SuppliersScreen extends GetView<SupplierController> {
                 if (controller.suppliers.isEmpty) {
                   return EmptyState(
                     title: 'No suppliers found',
-                    subtitle: 'Add your first supplier to record inventory purchases.',
+                    subtitle:
+                        'Add your first supplier to record inventory purchases.',
                     actionLabel: 'Add Supplier',
                     onAction: () => _showSupplierFormDialog(context),
                   );
@@ -76,10 +77,26 @@ class SuppliersScreen extends GetView<SupplierController> {
                   const AppTableColumn(title: 'Code', width: 90),
                   const AppTableColumn(title: 'Supplier Name'),
                   const AppTableColumn(title: 'Phone', width: 130),
-                  const AppTableColumn(title: 'Purchases', width: 130, alignment: Alignment.centerRight),
-                  const AppTableColumn(title: 'Payments', width: 130, alignment: Alignment.centerRight),
-                  const AppTableColumn(title: 'Outstanding Payable', width: 160, alignment: Alignment.centerRight),
-                  const AppTableColumn(title: 'Actions', width: 140, alignment: Alignment.centerRight),
+                  const AppTableColumn(
+                    title: 'Purchases',
+                    width: 130,
+                    alignment: Alignment.centerRight,
+                  ),
+                  const AppTableColumn(
+                    title: 'Payments',
+                    width: 130,
+                    alignment: Alignment.centerRight,
+                  ),
+                  const AppTableColumn(
+                    title: 'Outstanding Payable',
+                    width: 160,
+                    alignment: Alignment.centerRight,
+                  ),
+                  const AppTableColumn(
+                    title: 'Actions',
+                    width: 140,
+                    alignment: Alignment.centerRight,
+                  ),
                 ];
 
                 final rows = controller.suppliers.map((s) {
@@ -97,8 +114,14 @@ class SuppliersScreen extends GetView<SupplierController> {
                       ],
                     ),
                     Text(s.phone ?? '-', style: AppTextStyles.tableCell),
-                    Text(CurrencyUtils.format(s.totalPurchases), style: AppTextStyles.tableCell),
-                    Text(CurrencyUtils.format(s.totalPayments), style: AppTextStyles.tableCell),
+                    Text(
+                      CurrencyUtils.format(s.totalPurchases),
+                      style: AppTextStyles.tableCell,
+                    ),
+                    Text(
+                      CurrencyUtils.format(s.totalPayments),
+                      style: AppTextStyles.tableCell,
+                    ),
                     Text(
                       CurrencyUtils.format(s.outstandingBalance),
                       style: AppTextStyles.tableCellBold.copyWith(
@@ -112,16 +135,22 @@ class SuppliersScreen extends GetView<SupplierController> {
                           icon: const Icon(Icons.receipt_long, size: 18),
                           tooltip: 'Supplier Ledger / Statement',
                           splashRadius: 16,
-                          onPressed: () => _showSupplierLedgerDialog(context, s),
+                          onPressed: () =>
+                              _showSupplierLedgerDialog(context, s),
                         ),
                         IconButton(
                           icon: const Icon(Icons.edit_outlined, size: 18),
                           tooltip: 'Edit Supplier',
                           splashRadius: 16,
-                          onPressed: () => _showSupplierFormDialog(context, supplier: s),
+                          onPressed: () =>
+                              _showSupplierFormDialog(context, supplier: s),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.debit),
+                          icon: const Icon(
+                            Icons.delete_outline,
+                            size: 18,
+                            color: AppColors.debit,
+                          ),
                           tooltip: 'Delete Supplier',
                           splashRadius: 16,
                           onPressed: () => _confirmDeleteSupplier(context, s),
@@ -149,16 +178,26 @@ class SuppliersScreen extends GetView<SupplierController> {
     );
   }
 
-  void _showSupplierFormDialog(BuildContext context, {SupplierModel? supplier}) {
+  void _showSupplierFormDialog(
+    BuildContext context, {
+    SupplierModel? supplier,
+  }) {
     final isEdit = supplier != null;
-    final codeCtrl = TextEditingController(text: supplier?.supplierCode ?? 'SUP-${DateTime.now().millisecondsSinceEpoch % 100000}');
+    final codeCtrl = TextEditingController(
+      text:
+          supplier?.supplierCode ??
+          'SUP-${DateTime.now().millisecondsSinceEpoch % 100000}',
+    );
     final nameCtrl = TextEditingController(text: supplier?.name ?? '');
     final phoneCtrl = TextEditingController(text: supplier?.phone ?? '');
     final emailCtrl = TextEditingController(text: supplier?.email ?? '');
     final addressCtrl = TextEditingController(text: supplier?.address ?? '');
     final taxNumCtrl = TextEditingController(text: supplier?.taxNumber ?? '');
-    final openingCtrl = TextEditingController(text: supplier?.openingBalance.toString() ?? '0');
-    final selectedObType = (supplier?.openingBalanceType ?? AccountingConstants.balanceCredit).obs;
+    final openingCtrl = TextEditingController(
+      text: supplier?.openingBalance.toString() ?? '0',
+    );
+    final selectedObType =
+        (supplier?.openingBalanceType ?? AccountingConstants.balanceCredit).obs;
     final formKey = GlobalKey<FormState>();
 
     Get.dialog(
@@ -176,13 +215,15 @@ class SuppliersScreen extends GetView<SupplierController> {
                   AppTextField(
                     label: 'Supplier Code',
                     controller: codeCtrl,
-                    validator: (v) => v == null || v.isEmpty ? 'Code required' : null,
+                    validator: (v) =>
+                        v == null || v.isEmpty ? 'Code required' : null,
                   ),
                   AppTextField(
                     label: 'Supplier Name *',
                     hint: 'Vendor or Company Name',
                     controller: nameCtrl,
-                    validator: (v) => v == null || v.isEmpty ? 'Name required' : null,
+                    validator: (v) =>
+                        v == null || v.isEmpty ? 'Name required' : null,
                   ),
                 ],
               ),
@@ -224,7 +265,9 @@ class SuppliersScreen extends GetView<SupplierController> {
                     keyboardType: TextInputType.number,
                     inputFormatters: [AppInputFormatters.digitsOnly],
                     validator: (v) {
-                      if (v != null && v.trim().isNotEmpty && !RegExp(r'^\d+$').hasMatch(v.trim())) {
+                      if (v != null &&
+                          v.trim().isNotEmpty &&
+                          !RegExp(r'^\d+$').hasMatch(v.trim())) {
                         return 'Tax ID must contain numbers only';
                       }
                       return null;
@@ -235,19 +278,30 @@ class SuppliersScreen extends GetView<SupplierController> {
                       label: 'Opening Balance',
                       hint: '0.00',
                       controller: openingCtrl,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      keyboardType: const TextInputType.numberWithOptions(
+                        decimal: true,
+                      ),
                       inputFormatters: [AppInputFormatters.decimal()],
                     ),
                   if (!isEdit)
-                    Obx(() => AppDropdown<String>(
-                          label: 'Balance Type',
-                          value: selectedObType.value,
-                          items: const [
-                            DropdownMenuItem(value: AccountingConstants.balanceCredit, child: Text('Credit (Payable)')),
-                            DropdownMenuItem(value: AccountingConstants.balanceDebit, child: Text('Debit (Advance)')),
-                          ],
-                          onChanged: (v) => selectedObType.value = v ?? AccountingConstants.balanceCredit,
-                        )),
+                    Obx(
+                      () => AppDropdown<String>(
+                        label: 'Balance Type',
+                        value: selectedObType.value,
+                        items: const [
+                          DropdownMenuItem(
+                            value: AccountingConstants.balanceCredit,
+                            child: Text('Credit (Payable)'),
+                          ),
+                          DropdownMenuItem(
+                            value: AccountingConstants.balanceDebit,
+                            child: Text('Debit (Advance)'),
+                          ),
+                        ],
+                        onChanged: (v) => selectedObType.value =
+                            v ?? AccountingConstants.balanceCredit,
+                      ),
+                    ),
                 ],
               ),
             ],
@@ -269,44 +323,49 @@ class SuppliersScreen extends GetView<SupplierController> {
             type: AppButtonType.text,
             onPressed: () => Get.back(),
           ),
-          Obx(() => AppButton(
-                label: isEdit ? 'Update' : 'Save Supplier',
-                isLoading: controller.isSubmitting.value,
-                onPressed: () async {
-                  if (!formKey.currentState!.validate()) return;
-                  final cleanTax = taxNumCtrl.text.trim();
-                  if (cleanTax.isNotEmpty && !RegExp(r'^\d+$').hasMatch(cleanTax)) return;
-                  final opVal = double.tryParse(openingCtrl.text.replaceAll(',', '')) ?? 0.0;
-                  final sup = SupplierModel(
-                    id: supplier?.id,
-                    supplierCode: codeCtrl.text.trim(),
-                    name: nameCtrl.text.trim(),
-                    phone: phoneCtrl.text.trim(),
-                    email: emailCtrl.text.trim(),
-                    address: addressCtrl.text.trim(),
-                    taxNumber: cleanTax,
-                    openingBalance: opVal,
-                    openingBalanceType: selectedObType.value,
-                  );
+          Obx(
+            () => AppButton(
+              label: isEdit ? 'Update' : 'Save Supplier',
+              isLoading: controller.isSubmitting.value,
+              onPressed: () async {
+                if (!formKey.currentState!.validate()) return;
+                final cleanTax = taxNumCtrl.text.trim();
+                if (cleanTax.isNotEmpty && !RegExp(r'^\d+$').hasMatch(cleanTax))
+                  return;
+                final opVal =
+                    double.tryParse(openingCtrl.text.replaceAll(',', '')) ??
+                    0.0;
+                final sup = SupplierModel(
+                  id: supplier?.id,
+                  supplierCode: codeCtrl.text.trim(),
+                  name: nameCtrl.text.trim(),
+                  phone: phoneCtrl.text.trim(),
+                  email: emailCtrl.text.trim(),
+                  address: addressCtrl.text.trim(),
+                  taxNumber: cleanTax,
+                  openingBalance: opVal,
+                  openingBalanceType: selectedObType.value,
+                );
 
-                  final ok = await controller.saveSupplier(sup);
-                  if (ok) {
-                    if (isEdit) {
-                      Get.back();
-                    } else {
-                      codeCtrl.clear();
-                      nameCtrl.clear();
-                      phoneCtrl.clear();
-                      emailCtrl.clear();
-                      addressCtrl.clear();
-                      taxNumCtrl.clear();
-                      openingCtrl.clear();
-                      selectedObType.value = AccountingConstants.balanceCredit;
-                      formKey.currentState?.reset();
-                    }
+                final ok = await controller.saveSupplier(sup);
+                if (ok) {
+                  if (isEdit) {
+                    Get.back();
+                  } else {
+                    codeCtrl.clear();
+                    nameCtrl.clear();
+                    phoneCtrl.clear();
+                    emailCtrl.clear();
+                    addressCtrl.clear();
+                    taxNumCtrl.clear();
+                    openingCtrl.clear();
+                    selectedObType.value = AccountingConstants.balanceCredit;
+                    formKey.currentState?.reset();
                   }
-                },
-              )),
+                }
+              },
+            ),
+          ),
         ],
       ),
     );
@@ -328,7 +387,9 @@ class SuppliersScreen extends GetView<SupplierController> {
             const SizedBox(height: 8),
             Text(
               'Suppliers with active purchase invoices or payments cannot be deleted.',
-              style: AppTextStyles.caption.copyWith(color: AppColors.textSecondaryLight),
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.textSecondaryLight,
+              ),
             ),
           ],
         ),
@@ -361,7 +422,9 @@ class SuppliersScreen extends GetView<SupplierController> {
         maxWidth: 900,
         content: Obx(() {
           if (controller.isLoadingLedger.value) {
-            return const LoadingWidget(message: 'Calculating supplier ledger...');
+            return const LoadingWidget(
+              message: 'Calculating supplier ledger...',
+            );
           }
 
           final sup = controller.selectedSupplier.value ?? supplier;
@@ -375,17 +438,27 @@ class SuppliersScreen extends GetView<SupplierController> {
                 decoration: BoxDecoration(
                   color: AppColors.primary.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
+                  border: Border.all(
+                    color: AppColors.primary.withValues(alpha: 0.15),
+                  ),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceAround,
                   children: [
-                    _buildSummaryItem('Total Purchases', CurrencyUtils.format(sup.totalPurchases)),
-                    _buildSummaryItem('Total Payments', CurrencyUtils.format(sup.totalPayments)),
+                    _buildSummaryItem(
+                      'Total Purchases',
+                      CurrencyUtils.format(sup.totalPurchases),
+                    ),
+                    _buildSummaryItem(
+                      'Total Payments',
+                      CurrencyUtils.format(sup.totalPayments),
+                    ),
                     _buildSummaryItem(
                       'Outstanding Payable',
                       CurrencyUtils.format(sup.outstandingBalance),
-                      color: sup.outstandingBalance > 0 ? AppColors.debit : AppColors.credit,
+                      color: sup.outstandingBalance > 0
+                          ? AppColors.debit
+                          : AppColors.credit,
                     ),
                   ],
                 ),
@@ -396,10 +469,15 @@ class SuppliersScreen extends GetView<SupplierController> {
               if (controller.supplierLedger.isEmpty)
                 const Padding(
                   padding: EdgeInsets.all(24),
-                  child: Center(child: Text('No transactions recorded for this supplier.')),
+                  child: Center(
+                    child: Text('No transactions recorded for this supplier.'),
+                  ),
                 )
               else ...[
-                const Text('Transaction History:', style: AppTextStyles.subtitle2),
+                const Text(
+                  'Transaction History:',
+                  style: AppTextStyles.subtitle2,
+                ),
                 const SizedBox(height: 8),
                 AppTable(
                   columns: const [
@@ -407,9 +485,21 @@ class SuppliersScreen extends GetView<SupplierController> {
                     AppTableColumn(title: 'Ref #', width: 120),
                     AppTableColumn(title: 'Type', width: 110),
                     AppTableColumn(title: 'Description'),
-                    AppTableColumn(title: 'Debit (-)', width: 100, alignment: Alignment.centerRight),
-                    AppTableColumn(title: 'Credit (+)', width: 100, alignment: Alignment.centerRight),
-                    AppTableColumn(title: 'Balance', width: 110, alignment: Alignment.centerRight),
+                    AppTableColumn(
+                      title: 'Debit (-)',
+                      width: 100,
+                      alignment: Alignment.centerRight,
+                    ),
+                    AppTableColumn(
+                      title: 'Credit (+)',
+                      width: 100,
+                      alignment: Alignment.centerRight,
+                    ),
+                    AppTableColumn(
+                      title: 'Balance',
+                      width: 110,
+                      alignment: Alignment.centerRight,
+                    ),
                   ],
                   rows: controller.supplierLedger.map((row) {
                     final d = (row['debit'] as num).toDouble();
@@ -417,13 +507,31 @@ class SuppliersScreen extends GetView<SupplierController> {
                     final b = (row['balance'] as num).toDouble();
 
                     return [
-                      Text(row['date']?.toString().split(' ').first ?? '', style: AppTextStyles.tableCell),
-                      Text(row['reference'] ?? '', style: AppTextStyles.tableCellBold),
+                      Text(
+                        row['date']?.toString().split(' ').first ?? '',
+                        style: AppTextStyles.tableCell,
+                      ),
+                      Text(
+                        row['reference'] ?? '',
+                        style: AppTextStyles.tableCellBold,
+                      ),
                       Text(row['type'] ?? '', style: AppTextStyles.tableCell),
-                      Text(row['description'] ?? '', style: AppTextStyles.tableCell),
-                      Text(d > 0 ? CurrencyUtils.format(d) : '-', style: AppTextStyles.tableCell),
-                      Text(c > 0 ? CurrencyUtils.format(c) : '-', style: AppTextStyles.tableCell),
-                      Text(CurrencyUtils.format(b), style: AppTextStyles.tableCellBold),
+                      Text(
+                        row['description'] ?? '',
+                        style: AppTextStyles.tableCell,
+                      ),
+                      Text(
+                        d > 0 ? CurrencyUtils.format(d) : '-',
+                        style: AppTextStyles.tableCell,
+                      ),
+                      Text(
+                        c > 0 ? CurrencyUtils.format(c) : '-',
+                        style: AppTextStyles.tableCell,
+                      ),
+                      Text(
+                        CurrencyUtils.format(b),
+                        style: AppTextStyles.tableCellBold,
+                      ),
                     ];
                   }).toList(),
                   minWidth: 780,
