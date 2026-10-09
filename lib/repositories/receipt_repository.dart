@@ -94,4 +94,24 @@ class ReceiptRepository {
       receipt.toMap(),
     );
   }
+
+  Future<int> updateReceipt(ReceiptModel receipt, {Transaction? txn}) async {
+    final executor = txn ?? await _dbHelper.database;
+    return await executor.update(
+      DatabaseTables.tableReceipts,
+      receipt.toMap(),
+      where: 'id = ?',
+      whereArgs: [receipt.id],
+    );
+  }
+
+  Future<int> deleteReceipt(int id, {Transaction? txn}) async {
+    final executor = txn ?? await _dbHelper.database;
+    return await executor.delete(
+      DatabaseTables.tableReceipts,
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
 }
+

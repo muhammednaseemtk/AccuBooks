@@ -287,16 +287,21 @@ class AccountsScreen extends GetView<AccountController> {
                   if (!formKey.currentState!.validate()) return;
                   final cleanCode = codeCtrl.text.trim();
                   if (!RegExp(r'^\d+$').hasMatch(cleanCode)) return;
-                  final opVal = double.tryParse(openingCtrl.text.replaceAll(',', '')) ?? 0.0;
-                  final acc = AccountModel(
-                    id: account?.id,
-                    accountCode: cleanCode,
-                    accountName: nameCtrl.text.trim(),
-                    accountType: selectedType.value,
-                    openingBalance: opVal,
-                    openingBalanceType: selectedObType.value,
-                    isSystemAccount: account?.isSystemAccount ?? false,
-                  );
+                  final opVal = double.tryParse(openingCtrl.text.trim()) ?? 0.0;
+                  final acc = account != null
+                      ? account.copyWith(
+                          accountCode: cleanCode,
+                          accountName: nameCtrl.text.trim(),
+                          accountType: selectedType.value,
+                        )
+                      : AccountModel(
+                          accountCode: cleanCode,
+                          accountName: nameCtrl.text.trim(),
+                          accountType: selectedType.value,
+                          openingBalance: opVal,
+                          openingBalanceType: selectedObType.value,
+                          isSystemAccount: false,
+                        );
 
                   final ok = await controller.saveAccount(acc);
                   if (ok) {

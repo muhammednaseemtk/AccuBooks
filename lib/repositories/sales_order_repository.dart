@@ -295,4 +295,62 @@ class SalesOrderRepository {
       );
     }
   }
+
+  Future<int> updateSalesOrder(SalesOrderModel order, {Transaction? txn}) async {
+    final executor = txn ?? await _dbHelper.database;
+    return await executor.update(
+      DatabaseTables.tableSalesOrders,
+      order.toMap(),
+      where: 'id = ?',
+      whereArgs: [order.id],
+    );
+  }
+
+  Future<int> deleteSalesOrderItems(int orderId, {Transaction? txn}) async {
+    final executor = txn ?? await _dbHelper.database;
+    return await executor.delete(
+      DatabaseTables.tableSalesOrderItems,
+      where: 'order_id = ?',
+      whereArgs: [orderId],
+    );
+  }
+
+  Future<int> deleteSalesOrder(int orderId, {Transaction? txn}) async {
+    final executor = txn ?? await _dbHelper.database;
+    await deleteSalesOrderItems(orderId, txn: txn);
+    return await executor.delete(
+      DatabaseTables.tableSalesOrders,
+      where: 'id = ?',
+      whereArgs: [orderId],
+    );
+  }
+
+  Future<int> updateSalesReturn(SalesReturnModel returnModel, {Transaction? txn}) async {
+    final executor = txn ?? await _dbHelper.database;
+    return await executor.update(
+      DatabaseTables.tableSalesReturns,
+      returnModel.toMap(),
+      where: 'id = ?',
+      whereArgs: [returnModel.id],
+    );
+  }
+
+  Future<int> deleteSalesReturnItems(int returnId, {Transaction? txn}) async {
+    final executor = txn ?? await _dbHelper.database;
+    return await executor.delete(
+      DatabaseTables.tableSalesReturnItems,
+      where: 'return_id = ?',
+      whereArgs: [returnId],
+    );
+  }
+
+  Future<int> deleteSalesReturn(int returnId, {Transaction? txn}) async {
+    final executor = txn ?? await _dbHelper.database;
+    await deleteSalesReturnItems(returnId, txn: txn);
+    return await executor.delete(
+      DatabaseTables.tableSalesReturns,
+      where: 'id = ?',
+      whereArgs: [returnId],
+    );
+  }
 }

@@ -158,4 +158,33 @@ class PurchaseRepository {
       whereArgs: [invoiceId],
     );
   }
+
+  Future<int> updatePurchaseInvoice(PurchaseInvoiceModel invoice, {Transaction? txn}) async {
+    final executor = txn ?? await _dbHelper.database;
+    return await executor.update(
+      DatabaseTables.tablePurchaseInvoices,
+      invoice.toMap(),
+      where: 'id = ?',
+      whereArgs: [invoice.id],
+    );
+  }
+
+  Future<int> deletePurchaseInvoiceItems(int invoiceId, {Transaction? txn}) async {
+    final executor = txn ?? await _dbHelper.database;
+    return await executor.delete(
+      DatabaseTables.tablePurchaseInvoiceItems,
+      where: 'invoice_id = ?',
+      whereArgs: [invoiceId],
+    );
+  }
+
+  Future<int> deletePurchaseInvoice(int invoiceId, {Transaction? txn}) async {
+    final executor = txn ?? await _dbHelper.database;
+    await deletePurchaseInvoiceItems(invoiceId, txn: txn);
+    return await executor.delete(
+      DatabaseTables.tablePurchaseInvoices,
+      where: 'id = ?',
+      whereArgs: [invoiceId],
+    );
+  }
 }

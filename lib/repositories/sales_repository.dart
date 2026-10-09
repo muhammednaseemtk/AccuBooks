@@ -168,4 +168,23 @@ class SalesRepository {
       whereArgs: [invoiceId],
     );
   }
+
+  Future<int> deleteSalesInvoiceItems(int invoiceId, {Transaction? txn}) async {
+    final executor = txn ?? await _dbHelper.database;
+    return await executor.delete(
+      DatabaseTables.tableSalesInvoiceItems,
+      where: 'invoice_id = ?',
+      whereArgs: [invoiceId],
+    );
+  }
+
+  Future<int> deleteSalesInvoice(int invoiceId, {Transaction? txn}) async {
+    final executor = txn ?? await _dbHelper.database;
+    await deleteSalesInvoiceItems(invoiceId, txn: txn);
+    return await executor.delete(
+      DatabaseTables.tableSalesInvoices,
+      where: 'id = ?',
+      whereArgs: [invoiceId],
+    );
+  }
 }
