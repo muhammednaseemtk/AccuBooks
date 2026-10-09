@@ -51,7 +51,7 @@ class ProductsScreen extends GetView<ProductController> {
                 spacing: 12,
                 children: [
                   AppTextField(
-                    hint: 'Search by product name, code, barcode...',
+                    hint: 'Search...',
                     prefixIcon: const Icon(Icons.search, size: 20),
                     onChanged: controller.setSearch,
                   ),
@@ -244,11 +244,13 @@ class ProductsScreen extends GetView<ProductController> {
                 children: [
                   AppTextField(
                     label: 'Product Code *',
+                    hint: 'Product Code',
                     controller: codeCtrl,
                     validator: (v) => v == null || v.isEmpty ? 'Code required' : null,
                   ),
                   AppTextField(
                     label: 'Barcode',
+                    hint: 'Barcode',
                     controller: barcodeCtrl,
                     keyboardType: TextInputType.number,
                     inputFormatters: [AppInputFormatters.digitsOnly],
@@ -264,7 +266,7 @@ class ProductsScreen extends GetView<ProductController> {
               const SizedBox(height: 12),
               AppTextField(
                 label: 'Product Name *',
-                hint: 'e.g. Wireless Mouse, Dell Monitor, Steel Bar',
+                hint: 'Product Name',
                 controller: nameCtrl,
                 validator: (v) => v == null || v.isEmpty ? 'Name required' : null,
               ),
@@ -275,6 +277,7 @@ class ProductsScreen extends GetView<ProductController> {
                 children: [
                   Obx(() => AppDropdown<int>(
                         label: 'Category',
+                        hint: 'Select Category',
                         value: selectedCat.value,
                         items: controller.categories.map((c) {
                           return DropdownMenuItem(value: c.id, child: Text(c.name));
@@ -283,12 +286,12 @@ class ProductsScreen extends GetView<ProductController> {
                       )),
                   AppTextField(
                     label: 'Unit',
-                    hint: 'Nos, Pcs, Kg, Box',
+                    hint: 'Unit',
                     controller: unitCtrl,
                   ),
                   AppTextField(
                     label: 'Tax Rate (%)',
-                    hint: '18',
+                    hint: 'Tax Rate',
                     controller: taxRateCtrl,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     inputFormatters: [AppInputFormatters.decimal()],
@@ -302,14 +305,14 @@ class ProductsScreen extends GetView<ProductController> {
                 children: [
                   AppTextField(
                     label: 'Purchase Price',
-                    hint: '0.00',
+                    hint: 'Purchase Price',
                     controller: purchasePriceCtrl,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     inputFormatters: [AppInputFormatters.decimal()],
                   ),
                   AppTextField(
                     label: 'Sales Price *',
-                    hint: '0.00',
+                    hint: 'Selling Price',
                     controller: salesPriceCtrl,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     inputFormatters: [AppInputFormatters.decimal()],
@@ -325,14 +328,14 @@ class ProductsScreen extends GetView<ProductController> {
                   if (!isEdit)
                     AppTextField(
                       label: 'Opening Stock',
-                      hint: '0',
+                      hint: 'Opening Stock',
                       controller: stockCtrl,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       inputFormatters: [AppInputFormatters.decimal()],
                     ),
                   AppTextField(
                     label: 'Minimum Stock Alert',
-                    hint: '5',
+                    hint: 'Minimum Stock',
                     controller: minStockCtrl,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     inputFormatters: [AppInputFormatters.decimal()],
@@ -442,12 +445,13 @@ class ProductsScreen extends GetView<ProductController> {
             const SizedBox(height: 10),
             AppTextField(
               label: 'Category Name *',
-              hint: 'e.g. Electronics, Hardware, Furniture',
+              hint: 'Category Name',
               controller: nameCtrl,
             ),
             const SizedBox(height: 10),
             AppTextField(
               label: 'Description',
+              hint: 'Description',
               controller: descCtrl,
             ),
             const SizedBox(height: 12),
@@ -613,6 +617,7 @@ class ProductsScreen extends GetView<ProductController> {
             const SizedBox(height: 16),
             AppTextField(
               label: 'New Physical Quantity',
+              hint: 'Quantity',
               controller: qtyCtrl,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               inputFormatters: [AppInputFormatters.decimal()],
@@ -620,6 +625,7 @@ class ProductsScreen extends GetView<ProductController> {
             const SizedBox(height: 12),
             AppTextField(
               label: 'Reason for Adjustment',
+              hint: 'Reason',
               controller: reasonCtrl,
             ),
           ],

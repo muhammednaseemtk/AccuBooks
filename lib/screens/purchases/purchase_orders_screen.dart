@@ -109,7 +109,7 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
                 spacing: 12,
                 children: [
                   AppTextField(
-                    hint: 'Search by order # or supplier...',
+                    hint: 'Search...',
                     prefixIcon: const Icon(Icons.search, size: 20),
                     onChanged: controller.setSearch,
                   ),
@@ -335,6 +335,7 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
                     children: [
                       Obx(() => AppTextField(
                             label: 'Order Number',
+                            hint: 'Order Number',
                             initialValue: controller.formOrderNumber.value,
                             readOnly: true,
                           )),
@@ -361,7 +362,7 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
                           )),
                       Obx(() => AppDatePickerField(
                             label: 'Expected Delivery Date',
-                            hint: 'Select date (Optional)',
+                            hint: 'Select date',
                             value: controller.formExpectedDeliveryDate.value,
                             initialPickerDate: DateTime.now().add(const Duration(days: 7)),
                             onDateSelected: (d) => controller.formExpectedDeliveryDate.value = d,
@@ -469,8 +470,8 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
                   const SizedBox(height: 12),
                   Obx(() => AppTextField(
                         label: 'Notes / Memo',
+                        hint: 'Enter notes',
                         initialValue: controller.formOrderNotes.value,
-                        hint: 'Vendor instructions, delivery terms...',
                         onChanged: (v) => controller.formOrderNotes.value = v,
                       )),
                 ],
@@ -544,6 +545,7 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
                     children: [
                       AppTextField(
                         label: 'Quantity *',
+                        hint: 'Quantity',
                         controller: qtyCtrl,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         inputFormatters: [AppInputFormatters.decimal()],
@@ -551,6 +553,7 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
                       ),
                       AppTextField(
                         label: 'Purchase Price *',
+                        hint: 'Purchase Price',
                         controller: rateCtrl,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         inputFormatters: [AppInputFormatters.decimal()],
@@ -561,6 +564,7 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
                   const SizedBox(height: 12),
                   AppTextField(
                     label: 'Discount (₹)',
+                    hint: 'Discount',
                     controller: discountCtrl,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     inputFormatters: [AppInputFormatters.decimal()],
@@ -618,6 +622,7 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
                     children: [
                       Obx(() => AppTextField(
                             label: 'Return Number',
+                            hint: 'Return Number',
                             initialValue: controller.formReturnNumber.value,
                             readOnly: true,
                           )),
@@ -745,8 +750,8 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
                   const SizedBox(height: 12),
                   Obx(() => AppTextField(
                         label: 'Reason for Return / Notes',
+                        hint: 'Enter notes',
                         initialValue: controller.formReturnReason.value,
-                        hint: 'Damaged materials, rejected quality, excess shipment...',
                         onChanged: (v) => controller.formReturnReason.value = v,
                       )),
                 ],
@@ -834,6 +839,7 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
                     children: [
                       AppTextField(
                         label: 'Returned Quantity *',
+                        hint: 'Quantity',
                         controller: qtyCtrl,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         inputFormatters: [AppInputFormatters.decimal()],
@@ -848,6 +854,7 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
                       ),
                       AppTextField(
                         label: 'Purchase Price *',
+                        hint: 'Purchase Price',
                         controller: rateCtrl,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         inputFormatters: [AppInputFormatters.decimal()],
@@ -858,6 +865,7 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
                   const SizedBox(height: 12),
                   AppTextField(
                     label: 'Discount (₹)',
+                    hint: 'Discount',
                     controller: discountCtrl,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     inputFormatters: [AppInputFormatters.decimal()],

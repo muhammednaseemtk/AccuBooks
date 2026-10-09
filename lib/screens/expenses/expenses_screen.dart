@@ -46,7 +46,7 @@ class ExpensesScreen extends GetView<ExpenseController> {
                 spacing: 12,
                 children: [
                   AppTextField(
-                    hint: 'Search by expense #, account, or description...',
+                    hint: 'Search...',
                     prefixIcon: const Icon(Icons.search, size: 20),
                     onChanged: controller.setSearch,
                   ),
@@ -175,11 +175,13 @@ class ExpensesScreen extends GetView<ExpenseController> {
                   Obx(() => AppTextField(
                         key: ValueKey('exp_${controller.formNextExpenseNumber.value}'),
                         label: 'Expense #',
+                        hint: 'Reference Number',
                         initialValue: controller.formNextExpenseNumber.value,
                         readOnly: true,
                       )),
                   Obx(() => AppDatePickerField(
                         label: 'Expense Date',
+                        hint: 'Select date',
                         value: controller.formExpenseDate.value,
                         onDateSelected: (d) => controller.formExpenseDate.value = d,
                       )),
@@ -192,7 +194,7 @@ class ExpensesScreen extends GetView<ExpenseController> {
                 children: [
                   Obx(() => AppDropdown<AccountModel>(
                         label: 'Expense Account *',
-                        hint: 'Select Category',
+                        hint: 'Select Account',
                         value: controller.formSelectedExpenseAccount.value,
                         items: controller.expenseAccounts.map((a) {
                           return DropdownMenuItem(value: a, child: Text(a.accountName));
@@ -201,6 +203,7 @@ class ExpensesScreen extends GetView<ExpenseController> {
                       )),
                   Obx(() => AppDropdown<AccountModel>(
                         label: 'Payment Account (Cash/Bank) *',
+                        hint: 'Select Account',
                         value: controller.formSelectedPaymentAccount.value,
                         items: controller.paymentAccounts.map((a) {
                           return DropdownMenuItem(value: a, child: Text(a.accountName));
@@ -216,7 +219,7 @@ class ExpensesScreen extends GetView<ExpenseController> {
                 children: [
                   AppTextField(
                     label: 'Expense Amount (₹) *',
-                    hint: '0.00',
+                    hint: 'Amount',
                     controller: amountCtrl,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     inputFormatters: [AppInputFormatters.decimal()],
@@ -225,7 +228,7 @@ class ExpensesScreen extends GetView<ExpenseController> {
                   ),
                   AppTextField(
                     label: 'Tax (₹)',
-                    hint: '0.00',
+                    hint: 'Tax',
                     controller: taxCtrl,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     inputFormatters: [AppInputFormatters.decimal()],
@@ -233,6 +236,7 @@ class ExpensesScreen extends GetView<ExpenseController> {
                   ),
                   Obx(() => AppDropdown<String>(
                         label: 'Method',
+                        hint: 'Select Payment Method',
                         value: controller.formPaymentMethod.value,
                         items: AccountingConstants.paymentMethods.map((m) {
                           return DropdownMenuItem(value: m, child: Text(m));
@@ -244,7 +248,7 @@ class ExpensesScreen extends GetView<ExpenseController> {
               const SizedBox(height: 12),
               AppTextField(
                 label: 'Description / Purpose *',
-                hint: 'e.g. Office electricity bill for September',
+                hint: 'Description',
                 controller: descCtrl,
                 onChanged: (v) => controller.formDescription.value = v,
                 validator: (v) => v == null || v.isEmpty ? 'Description required' : null,
@@ -252,6 +256,7 @@ class ExpensesScreen extends GetView<ExpenseController> {
               const SizedBox(height: 12),
               AppTextField(
                 label: 'Receipt / Voucher / Ref #',
+                hint: 'Reference Number',
                 controller: refCtrl,
                 onChanged: (v) => controller.formReference.value = v,
               ),

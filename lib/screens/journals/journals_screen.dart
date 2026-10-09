@@ -46,7 +46,7 @@ class JournalsScreen extends GetView<JournalController> {
                 spacing: 12,
                 children: [
                   AppTextField(
-                    hint: 'Search by transaction # or description...',
+                    hint: 'Search...',
                     prefixIcon: const Icon(Icons.search, size: 20),
                     onChanged: controller.setSearch,
                   ),
@@ -180,11 +180,13 @@ class JournalsScreen extends GetView<JournalController> {
                 Obx(() => AppTextField(
                       key: ValueKey('jv_${controller.formNextNumber.value}'),
                       label: 'Voucher #',
+                      hint: 'Reference Number',
                       initialValue: controller.formNextNumber.value,
                       readOnly: true,
                     )),
                 Obx(() => AppDatePickerField(
                       label: 'Date',
+                      hint: 'Select date',
                       value: controller.formDate.value,
                       onDateSelected: (d) => controller.formDate.value = d,
                     )),
@@ -193,7 +195,7 @@ class JournalsScreen extends GetView<JournalController> {
             const SizedBox(height: 12),
             AppTextField(
               label: 'Narration / Description *',
-              hint: 'Describe transaction or adjusting entry reason...',
+              hint: 'Description',
               controller: descCtrl,
               onChanged: (v) => controller.formDescription.value = v,
             ),

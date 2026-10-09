@@ -47,7 +47,7 @@ class PaymentsScreen extends GetView<PaymentController> {
                 spacing: 12,
                 children: [
                   AppTextField(
-                    hint: 'Search by payment # or supplier...',
+                    hint: 'Search...',
                     prefixIcon: const Icon(Icons.search, size: 20),
                     onChanged: controller.setSearch,
                   ),
@@ -182,11 +182,13 @@ class PaymentsScreen extends GetView<PaymentController> {
                   Obx(() => AppTextField(
                         key: ValueKey('pmt_${controller.formNextPaymentNumber.value}'),
                         label: 'Payment #',
+                        hint: 'Reference Number',
                         initialValue: controller.formNextPaymentNumber.value,
                         readOnly: true,
                       )),
                   Obx(() => AppDatePickerField(
                         label: 'Date',
+                        hint: 'Select date',
                         value: controller.formPaymentDate.value,
                         onDateSelected: (d) => controller.formPaymentDate.value = d,
                       )),
@@ -218,6 +220,7 @@ class PaymentsScreen extends GetView<PaymentController> {
                 children: [
                   Obx(() => AppDropdown<AccountModel>(
                         label: 'Paid From (Account) *',
+                        hint: 'Select Account',
                         value: controller.formSelectedAccount.value,
                         items: controller.bankCashAccounts.map((a) {
                           return DropdownMenuItem(value: a, child: Text(a.accountName));
@@ -226,6 +229,7 @@ class PaymentsScreen extends GetView<PaymentController> {
                       )),
                   Obx(() => AppDropdown<String>(
                         label: 'Payment Method',
+                        hint: 'Select Payment Method',
                         value: controller.formPaymentMethod.value,
                         items: AccountingConstants.paymentMethods.map((m) {
                           return DropdownMenuItem(value: m, child: Text(m));
@@ -241,7 +245,7 @@ class PaymentsScreen extends GetView<PaymentController> {
                 children: [
                   AppTextField(
                     label: 'Amount (₹) *',
-                    hint: '0.00',
+                    hint: 'Amount',
                     controller: amountCtrl,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     inputFormatters: [AppInputFormatters.decimal()],
@@ -250,6 +254,7 @@ class PaymentsScreen extends GetView<PaymentController> {
                   ),
                   AppTextField(
                     label: 'Ref / Cheque / UTR #',
+                    hint: 'Reference Number',
                     controller: refCtrl,
                     onChanged: (v) => controller.formReference.value = v,
                   ),
@@ -258,6 +263,7 @@ class PaymentsScreen extends GetView<PaymentController> {
               const SizedBox(height: 12),
               AppTextField(
                 label: 'Notes',
+                hint: 'Enter notes',
                 controller: notesCtrl,
                 onChanged: (v) => controller.formNotes.value = v,
               ),
