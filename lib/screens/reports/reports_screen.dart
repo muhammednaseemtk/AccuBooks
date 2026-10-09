@@ -161,6 +161,7 @@ class ReportsScreen extends GetView<ReportController> {
               constraints: const BoxConstraints(maxWidth: 360),
               child: AppDropdown<AccountModel>(
                 label: 'Account',
+                hint: 'Select Account',
                 value: controller.selectedAccount.value,
                 items: controller.accounts.map((a) {
                   return DropdownMenuItem(value: a, child: Text('${a.accountCode} - ${a.accountName}', overflow: TextOverflow.ellipsis));

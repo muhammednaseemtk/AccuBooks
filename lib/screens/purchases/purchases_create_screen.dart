@@ -70,6 +70,7 @@ class PurchasesCreateScreen extends GetView<PurchaseController> {
                   Obx(() => AppTextField(
                         key: ValueKey('purch_num_${controller.formNextPurchaseNumber.value}'),
                         label: 'Purchase Bill #',
+                        hint: 'Invoice Number',
                         initialValue: controller.formNextPurchaseNumber.value,
                         readOnly: true,
                       )),
@@ -84,6 +85,7 @@ class PurchasesCreateScreen extends GetView<PurchaseController> {
                       )),
                   Obx(() => AppDatePickerField(
                         label: 'Date',
+                        hint: 'Select date',
                         value: controller.formPurchaseDate.value,
                         onDateSelected: (d) => controller.formPurchaseDate.value = d,
                       )),
@@ -166,8 +168,8 @@ class PurchasesCreateScreen extends GetView<PurchaseController> {
                     AppTextField(
                       key: ValueKey('purch_notes_${controller.formNextPurchaseNumber.value}'),
                       label: 'Notes / References',
+                      hint: 'Enter notes',
                       initialValue: controller.formNotes.value,
-                      hint: 'Supplier reference #, challan #, transport details...',
                       maxLines: 3,
                       onChanged: (v) => controller.formNotes.value = v,
                     ),
@@ -201,6 +203,7 @@ class PurchasesCreateScreen extends GetView<PurchaseController> {
                                 width: 110,
                                 child: AppTextField(
                                   key: ValueKey('purch_paid_${controller.formNextPurchaseNumber.value}'),
+                                  hint: 'Amount',
                                   initialValue: '0',
                                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                   inputFormatters: [AppInputFormatters.decimal()],
@@ -312,6 +315,7 @@ class PurchasesCreateScreen extends GetView<PurchaseController> {
                     children: [
                       AppTextField(
                         label: 'Quantity *',
+                        hint: 'Quantity',
                         controller: qtyCtrl,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         inputFormatters: [AppInputFormatters.decimal()],
@@ -319,6 +323,7 @@ class PurchasesCreateScreen extends GetView<PurchaseController> {
                       ),
                       AppTextField(
                         label: 'Purchase Cost/Rate *',
+                        hint: 'Purchase Price',
                         controller: rateCtrl,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         inputFormatters: [AppInputFormatters.decimal()],
@@ -333,12 +338,14 @@ class PurchasesCreateScreen extends GetView<PurchaseController> {
                     children: [
                       AppTextField(
                         label: 'Discount (₹)',
+                        hint: 'Discount',
                         controller: discountCtrl,
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
                         inputFormatters: [AppInputFormatters.decimal()],
                       ),
                       AppTextField(
                         label: 'Tax Rate (%)',
+                        hint: 'Tax Rate',
                         initialValue: selectedProd?.taxRate.toString() ?? '18',
                         readOnly: true,
                       ),

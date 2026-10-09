@@ -87,7 +87,7 @@ class PurchasesScreen extends GetView<PurchaseController> {
                 spacing: 12,
                 children: [
                   AppTextField(
-                    hint: 'Search by purchase # or supplier...',
+                    hint: 'Search...',
                     prefixIcon: const Icon(Icons.search, size: 20),
                     onChanged: controller.setSearch,
                   ),
@@ -370,6 +370,7 @@ class PurchasesScreen extends GetView<PurchaseController> {
             const SizedBox(height: 16),
             AppTextField(
               label: 'Reason for Cancellation',
+              hint: 'Reason',
               controller: reasonCtrl,
             ),
           ],

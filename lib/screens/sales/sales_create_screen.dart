@@ -76,6 +76,7 @@ class SalesCreateScreen extends GetView<SalesController> {
                           'sales_inv_${controller.formNextInvoiceNumber.value}',
                         ),
                         label: 'Invoice Number',
+                        hint: 'Invoice Number',
                         initialValue: controller.formNextInvoiceNumber.value,
                         readOnly: true,
                       ),
@@ -98,6 +99,7 @@ class SalesCreateScreen extends GetView<SalesController> {
                     Obx(
                       () => AppDatePickerField(
                         label: 'Invoice Date',
+                        hint: 'Select date',
                         value: controller.formInvoiceDate.value,
                         onDateSelected: (d) =>
                             controller.formInvoiceDate.value = d,
@@ -244,9 +246,8 @@ class SalesCreateScreen extends GetView<SalesController> {
                             'sales_notes_${controller.formNextInvoiceNumber.value}',
                           ),
                           label: 'Notes / Memo',
+                          hint: 'Enter notes',
                           initialValue: controller.formNotes.value,
-                          hint:
-                              'Special terms, payment instructions, delivery address...',
                           maxLines: 3,
                           onChanged: (v) => controller.formNotes.value = v,
                         ),
@@ -287,6 +288,7 @@ class SalesCreateScreen extends GetView<SalesController> {
                                   key: ValueKey(
                                     'sales_disc_${controller.formNextInvoiceNumber.value}',
                                   ),
+                                  hint: 'Discount',
                                   initialValue: '0',
                                   keyboardType:
                                       const TextInputType.numberWithOptions(
@@ -331,6 +333,7 @@ class SalesCreateScreen extends GetView<SalesController> {
                                   key: ValueKey(
                                     'sales_paid_${controller.formNextInvoiceNumber.value}',
                                   ),
+                                  hint: 'Amount',
                                   initialValue: '0',
                                   keyboardType:
                                       const TextInputType.numberWithOptions(
@@ -460,6 +463,7 @@ class SalesCreateScreen extends GetView<SalesController> {
                     children: [
                       AppTextField(
                         label: 'Quantity *',
+                        hint: 'Quantity',
                         controller: qtyCtrl,
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
@@ -471,6 +475,7 @@ class SalesCreateScreen extends GetView<SalesController> {
                       ),
                       AppTextField(
                         label: 'Rate *',
+                        hint: 'Selling Price',
                         controller: rateCtrl,
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
@@ -489,6 +494,7 @@ class SalesCreateScreen extends GetView<SalesController> {
                     children: [
                       AppTextField(
                         label: 'Discount (₹)',
+                        hint: 'Discount',
                         controller: discountCtrl,
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
@@ -497,6 +503,7 @@ class SalesCreateScreen extends GetView<SalesController> {
                       ),
                       AppTextField(
                         label: 'Tax Rate (%)',
+                        hint: 'Tax Rate',
                         initialValue: selectedProd?.taxRate.toString() ?? '18',
                         readOnly: true,
                       ),

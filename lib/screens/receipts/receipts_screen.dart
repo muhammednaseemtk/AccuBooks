@@ -47,7 +47,7 @@ class ReceiptsScreen extends GetView<ReceiptController> {
                 spacing: 12,
                 children: [
                   AppTextField(
-                    hint: 'Search by receipt # or customer...',
+                    hint: 'Search...',
                     prefixIcon: const Icon(Icons.search, size: 20),
                     onChanged: controller.setSearch,
                   ),
@@ -182,11 +182,13 @@ class ReceiptsScreen extends GetView<ReceiptController> {
                   Obx(() => AppTextField(
                         key: ValueKey('rcpt_${controller.formNextReceiptNumber.value}'),
                         label: 'Receipt #',
+                        hint: 'Reference Number',
                         initialValue: controller.formNextReceiptNumber.value,
                         readOnly: true,
                       )),
                   Obx(() => AppDatePickerField(
                         label: 'Date',
+                        hint: 'Select date',
                         value: controller.formReceiptDate.value,
                         onDateSelected: (d) => controller.formReceiptDate.value = d,
                       )),
@@ -218,6 +220,7 @@ class ReceiptsScreen extends GetView<ReceiptController> {
                 children: [
                   Obx(() => AppDropdown<AccountModel>(
                     label: 'Deposit To (Account) *',
+                    hint: 'Select Account',
                     value: controller.formSelectedAccount.value,
                     items: controller.bankCashAccounts.map((a) {
                       return DropdownMenuItem(value: a, child: Text(a.accountName));
@@ -226,6 +229,7 @@ class ReceiptsScreen extends GetView<ReceiptController> {
                   )),
                   Obx(() => AppDropdown<String>(
                     label: 'Payment Method',
+                    hint: 'Select Payment Method',
                     value: controller.formPaymentMethod.value,
                     items: AccountingConstants.paymentMethods.map((m) {
                       return DropdownMenuItem(value: m, child: Text(m));
@@ -241,7 +245,7 @@ class ReceiptsScreen extends GetView<ReceiptController> {
                 children: [
                   AppTextField(
                     label: 'Amount (₹) *',
-                    hint: '0.00',
+                    hint: 'Amount',
                     controller: amountCtrl,
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
                     inputFormatters: [AppInputFormatters.decimal()],
@@ -250,6 +254,7 @@ class ReceiptsScreen extends GetView<ReceiptController> {
                   ),
                   AppTextField(
                     label: 'Cheque / Ref #',
+                    hint: 'Reference Number',
                     controller: refCtrl,
                     onChanged: (v) => controller.formReference.value = v,
                   ),
@@ -258,6 +263,7 @@ class ReceiptsScreen extends GetView<ReceiptController> {
               const SizedBox(height: 12),
               AppTextField(
                 label: 'Notes',
+                hint: 'Enter notes',
                 controller: notesCtrl,
                 onChanged: (v) => controller.formNotes.value = v,
               ),
