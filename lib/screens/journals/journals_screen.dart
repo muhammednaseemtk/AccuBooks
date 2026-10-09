@@ -92,7 +92,7 @@ class JournalsScreen extends GetView<JournalController> {
                   const AppTableColumn(title: 'Type', width: 110),
                   const AppTableColumn(title: 'Description'),
                   const AppTableColumn(title: 'Total Amount', width: 130, alignment: Alignment.centerRight),
-                  const AppTableColumn(title: 'Actions', width: 110, alignment: Alignment.centerRight),
+                  const AppTableColumn(title: 'Actions', width: 135, alignment: Alignment.centerRight),
                 ];
 
                 final rows = controller.journalEntries.map((j) {
@@ -121,6 +121,13 @@ class JournalsScreen extends GetView<JournalController> {
                           splashRadius: 16,
                           onPressed: () => _showJournalDetailsDialog(context, j),
                         ),
+                        if (j.transactionType == AccountingConstants.transTypeJournal)
+                          IconButton(
+                            icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.primary),
+                            tooltip: 'Edit Journal Entry',
+                            splashRadius: 16,
+                            onPressed: () => _showJournalEntryDialog(context, entry: j),
+                          ),
                         IconButton(
                           icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.debit),
                           tooltip: 'Delete Journal Entry',
@@ -150,13 +157,18 @@ class JournalsScreen extends GetView<JournalController> {
     );
   }
 
-  void _showJournalEntryDialog(BuildContext context) {
-    controller.prepareNewJournalForm();
-    final descCtrl = TextEditingController();
+  void _showJournalEntryDialog(BuildContext context, {JournalEntryModel? entry}) async {
+    final isEdit = entry != null;
+    if (isEdit) {
+      await controller.prepareEditJournalForm(entry);
+    } else {
+      await controller.prepareNewJournalForm();
+    }
+    final descCtrl = TextEditingController(text: isEdit ? (entry.description ?? '') : '');
 
     Get.dialog(
       AppDialog(
-        title: 'New Double-Entry Journal Voucher',
+        title: isEdit ? 'Edit Double-Entry Journal Voucher' : 'New Double-Entry Journal Voucher',
         maxWidth: 880,
         content: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -409,14 +421,18 @@ class JournalsScreen extends GetView<JournalController> {
         actions: [
           AppButton(label: 'Cancel', type: AppButtonType.text, onPressed: () => Get.back()),
           Obx(() => AppButton(
-                label: 'Post Journal',
+                label: isEdit ? 'Update Journal' : 'Post Journal',
                 isLoading: controller.isSubmitting.value,
                 onPressed: controller.isFormBalanced
                     ? () async {
                         final ok = await controller.submitJournalEntry();
                         if (ok) {
-                          await controller.prepareNewJournalForm();
-                          descCtrl.clear();
+                          if (isEdit) {
+                            Get.back();
+                          } else {
+                            await controller.prepareNewJournalForm();
+                            descCtrl.clear();
+                          }
                         }
                       }
                     : null,
@@ -475,6 +491,15 @@ class JournalsScreen extends GetView<JournalController> {
           ],
         ),
         actions: [
+          if (entry.transactionType == AccountingConstants.transTypeJournal)
+            AppButton(
+              label: 'Edit Entry',
+              icon: Icons.edit_outlined,
+              onPressed: () {
+                Get.back();
+                _showJournalEntryDialog(context, entry: entry);
+              },
+            ),
           AppButton(
             label: 'Delete Entry',
             type: AppButtonType.danger,

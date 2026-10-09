@@ -277,17 +277,27 @@ class CustomersScreen extends GetView<CustomerController> {
                   final cleanTax = taxNumCtrl.text.trim();
                   if (cleanTax.isNotEmpty && !RegExp(r'^\d+$').hasMatch(cleanTax)) return;
                   final opVal = double.tryParse(openingCtrl.text.replaceAll(',', '')) ?? 0.0;
-                  final cust = CustomerModel(
-                    id: customer?.id,
-                    customerCode: codeCtrl.text.trim(),
-                    name: nameCtrl.text.trim(),
-                    phone: phoneCtrl.text.trim(),
-                    email: emailCtrl.text.trim(),
-                    address: addressCtrl.text.trim(),
-                    taxNumber: cleanTax,
-                    openingBalance: opVal,
-                    openingBalanceType: selectedObType.value,
-                  );
+                  final cust = customer != null
+                      ? customer.copyWith(
+                          customerCode: codeCtrl.text.trim(),
+                          name: nameCtrl.text.trim(),
+                          phone: phoneCtrl.text.trim(),
+                          email: emailCtrl.text.trim(),
+                          address: addressCtrl.text.trim(),
+                          taxNumber: cleanTax,
+                          openingBalance: opVal,
+                          openingBalanceType: selectedObType.value,
+                        )
+                      : CustomerModel(
+                          customerCode: codeCtrl.text.trim(),
+                          name: nameCtrl.text.trim(),
+                          phone: phoneCtrl.text.trim(),
+                          email: emailCtrl.text.trim(),
+                          address: addressCtrl.text.trim(),
+                          taxNumber: cleanTax,
+                          openingBalance: opVal,
+                          openingBalanceType: selectedObType.value,
+                        );
 
                   final ok = await controller.saveCustomer(cust);
                   if (ok) {

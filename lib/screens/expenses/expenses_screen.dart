@@ -94,7 +94,7 @@ class ExpensesScreen extends GetView<ExpenseController> {
                   const AppTableColumn(title: 'Description'),
                   const AppTableColumn(title: 'Paid Via', width: 140),
                   const AppTableColumn(title: 'Amount', width: 130, alignment: Alignment.centerRight),
-                  const AppTableColumn(title: 'Actions', width: 80, alignment: Alignment.centerRight),
+                  const AppTableColumn(title: 'Actions', width: 100, alignment: Alignment.centerRight),
                 ];
 
                 final rows = controller.expenses.map((e) {
@@ -108,11 +108,22 @@ class ExpensesScreen extends GetView<ExpenseController> {
                       CurrencyUtils.format(e.amount + e.taxAmount),
                       style: AppTextStyles.tableCellBold.copyWith(color: AppColors.debit),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.debit),
-                      tooltip: 'Delete Expense',
-                      splashRadius: 16,
-                      onPressed: () => _confirmDeleteExpense(context, e),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.primary),
+                          tooltip: 'Edit Expense',
+                          splashRadius: 16,
+                          onPressed: () => _showExpenseFormDialog(context, expense: e),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.debit),
+                          tooltip: 'Delete Expense',
+                          splashRadius: 16,
+                          onPressed: () => _confirmDeleteExpense(context, e),
+                        ),
+                      ],
                     ),
                   ];
                 }).toList();
@@ -135,17 +146,22 @@ class ExpensesScreen extends GetView<ExpenseController> {
     );
   }
 
-  void _showExpenseFormDialog(BuildContext context) {
-    controller.prepareNewExpenseForm();
-    final amountCtrl = TextEditingController();
-    final taxCtrl = TextEditingController(text: '0');
-    final descCtrl = TextEditingController();
-    final refCtrl = TextEditingController();
+  void _showExpenseFormDialog(BuildContext context, {ExpenseModel? expense}) async {
+    final isEdit = expense != null;
+    if (isEdit) {
+      await controller.prepareEditExpenseForm(expense);
+    } else {
+      await controller.prepareNewExpenseForm();
+    }
+    final amountCtrl = TextEditingController(text: isEdit ? expense.amount.toString() : '');
+    final taxCtrl = TextEditingController(text: isEdit ? expense.taxAmount.toString() : '0');
+    final descCtrl = TextEditingController(text: isEdit ? (expense.description ?? '') : '');
+    final refCtrl = TextEditingController(text: isEdit ? (expense.reference ?? '') : '');
     final formKey = GlobalKey<FormState>();
 
     Get.dialog(
       AppDialog(
-        title: 'Record Business Expense',
+        title: isEdit ? 'Edit Business Expense' : 'Record Business Expense',
         maxWidth: 620,
         content: Form(
           key: formKey,
@@ -245,18 +261,22 @@ class ExpensesScreen extends GetView<ExpenseController> {
         actions: [
           AppButton(label: 'Cancel', type: AppButtonType.text, onPressed: () => Get.back()),
           Obx(() => AppButton(
-                label: 'Save Expense',
+                label: isEdit ? 'Update Expense' : 'Save Expense',
                 isLoading: controller.isSubmitting.value,
                 onPressed: () async {
                   if (!formKey.currentState!.validate()) return;
                   final ok = await controller.submitExpense();
                   if (ok) {
-                    await controller.prepareNewExpenseForm();
-                    amountCtrl.clear();
-                    taxCtrl.clear();
-                    descCtrl.clear();
-                    refCtrl.clear();
-                    formKey.currentState?.reset();
+                    if (isEdit) {
+                      Get.back();
+                    } else {
+                      await controller.prepareNewExpenseForm();
+                      amountCtrl.clear();
+                      taxCtrl.clear();
+                      descCtrl.clear();
+                      refCtrl.clear();
+                      formKey.currentState?.reset();
+                    }
                   }
                 },
               )),

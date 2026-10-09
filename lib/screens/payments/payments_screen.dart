@@ -95,7 +95,7 @@ class PaymentsScreen extends GetView<PaymentController> {
                   const AppTableColumn(title: 'Paid From', width: 150),
                   const AppTableColumn(title: 'Method', width: 90),
                   const AppTableColumn(title: 'Amount Paid', width: 140, alignment: Alignment.centerRight),
-                  const AppTableColumn(title: 'Actions', width: 80, alignment: Alignment.centerRight),
+                  const AppTableColumn(title: 'Actions', width: 110, alignment: Alignment.centerRight),
                 ];
 
                 final rows = controller.payments.map((p) {
@@ -116,11 +116,22 @@ class PaymentsScreen extends GetView<PaymentController> {
                       CurrencyUtils.format(p.amount),
                       style: AppTextStyles.tableCellBold.copyWith(color: AppColors.debit),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.debit),
-                      tooltip: 'Delete Payment',
-                      splashRadius: 16,
-                      onPressed: () => _confirmDeletePayment(context, p),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.primary),
+                          tooltip: 'Edit Payment',
+                          splashRadius: 16,
+                          onPressed: () => _showPaymentFormDialog(context, payment: p),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.debit),
+                          tooltip: 'Delete Payment',
+                          splashRadius: 16,
+                          onPressed: () => _confirmDeletePayment(context, p),
+                        ),
+                      ],
                     ),
                   ];
                 }).toList();
@@ -143,16 +154,21 @@ class PaymentsScreen extends GetView<PaymentController> {
     );
   }
 
-  void _showPaymentFormDialog(BuildContext context) {
-    controller.prepareNewPaymentForm();
-    final amountCtrl = TextEditingController();
-    final refCtrl = TextEditingController();
-    final notesCtrl = TextEditingController();
+  void _showPaymentFormDialog(BuildContext context, {PaymentModel? payment}) async {
+    final isEdit = payment != null;
+    if (isEdit) {
+      await controller.prepareEditPaymentForm(payment);
+    } else {
+      await controller.prepareNewPaymentForm();
+    }
+    final amountCtrl = TextEditingController(text: isEdit ? payment.amount.toString() : '');
+    final refCtrl = TextEditingController(text: isEdit ? (payment.reference ?? '') : '');
+    final notesCtrl = TextEditingController(text: isEdit ? (payment.notes ?? '') : '');
     final formKey = GlobalKey<FormState>();
 
     Get.dialog(
       AppDialog(
-        title: 'New Supplier Payment',
+        title: isEdit ? 'Edit Supplier Payment' : 'New Supplier Payment',
         maxWidth: 600,
         content: Form(
           key: formKey,
@@ -189,7 +205,7 @@ class PaymentsScreen extends GetView<PaymentController> {
                     }).toList(),
                     onChanged: (s) {
                       controller.formSelectedSupplier.value = s;
-                      if (s != null && s.outstandingBalance > 0) {
+                      if (!isEdit && s != null && s.outstandingBalance > 0) {
                         amountCtrl.text = s.outstandingBalance.toString();
                         controller.formAmount.value = s.outstandingBalance;
                       }
@@ -251,17 +267,21 @@ class PaymentsScreen extends GetView<PaymentController> {
         actions: [
           AppButton(label: 'Cancel', type: AppButtonType.text, onPressed: () => Get.back()),
           Obx(() => AppButton(
-                label: 'Save Payment',
+                label: isEdit ? 'Update Payment' : 'Save Payment',
                 isLoading: controller.isSubmitting.value,
                 onPressed: () async {
                   if (!formKey.currentState!.validate()) return;
                   final ok = await controller.submitPayment();
                   if (ok) {
-                    await controller.prepareNewPaymentForm();
-                    amountCtrl.clear();
-                    refCtrl.clear();
-                    notesCtrl.clear();
-                    formKey.currentState?.reset();
+                    if (isEdit) {
+                      Get.back();
+                    } else {
+                      await controller.prepareNewPaymentForm();
+                      amountCtrl.clear();
+                      refCtrl.clear();
+                      notesCtrl.clear();
+                      formKey.currentState?.reset();
+                    }
                   }
                 },
               )),

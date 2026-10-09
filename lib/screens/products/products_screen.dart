@@ -371,19 +371,31 @@ class ProductsScreen extends GetView<ProductController> {
                   final qty = double.tryParse(stockCtrl.text.replaceAll(',', '')) ?? 0.0;
                   final minQty = double.tryParse(minStockCtrl.text.replaceAll(',', '')) ?? 5.0;
 
-                  final prod = ProductModel(
-                    id: product?.id,
-                    productCode: codeCtrl.text.trim(),
-                    barcode: cleanBarcode.isNotEmpty ? cleanBarcode : null,
-                    name: nameCtrl.text.trim(),
-                    categoryId: selectedCat.value,
-                    unit: unitCtrl.text.trim().isNotEmpty ? unitCtrl.text.trim() : 'Nos',
-                    purchasePrice: pPrice,
-                    salesPrice: sPrice,
-                    taxRate: tRate,
-                    stockQuantity: isEdit ? (product.stockQuantity) : qty,
-                    minimumStock: minQty,
-                  );
+                  final prod = product != null
+                      ? product.copyWith(
+                          productCode: codeCtrl.text.trim(),
+                          barcode: cleanBarcode.isNotEmpty ? cleanBarcode : null,
+                          name: nameCtrl.text.trim(),
+                          categoryId: selectedCat.value,
+                          unit: unitCtrl.text.trim().isNotEmpty ? unitCtrl.text.trim() : 'Nos',
+                          purchasePrice: pPrice,
+                          salesPrice: sPrice,
+                          taxRate: tRate,
+                          stockQuantity: product.stockQuantity,
+                          minimumStock: minQty,
+                        )
+                      : ProductModel(
+                          productCode: codeCtrl.text.trim(),
+                          barcode: cleanBarcode.isNotEmpty ? cleanBarcode : null,
+                          name: nameCtrl.text.trim(),
+                          categoryId: selectedCat.value,
+                          unit: unitCtrl.text.trim().isNotEmpty ? unitCtrl.text.trim() : 'Nos',
+                          purchasePrice: pPrice,
+                          salesPrice: sPrice,
+                          taxRate: tRate,
+                          stockQuantity: qty,
+                          minimumStock: minQty,
+                        );
 
                   final ok = await controller.saveProduct(prod);
                   if (ok) {
@@ -413,6 +425,7 @@ class ProductsScreen extends GetView<ProductController> {
   void _showCategoryDialog(BuildContext context) {
     final nameCtrl = TextEditingController();
     final descCtrl = TextEditingController();
+    final editingCategoryId = Rxn<int>();
 
     Get.dialog(
       AppDialog(
@@ -422,7 +435,10 @@ class ProductsScreen extends GetView<ProductController> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Add New Category', style: AppTextStyles.subtitle2),
+            Obx(() => Text(
+                  editingCategoryId.value != null ? 'Edit Category' : 'Add New Category',
+                  style: AppTextStyles.subtitle2,
+                )),
             const SizedBox(height: 10),
             AppTextField(
               label: 'Category Name *',
@@ -435,21 +451,37 @@ class ProductsScreen extends GetView<ProductController> {
               controller: descCtrl,
             ),
             const SizedBox(height: 12),
-            Align(
-              alignment: Alignment.centerRight,
-              child: AppButton(
-                label: 'Save Category',
-                icon: Icons.add,
-                onPressed: () async {
-                  if (nameCtrl.text.trim().isEmpty) return;
-                  await controller.saveCategory(CategoryModel(
-                    name: nameCtrl.text.trim(),
-                    description: descCtrl.text.trim(),
-                  ));
-                  nameCtrl.clear();
-                  descCtrl.clear();
-                },
-              ),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                Obx(() => editingCategoryId.value != null
+                    ? AppButton(
+                        label: 'Cancel Edit',
+                        type: AppButtonType.text,
+                        onPressed: () {
+                          editingCategoryId.value = null;
+                          nameCtrl.clear();
+                          descCtrl.clear();
+                        },
+                      )
+                    : const SizedBox.shrink()),
+                const SizedBox(width: 8),
+                Obx(() => AppButton(
+                      label: editingCategoryId.value != null ? 'Update Category' : 'Save Category',
+                      icon: editingCategoryId.value != null ? Icons.save_outlined : Icons.add,
+                      onPressed: () async {
+                        if (nameCtrl.text.trim().isEmpty) return;
+                        await controller.saveCategory(CategoryModel(
+                          id: editingCategoryId.value,
+                          name: nameCtrl.text.trim(),
+                          description: descCtrl.text.trim(),
+                        ));
+                        editingCategoryId.value = null;
+                        nameCtrl.clear();
+                        descCtrl.clear();
+                      },
+                    )),
+              ],
             ),
             const Divider(height: 28),
             Text('Existing Categories', style: AppTextStyles.subtitle2),
@@ -473,10 +505,24 @@ class ProductsScreen extends GetView<ProductController> {
                       subtitle: cat.description != null && cat.description!.isNotEmpty
                           ? Text(cat.description!, style: AppTextStyles.caption)
                           : null,
-                      trailing: IconButton(
-                        icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.debit),
-                        tooltip: 'Delete Category',
-                        onPressed: () => _confirmDeleteCategory(context, cat),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.primary),
+                            tooltip: 'Edit Category',
+                            onPressed: () {
+                              editingCategoryId.value = cat.id;
+                              nameCtrl.text = cat.name;
+                              descCtrl.text = cat.description ?? '';
+                            },
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.debit),
+                            tooltip: 'Delete Category',
+                            onPressed: () => _confirmDeleteCategory(context, cat),
+                          ),
+                        ],
                       ),
                     );
                   },
