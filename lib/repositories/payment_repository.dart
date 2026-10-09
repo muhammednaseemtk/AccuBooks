@@ -94,4 +94,24 @@ class PaymentRepository {
       payment.toMap(),
     );
   }
+
+  Future<int> updatePayment(PaymentModel payment, {Transaction? txn}) async {
+    final executor = txn ?? await _dbHelper.database;
+    return await executor.update(
+      DatabaseTables.tablePayments,
+      payment.toMap(),
+      where: 'id = ?',
+      whereArgs: [payment.id],
+    );
+  }
+
+  Future<int> deletePayment(int id, {Transaction? txn}) async {
+    final executor = txn ?? await _dbHelper.database;
+    return await executor.delete(
+      DatabaseTables.tablePayments,
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
 }
+

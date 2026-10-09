@@ -295,4 +295,62 @@ class PurchaseOrderRepository {
       );
     }
   }
+
+  Future<int> updatePurchaseOrder(PurchaseOrderModel order, {Transaction? txn}) async {
+    final executor = txn ?? await _dbHelper.database;
+    return await executor.update(
+      DatabaseTables.tablePurchaseOrders,
+      order.toMap(),
+      where: 'id = ?',
+      whereArgs: [order.id],
+    );
+  }
+
+  Future<int> deletePurchaseOrderItems(int orderId, {Transaction? txn}) async {
+    final executor = txn ?? await _dbHelper.database;
+    return await executor.delete(
+      DatabaseTables.tablePurchaseOrderItems,
+      where: 'order_id = ?',
+      whereArgs: [orderId],
+    );
+  }
+
+  Future<int> deletePurchaseOrder(int orderId, {Transaction? txn}) async {
+    final executor = txn ?? await _dbHelper.database;
+    await deletePurchaseOrderItems(orderId, txn: txn);
+    return await executor.delete(
+      DatabaseTables.tablePurchaseOrders,
+      where: 'id = ?',
+      whereArgs: [orderId],
+    );
+  }
+
+  Future<int> updatePurchaseReturn(PurchaseReturnModel returnModel, {Transaction? txn}) async {
+    final executor = txn ?? await _dbHelper.database;
+    return await executor.update(
+      DatabaseTables.tablePurchaseReturns,
+      returnModel.toMap(),
+      where: 'id = ?',
+      whereArgs: [returnModel.id],
+    );
+  }
+
+  Future<int> deletePurchaseReturnItems(int returnId, {Transaction? txn}) async {
+    final executor = txn ?? await _dbHelper.database;
+    return await executor.delete(
+      DatabaseTables.tablePurchaseReturnItems,
+      where: 'return_id = ?',
+      whereArgs: [returnId],
+    );
+  }
+
+  Future<int> deletePurchaseReturn(int returnId, {Transaction? txn}) async {
+    final executor = txn ?? await _dbHelper.database;
+    await deletePurchaseReturnItems(returnId, txn: txn);
+    return await executor.delete(
+      DatabaseTables.tablePurchaseReturns,
+      where: 'id = ?',
+      whereArgs: [returnId],
+    );
+  }
 }

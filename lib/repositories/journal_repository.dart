@@ -164,6 +164,49 @@ class JournalRepository {
     return await db.rawQuery(query, whereArgs);
   }
 
+  Future<void> updateJournalEntry(JournalEntryModel entry, List<JournalLineModel> lines, {Transaction? txn}) async {
+    final executor = txn ?? await _dbHelper.database;
+    if (txn != null) {
+      await executor.update(
+        DatabaseTables.tableJournalEntries,
+        entry.toMap(),
+        where: 'id = ?',
+        whereArgs: [entry.id],
+      );
+      await executor.delete(
+        DatabaseTables.tableJournalLines,
+        where: 'journal_entry_id = ?',
+        whereArgs: [entry.id],
+      );
+      for (final line in lines) {
+        await executor.insert(
+          DatabaseTables.tableJournalLines,
+          line.copyWith(journalEntryId: entry.id).toMap(),
+        );
+      }
+    } else {
+      await _dbHelper.transaction((t) async {
+        await t.update(
+          DatabaseTables.tableJournalEntries,
+          entry.toMap(),
+          where: 'id = ?',
+          whereArgs: [entry.id],
+        );
+        await t.delete(
+          DatabaseTables.tableJournalLines,
+          where: 'journal_entry_id = ?',
+          whereArgs: [entry.id],
+        );
+        for (final line in lines) {
+          await t.insert(
+            DatabaseTables.tableJournalLines,
+            line.copyWith(journalEntryId: entry.id).toMap(),
+          );
+        }
+      });
+    }
+  }
+
   Future<void> deleteJournalEntry(int entryId) async {
     final db = await _dbHelper.database;
     await db.transaction((txn) async {
@@ -172,3 +215,4 @@ class JournalRepository {
     });
   }
 }
+

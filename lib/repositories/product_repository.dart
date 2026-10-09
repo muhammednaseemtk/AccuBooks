@@ -136,6 +136,38 @@ class ProductRepository {
     );
     if (pur.isNotEmpty) return false;
 
+    final salesReturns = await db.query(
+      DatabaseTables.tableSalesReturnItems,
+      where: 'product_id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (salesReturns.isNotEmpty) return false;
+
+    final purchaseReturns = await db.query(
+      DatabaseTables.tablePurchaseReturnItems,
+      where: 'product_id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (purchaseReturns.isNotEmpty) return false;
+
+    final salesOrders = await db.query(
+      DatabaseTables.tableSalesOrderItems,
+      where: 'product_id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (salesOrders.isNotEmpty) return false;
+
+    final purchaseOrders = await db.query(
+      DatabaseTables.tablePurchaseOrderItems,
+      where: 'product_id = ?',
+      whereArgs: [id],
+      limit: 1,
+    );
+    if (purchaseOrders.isNotEmpty) return false;
+
     return true;
   }
 

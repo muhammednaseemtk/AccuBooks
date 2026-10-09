@@ -95,6 +95,16 @@ class ExpenseRepository {
     );
   }
 
+  Future<int> updateExpense(ExpenseModel expense, {Transaction? txn}) async {
+    final executor = txn ?? await _dbHelper.database;
+    return await executor.update(
+      DatabaseTables.tableExpenses,
+      expense.toMap(),
+      where: 'id = ?',
+      whereArgs: [expense.id],
+    );
+  }
+
   Future<int> deleteExpense(int id, {Transaction? txn}) async {
     final executor = txn ?? await _dbHelper.database;
     return await executor.delete(
@@ -104,3 +114,4 @@ class ExpenseRepository {
     );
   }
 }
+
