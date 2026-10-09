@@ -145,7 +145,7 @@ class SalesScreen extends GetView<SalesController> {
                   const AppTableColumn(title: 'Grand Total', width: 130, alignment: Alignment.centerRight),
                   const AppTableColumn(title: 'Balance Due', width: 130, alignment: Alignment.centerRight),
                   const AppTableColumn(title: 'Status', width: 110, alignment: Alignment.center),
-                  const AppTableColumn(title: 'Actions', width: 160, alignment: Alignment.centerRight),
+                  const AppTableColumn(title: 'Actions', width: 195, alignment: Alignment.centerRight),
                 ];
 
                 final rows = controller.invoices.map((inv) {
@@ -184,6 +184,16 @@ class SalesScreen extends GetView<SalesController> {
                           splashRadius: 16,
                           onPressed: () => _showInvoiceDetailsDialog(context, inv),
                         ),
+                        if (!inv.isCancelled)
+                          IconButton(
+                            icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.primary),
+                            tooltip: 'Edit Invoice',
+                            splashRadius: 16,
+                            onPressed: () async {
+                              await controller.loadInvoiceForEdit(inv);
+                              Get.toNamed(AppRoutes.salesCreate);
+                            },
+                          ),
                         IconButton(
                           icon: const Icon(Icons.print_outlined, size: 18),
                           tooltip: 'Print / PDF',
@@ -318,6 +328,17 @@ class SalesScreen extends GetView<SalesController> {
               _confirmDeleteInvoice(context, invoice);
             },
           ),
+          if (!invoice.isCancelled)
+            AppButton(
+              label: 'Edit Invoice',
+              icon: Icons.edit_outlined,
+              type: AppButtonType.secondary,
+              onPressed: () async {
+                Get.back();
+                await controller.loadInvoiceForEdit(invoice);
+                Get.toNamed(AppRoutes.salesCreate);
+              },
+            ),
           AppButton(
             label: 'Close',
             type: AppButtonType.text,

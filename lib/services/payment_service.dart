@@ -44,6 +44,10 @@ class PaymentService {
     );
   }
 
+  Future<PaymentModel?> getPaymentById(int id) async {
+    return await _paymentRepo.getPaymentById(id);
+  }
+
   Future<int> createPayment(PaymentModel payment) async {
     if (payment.amount <= 0) {
       throw Exception('Payment amount must be greater than zero.');
@@ -96,6 +100,63 @@ class PaymentService {
     });
   }
 
+  Future<void> updatePayment(PaymentModel payment) async {
+    if (payment.id == null) throw Exception('Payment ID is required for update.');
+    if (payment.amount <= 0) throw Exception('Payment amount must be greater than zero.');
+
+    final roundedAmount = CurrencyUtils.round(payment.amount);
+    final finalPayment = payment.copyWith(amount: roundedAmount);
+
+    final supplier = await _supplierRepo.getSupplierById(finalPayment.supplierId);
+    if (supplier == null) throw Exception('Supplier not found: ${finalPayment.supplierId}');
+
+    final payableAccountId = supplier.accountId ??
+        (await _accountRepo.getAccountByCode(AccountingConstants.codeAccountsPayable))?.id ??
+        5;
+
+    await _dbHelper.transaction((txn) async {
+      await _paymentRepo.updatePayment(finalPayment, txn: txn);
+
+      final lines = [
+        JournalLineModel(
+          accountId: payableAccountId,
+          debit: roundedAmount,
+          credit: 0.0,
+          description: 'Payment to ${supplier.name} via ${finalPayment.paymentMethod}',
+        ),
+        JournalLineModel(
+          accountId: finalPayment.accountId,
+          debit: 0.0,
+          credit: roundedAmount,
+          description: 'Payment disbursement #${finalPayment.paymentNumber} to ${supplier.name}',
+        ),
+      ];
+
+      // Remove existing journal entries & post updated
+      final entries = await txn.query(
+        DatabaseTables.tableJournalEntries,
+        columns: ['id'],
+        where: '(reference_id = ? AND transaction_type = ?) OR transaction_number = ?',
+        whereArgs: [payment.id!, AccountingConstants.transTypePayment, 'JV-PAY-${payment.id!}'],
+      );
+      for (final e in entries) {
+        final eId = e['id'] as int;
+        await txn.delete(DatabaseTables.tableJournalLines, where: 'journal_entry_id = ?', whereArgs: [eId]);
+        await txn.delete(DatabaseTables.tableJournalEntries, where: 'id = ?', whereArgs: [eId]);
+      }
+
+      await _accountingService.createJournalEntry(
+        date: finalPayment.paymentDate,
+        type: AccountingConstants.transTypePayment,
+        description: 'Supplier Payment #${finalPayment.paymentNumber} - ${supplier.name}',
+        referenceId: payment.id!,
+        transactionNumber: 'JV-PAY-${payment.id!}',
+        lines: lines,
+        txn: txn,
+      );
+    });
+  }
+
   Future<void> deletePayment(int paymentId) async {
     await _dbHelper.transaction((txn) async {
       final entries = await txn.query(
@@ -114,3 +175,4 @@ class PaymentService {
     });
   }
 }
+

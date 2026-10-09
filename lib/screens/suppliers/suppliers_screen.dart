@@ -336,17 +336,27 @@ class SuppliersScreen extends GetView<SupplierController> {
                 final opVal =
                     double.tryParse(openingCtrl.text.replaceAll(',', '')) ??
                     0.0;
-                final sup = SupplierModel(
-                  id: supplier?.id,
-                  supplierCode: codeCtrl.text.trim(),
-                  name: nameCtrl.text.trim(),
-                  phone: phoneCtrl.text.trim(),
-                  email: emailCtrl.text.trim(),
-                  address: addressCtrl.text.trim(),
-                  taxNumber: cleanTax,
-                  openingBalance: opVal,
-                  openingBalanceType: selectedObType.value,
-                );
+                final sup = supplier != null
+                    ? supplier.copyWith(
+                        supplierCode: codeCtrl.text.trim(),
+                        name: nameCtrl.text.trim(),
+                        phone: phoneCtrl.text.trim(),
+                        email: emailCtrl.text.trim(),
+                        address: addressCtrl.text.trim(),
+                        taxNumber: cleanTax,
+                        openingBalance: opVal,
+                        openingBalanceType: selectedObType.value,
+                      )
+                    : SupplierModel(
+                        supplierCode: codeCtrl.text.trim(),
+                        name: nameCtrl.text.trim(),
+                        phone: phoneCtrl.text.trim(),
+                        email: emailCtrl.text.trim(),
+                        address: addressCtrl.text.trim(),
+                        taxNumber: cleanTax,
+                        openingBalance: opVal,
+                        openingBalanceType: selectedObType.value,
+                      );
 
                 final ok = await controller.saveSupplier(sup);
                 if (ok) {
