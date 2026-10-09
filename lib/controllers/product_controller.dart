@@ -101,7 +101,7 @@ class ProductController extends GetxController {
         await _productRepo.insertProduct(product);
         await loadProducts();
         if (Get.context != null) {
-          Get.snackbar('Success', 'Product created successfully', snackPosition: SnackPosition.BOTTOM);
+          Get.snackbar('Success', 'Product added successfully', snackPosition: SnackPosition.BOTTOM);
         }
       } else {
         await _productRepo.updateProduct(product);
@@ -146,7 +146,9 @@ class ProductController extends GetxController {
       }
       await _productRepo.deleteProduct(product.id!);
       await loadProducts();
-      Get.snackbar('Success', 'Product "${product.name}" deleted successfully', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Success', 'Product deleted successfully', snackPosition: SnackPosition.BOTTOM);
+      }
       return true;
     } catch (e) {
       Get.snackbar('Error', 'Unable to delete product: $e', snackPosition: SnackPosition.BOTTOM);
@@ -159,7 +161,9 @@ class ProductController extends GetxController {
       await _productRepo.deleteCategory(id);
       await loadMetadata();
       await loadProducts();
-      Get.snackbar('Success', 'Category deleted successfully', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Success', 'Category deleted successfully', snackPosition: SnackPosition.BOTTOM);
+      }
       return true;
     } catch (e) {
       Get.snackbar('Error', 'Unable to delete category: $e', snackPosition: SnackPosition.BOTTOM);
@@ -184,8 +188,14 @@ class ProductController extends GetxController {
     try {
       if (category.id == null) {
         await _productRepo.insertCategory(category);
+        if (Get.context != null) {
+          Get.snackbar('Success', 'Category added successfully', snackPosition: SnackPosition.BOTTOM);
+        }
       } else {
         await _productRepo.updateCategory(category);
+        if (Get.context != null) {
+          Get.snackbar('Success', 'Category updated successfully', snackPosition: SnackPosition.BOTTOM);
+        }
       }
       await loadMetadata();
       return true;

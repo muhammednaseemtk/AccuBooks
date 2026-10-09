@@ -173,7 +173,7 @@ class PaymentController extends GetxController {
         await _paymentService.createPayment(payment);
         await loadPayments();
         if (Get.context != null) {
-          Get.snackbar('Success', 'Payment created successfully',
+          Get.snackbar('Success', 'Payment added successfully',
               snackPosition: SnackPosition.BOTTOM);
         }
         return true;
@@ -193,7 +193,7 @@ class PaymentController extends GetxController {
       await _paymentService.deletePayment(payment.id!);
       await loadPayments();
       if (Get.context != null) {
-        Get.snackbar('Success', 'Payment #${payment.paymentNumber} deleted successfully', snackPosition: SnackPosition.BOTTOM);
+        Get.snackbar('Success', 'Payment deleted successfully', snackPosition: SnackPosition.BOTTOM);
       }
       return true;
     } catch (e) {

@@ -245,7 +245,7 @@ class JournalController extends GetxController {
 
         await loadJournalEntries();
         if (Get.context != null) {
-          Get.snackbar('Success', 'Journal created successfully', snackPosition: SnackPosition.BOTTOM);
+          Get.snackbar('Success', 'Journal added successfully', snackPosition: SnackPosition.BOTTOM);
         }
         return true;
       }
@@ -271,7 +271,9 @@ class JournalController extends GetxController {
       }
       await _journalRepo.deleteJournalEntry(entry.id!);
       await loadJournalEntries();
-      Get.snackbar('Success', 'Journal entry #${entry.transactionNumber} deleted successfully', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Success', 'Journal deleted successfully', snackPosition: SnackPosition.BOTTOM);
+      }
       return true;
     } catch (e) {
       Get.snackbar('Error', 'Failed to delete journal entry: $e', snackPosition: SnackPosition.BOTTOM);

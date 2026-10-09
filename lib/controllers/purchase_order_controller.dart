@@ -340,7 +340,7 @@ class PurchaseOrderController extends GetxController {
         if (Get.context != null) {
           Get.snackbar(
             'Success',
-            'Purchase Order created successfully',
+            'Purchase Order added successfully',
             snackPosition: SnackPosition.BOTTOM,
           );
         }
@@ -541,7 +541,7 @@ class PurchaseOrderController extends GetxController {
         if (Get.context != null) {
           Get.snackbar(
             'Success',
-            'Purchase Return created successfully',
+            'Purchase Return added successfully',
             snackPosition: SnackPosition.BOTTOM,
           );
         }

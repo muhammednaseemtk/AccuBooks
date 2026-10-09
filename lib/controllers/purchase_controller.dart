@@ -251,7 +251,7 @@ class PurchaseController extends GetxController {
         resetForm();
 
         if (Get.context != null) {
-          Get.snackbar('Success', 'Purchase bill updated successfully',
+          Get.snackbar('Success', 'Purchase Invoice updated successfully',
               snackPosition: SnackPosition.BOTTOM);
         }
         return true;
@@ -269,7 +269,7 @@ class PurchaseController extends GetxController {
         resetForm();
 
         if (Get.context != null) {
-          Get.snackbar('Success', 'Purchase invoice created successfully',
+          Get.snackbar('Success', 'Purchase Invoice added successfully',
               snackPosition: SnackPosition.BOTTOM);
         }
         return true;
@@ -293,7 +293,7 @@ class PurchaseController extends GetxController {
         selectedPurchase.value = await _purchaseService.getPurchaseById(invoiceId);
       }
       if (Get.context != null) {
-        Get.snackbar('Success', 'Purchase cancelled and stock updated', snackPosition: SnackPosition.BOTTOM);
+        Get.snackbar('Success', 'Invoice cancelled successfully', snackPosition: SnackPosition.BOTTOM);
       }
     } catch (e) {
       if (Get.context != null) {
@@ -310,7 +310,7 @@ class PurchaseController extends GetxController {
         selectedPurchase.value = null;
       }
       if (Get.context != null) {
-        Get.snackbar('Success', 'Purchase invoice #${invoice.invoiceNumber} deleted successfully', snackPosition: SnackPosition.BOTTOM);
+        Get.snackbar('Success', 'Purchase Invoice deleted successfully', snackPosition: SnackPosition.BOTTOM);
       }
       return true;
     } catch (e) {
