@@ -73,7 +73,7 @@ class ForgotPasswordScreen extends StatelessWidget {
                     // Email Field
                     AppTextField(
                       label: 'Enter your email:',
-                      hint: 'name@company.com',
+                      hint: 'Email',
                       controller: controller.forgotEmailController,
                       keyboardType: TextInputType.emailAddress,
                       prefixIcon: const Icon(Icons.email_outlined, size: 20),

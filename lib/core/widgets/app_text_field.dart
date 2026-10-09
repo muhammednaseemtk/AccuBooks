@@ -103,7 +103,7 @@ class AppTextField extends StatelessWidget {
             color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
           ),
           decoration: InputDecoration(
-            hintText: hint,
+            hintText: hint ?? label?.replaceAll('*', '').trim(),
             prefixIcon: prefixIcon,
             suffixIcon: suffixIcon,
             contentPadding: EdgeInsets.symmetric(

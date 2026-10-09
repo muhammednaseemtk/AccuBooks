@@ -90,7 +90,7 @@ class _AppDatePickerFieldState extends State<AppDatePickerField> {
   Widget build(BuildContext context) {
     return AppTextField(
       label: widget.label,
-      hint: widget.hint ?? 'DD-MM-YYYY',
+      hint: widget.hint ?? 'Select date',
       controller: _controller,
       readOnly: true,
       enabled: widget.enabled,

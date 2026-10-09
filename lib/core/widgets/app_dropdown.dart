@@ -54,7 +54,10 @@ class AppDropdown<T> extends StatelessWidget {
           ),
           dropdownColor: isDark ? AppColors.surfaceVariantDark : AppColors.surfaceLight,
           decoration: InputDecoration(
-            hintText: hint,
+            hintText: hint ??
+                (label != null
+                    ? 'Select ${label!.replaceAll('*', '').trim()}'
+                    : null),
             prefixIcon: prefixIcon,
             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           ),

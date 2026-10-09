@@ -129,7 +129,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     // Password Field
                     Obx(() => AppTextField(
                           label: 'Password',
-                          hint: '••••••••',
+                          hint: 'Password',
                           controller: controller.loginPasswordController,
                           focusNode: _passwordFocusNode,
                           textInputAction: TextInputAction.done,

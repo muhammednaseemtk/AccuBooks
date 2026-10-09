@@ -44,7 +44,7 @@ class AccountsScreen extends GetView<AccountController> {
                 spacing: 12,
                 children: [
                   AppTextField(
-                    hint: 'Search by account name or code...',
+                    hint: 'Search...',
                     prefixIcon: const Icon(Icons.search, size: 20),
                     onChanged: controller.setSearch,
                   ),
@@ -210,7 +210,7 @@ class AccountsScreen extends GetView<AccountController> {
                 children: [
                   AppTextField(
                     label: 'Account Code',
-                    hint: 'e.g. 1040',
+                    hint: 'Account Code',
                     controller: codeCtrl,
                     readOnly: isEdit && account.isSystemAccount,
                     keyboardType: TextInputType.number,
@@ -234,7 +234,7 @@ class AccountsScreen extends GetView<AccountController> {
               const SizedBox(height: 14),
               AppTextField(
                 label: 'Account Name',
-                hint: 'e.g. Petty Cash / Office Rent',
+                hint: 'Account Name',
                 controller: nameCtrl,
                 validator: (v) => v == null || v.isEmpty ? 'Name required' : null,
               ),
@@ -244,7 +244,7 @@ class AccountsScreen extends GetView<AccountController> {
                   children: [
                     AppTextField(
                       label: 'Opening Balance',
-                      hint: '0.00',
+                      hint: 'Opening Balance',
                       controller: openingCtrl,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       inputFormatters: [AppInputFormatters.decimal()],
