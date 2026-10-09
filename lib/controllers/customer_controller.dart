@@ -65,7 +65,7 @@ class CustomerController extends GetxController {
         await _customerRepo.insertCustomer(customer);
         await loadCustomers();
         if (Get.context != null) {
-          Get.snackbar('Success', 'Customer created successfully', snackPosition: SnackPosition.BOTTOM);
+          Get.snackbar('Success', 'Customer added successfully', snackPosition: SnackPosition.BOTTOM);
         }
       } else {
         await _customerRepo.updateCustomer(customer);
@@ -98,7 +98,9 @@ class CustomerController extends GetxController {
       }
       await _customerRepo.deleteCustomer(customer.id!);
       await loadCustomers();
-      Get.snackbar('Success', 'Customer "${customer.name}" deleted successfully', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Success', 'Customer deleted successfully', snackPosition: SnackPosition.BOTTOM);
+      }
       return true;
     } catch (e) {
       Get.snackbar('Error', 'Unable to delete customer: $e', snackPosition: SnackPosition.BOTTOM);

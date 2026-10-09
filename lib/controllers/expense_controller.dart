@@ -281,7 +281,7 @@ class ExpenseController extends GetxController {
 
         await loadExpenses();
         if (Get.context != null) {
-          Get.snackbar('Success', 'Expense created successfully',
+          Get.snackbar('Success', 'Expense added successfully',
               snackPosition: SnackPosition.BOTTOM);
         }
         return true;
@@ -313,7 +313,9 @@ class ExpenseController extends GetxController {
         await _expenseRepo.deleteExpense(expense.id!, txn: txn);
       });
       await loadExpenses();
-      Get.snackbar('Success', 'Expense #${expense.expenseNumber} deleted successfully', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Success', 'Expense deleted successfully', snackPosition: SnackPosition.BOTTOM);
+      }
       return true;
     } catch (e) {
       Get.snackbar('Error', 'Failed to delete expense: $e', snackPosition: SnackPosition.BOTTOM);

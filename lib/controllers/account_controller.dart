@@ -78,7 +78,7 @@ class AccountController extends GetxController {
         await _accountRepo.insertAccount(account);
         await loadAccounts();
         if (Get.context != null) {
-          Get.snackbar('Success', 'Account created successfully', snackPosition: SnackPosition.BOTTOM);
+          Get.snackbar('Success', 'Account added successfully', snackPosition: SnackPosition.BOTTOM);
         }
       } else {
         await _accountRepo.updateAccount(account);
@@ -119,7 +119,9 @@ class AccountController extends GetxController {
       }
       await _accountRepo.deleteAccount(account.id!);
       await loadAccounts();
-      Get.snackbar('Success', 'Account "${account.accountName}" deleted successfully', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Success', 'Account deleted successfully', snackPosition: SnackPosition.BOTTOM);
+      }
       return true;
     } catch (e) {
       Get.snackbar('Error', 'Unable to delete account: $e', snackPosition: SnackPosition.BOTTOM);
