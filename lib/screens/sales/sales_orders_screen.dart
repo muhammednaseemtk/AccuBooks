@@ -115,7 +115,7 @@ class SalesOrdersScreen extends GetView<SalesOrderController> {
                 spacing: 12,
                 children: [
                   AppTextField(
-                    hint: 'Search by number or customer...',
+                    hint: 'Search...',
                     prefixIcon: const Icon(Icons.search, size: 20),
                     onChanged: controller.setSearch,
                   ),
@@ -270,8 +270,9 @@ class SalesOrdersScreen extends GetView<SalesOrderController> {
               tooltip: 'Edit Order',
               onPressed: () async {
                 await controller.prepareEditOrderForm(order);
-                if (context.mounted)
+                if (context.mounted) {
                   _showCreateOrderDialog(context, isEditing: true);
+                }
               },
             ),
             IconButton(
@@ -357,8 +358,9 @@ class SalesOrdersScreen extends GetView<SalesOrderController> {
               tooltip: 'Edit Return',
               onPressed: () async {
                 await controller.prepareEditReturnForm(ret);
-                if (context.mounted)
+                if (context.mounted) {
                   _showCreateReturnDialog(context, isEditing: true);
+                }
               },
             ),
             IconButton(
@@ -440,6 +442,7 @@ class SalesOrdersScreen extends GetView<SalesOrderController> {
                       Obx(
                         () => AppTextField(
                           label: 'Order Number',
+                          hint: 'Order Number',
                           initialValue: controller.formOrderNumber.value,
                           readOnly: true,
                         ),
@@ -477,7 +480,7 @@ class SalesOrdersScreen extends GetView<SalesOrderController> {
                       Obx(
                         () => AppDatePickerField(
                           label: 'Expected Delivery Date',
-                          hint: 'Select date (Optional)',
+                          hint: 'Select date',
                           value: controller.formExpectedDeliveryDate.value,
                           initialPickerDate: DateTime.now().add(
                             const Duration(days: 7),
@@ -639,8 +642,8 @@ class SalesOrdersScreen extends GetView<SalesOrderController> {
                   Obx(
                     () => AppTextField(
                       label: 'Notes / Memo',
+                      hint: 'Enter notes',
                       initialValue: controller.formOrderNotes.value,
-                      hint: 'Delivery instructions, terms...',
                       onChanged: (v) => controller.formOrderNotes.value = v,
                     ),
                   ),
@@ -722,6 +725,7 @@ class SalesOrdersScreen extends GetView<SalesOrderController> {
                     children: [
                       AppTextField(
                         label: 'Quantity *',
+                        hint: 'Quantity',
                         controller: qtyCtrl,
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
@@ -733,6 +737,7 @@ class SalesOrdersScreen extends GetView<SalesOrderController> {
                       ),
                       AppTextField(
                         label: 'Selling Price *',
+                        hint: 'Selling Price',
                         controller: rateCtrl,
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
@@ -747,6 +752,7 @@ class SalesOrdersScreen extends GetView<SalesOrderController> {
                   const SizedBox(height: 12),
                   AppTextField(
                     label: 'Discount (₹)',
+                    hint: 'Discount',
                     controller: discountCtrl,
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
@@ -820,6 +826,7 @@ class SalesOrdersScreen extends GetView<SalesOrderController> {
                       Obx(
                         () => AppTextField(
                           label: 'Return Number',
+                          hint: 'Return Number',
                           initialValue: controller.formReturnNumber.value,
                           readOnly: true,
                         ),
@@ -1008,9 +1015,8 @@ class SalesOrdersScreen extends GetView<SalesOrderController> {
                   Obx(
                     () => AppTextField(
                       label: 'Reason for Return / Notes',
+                      hint: 'Enter notes',
                       initialValue: controller.formReturnReason.value,
-                      hint:
-                          'Damaged goods, wrong item delivered, customer cancellation...',
                       onChanged: (v) => controller.formReturnReason.value = v,
                     ),
                   ),
@@ -1106,6 +1112,7 @@ class SalesOrdersScreen extends GetView<SalesOrderController> {
                     children: [
                       AppTextField(
                         label: 'Returned Quantity *',
+                        hint: 'Quantity',
                         controller: qtyCtrl,
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
@@ -1119,6 +1126,7 @@ class SalesOrdersScreen extends GetView<SalesOrderController> {
                       ),
                       AppTextField(
                         label: 'Selling Price *',
+                        hint: 'Selling Price',
                         controller: rateCtrl,
                         keyboardType: const TextInputType.numberWithOptions(
                           decimal: true,
@@ -1133,6 +1141,7 @@ class SalesOrdersScreen extends GetView<SalesOrderController> {
                   const SizedBox(height: 12),
                   AppTextField(
                     label: 'Discount (₹)',
+                    hint: 'Discount',
                     controller: discountCtrl,
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,
@@ -1266,8 +1275,9 @@ class SalesOrdersScreen extends GetView<SalesOrderController> {
             onPressed: () async {
               Get.back();
               await controller.prepareEditOrderForm(order);
-              if (context.mounted)
+              if (context.mounted) {
                 _showCreateOrderDialog(context, isEditing: true);
+              }
             },
           ),
           AppButton(label: 'Close', onPressed: () => Get.back()),
@@ -1404,8 +1414,9 @@ class SalesOrdersScreen extends GetView<SalesOrderController> {
             onPressed: () async {
               Get.back();
               await controller.prepareEditReturnForm(ret);
-              if (context.mounted)
+              if (context.mounted) {
                 _showCreateReturnDialog(context, isEditing: true);
+              }
             },
           ),
           AppButton(label: 'Close', onPressed: () => Get.back()),

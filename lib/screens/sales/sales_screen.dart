@@ -87,7 +87,7 @@ class SalesScreen extends GetView<SalesController> {
                 spacing: 12,
                 children: [
                   AppTextField(
-                    hint: 'Search by invoice # or customer...',
+                    hint: 'Search...',
                     prefixIcon: const Icon(Icons.search, size: 20),
                     onChanged: controller.setSearch,
                   ),
@@ -390,6 +390,7 @@ class SalesScreen extends GetView<SalesController> {
             const SizedBox(height: 16),
             AppTextField(
               label: 'Cancellation Reason',
+              hint: 'Reason',
               controller: reasonCtrl,
             ),
           ],

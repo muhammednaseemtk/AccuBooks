@@ -34,8 +34,6 @@ import 'package:accubooks/repositories/sales_order_repository.dart';
 import 'package:accubooks/repositories/purchase_order_repository.dart';
 import 'package:accubooks/repositories/sales_repository.dart';
 import 'package:accubooks/repositories/purchase_repository.dart';
-import 'package:accubooks/repositories/receipt_repository.dart';
-import 'package:accubooks/repositories/payment_repository.dart';
 import 'package:accubooks/repositories/expense_repository.dart';
 import 'package:accubooks/repositories/journal_repository.dart';
 import 'package:accubooks/services/sales_service.dart';
@@ -71,9 +69,7 @@ void main() {
     final purchaseService = PurchaseService();
     final purchaseOrderRepo = PurchaseOrderRepository();
     final purchaseOrderService = PurchaseOrderService();
-    final receiptRepo = ReceiptRepository();
     final receiptService = ReceiptService();
-    final paymentRepo = PaymentRepository();
     final paymentService = PaymentService();
     final expenseRepo = ExpenseRepository();
     final journalRepo = JournalRepository();

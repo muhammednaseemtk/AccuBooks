@@ -41,7 +41,7 @@ class SuppliersScreen extends GetView<SupplierController> {
             AppCard(
               padding: const EdgeInsets.all(12),
               child: AppTextField(
-                hint: 'Search suppliers by code, name, or phone...',
+                hint: 'Search...',
                 prefixIcon: const Icon(Icons.search, size: 20),
                 onChanged: controller.setSearch,
               ),
@@ -214,13 +214,14 @@ class SuppliersScreen extends GetView<SupplierController> {
                 children: [
                   AppTextField(
                     label: 'Supplier Code',
+                    hint: 'Supplier Code',
                     controller: codeCtrl,
                     validator: (v) =>
                         v == null || v.isEmpty ? 'Code required' : null,
                   ),
                   AppTextField(
                     label: 'Supplier Name *',
-                    hint: 'Vendor or Company Name',
+                    hint: 'Supplier Name',
                     controller: nameCtrl,
                     validator: (v) =>
                         v == null || v.isEmpty ? 'Name required' : null,
@@ -234,14 +235,14 @@ class SuppliersScreen extends GetView<SupplierController> {
                 children: [
                   AppTextField(
                     label: 'Phone Number',
-                    hint: '+91 98765 00000',
+                    hint: 'Phone Number',
                     controller: phoneCtrl,
                     keyboardType: TextInputType.phone,
                     inputFormatters: [AppInputFormatters.digitsOnly],
                   ),
                   AppTextField(
                     label: 'Email',
-                    hint: 'vendor@domain.com',
+                    hint: 'Email',
                     controller: emailCtrl,
                   ),
                 ],
@@ -249,7 +250,7 @@ class SuppliersScreen extends GetView<SupplierController> {
               const SizedBox(height: 12),
               AppTextField(
                 label: 'Address',
-                hint: 'Warehouse, Street address, City',
+                hint: 'Address',
                 controller: addressCtrl,
                 maxLines: 2,
               ),
@@ -260,7 +261,7 @@ class SuppliersScreen extends GetView<SupplierController> {
                 children: [
                   AppTextField(
                     label: 'GSTIN / Tax ID',
-                    hint: 'e.g. 29ABCDE1234F1Z5',
+                    hint: 'Tax ID',
                     controller: taxNumCtrl,
                     keyboardType: TextInputType.number,
                     inputFormatters: [AppInputFormatters.digitsOnly],
@@ -276,7 +277,7 @@ class SuppliersScreen extends GetView<SupplierController> {
                   if (!isEdit)
                     AppTextField(
                       label: 'Opening Balance',
-                      hint: '0.00',
+                      hint: 'Opening Balance',
                       controller: openingCtrl,
                       keyboardType: const TextInputType.numberWithOptions(
                         decimal: true,
