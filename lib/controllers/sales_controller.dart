@@ -261,7 +261,7 @@ class SalesController extends GetxController {
         if (Get.context != null) {
           Get.snackbar(
             'Success',
-            'Sales invoice updated successfully',
+            'Sales Invoice updated successfully',
             snackPosition: SnackPosition.BOTTOM,
           );
         }
@@ -282,7 +282,7 @@ class SalesController extends GetxController {
         if (Get.context != null) {
           Get.snackbar(
             'Success',
-            'Sales invoice created successfully',
+            'Sales Invoice added successfully',
             snackPosition: SnackPosition.BOTTOM,
           );
         }
@@ -307,7 +307,7 @@ class SalesController extends GetxController {
         selectedInvoice.value = await _salesService.getInvoiceById(invoiceId);
       }
       if (Get.context != null) {
-        Get.snackbar('Success', 'Invoice cancelled and inventory restored', snackPosition: SnackPosition.BOTTOM);
+        Get.snackbar('Success', 'Invoice cancelled successfully', snackPosition: SnackPosition.BOTTOM);
       }
     } catch (e) {
       if (Get.context != null) {
@@ -324,7 +324,7 @@ class SalesController extends GetxController {
         selectedInvoice.value = null;
       }
       if (Get.context != null) {
-        Get.snackbar('Success', 'Invoice #${invoice.invoiceNumber} deleted successfully', snackPosition: SnackPosition.BOTTOM);
+        Get.snackbar('Success', 'Sales Invoice deleted successfully', snackPosition: SnackPosition.BOTTOM);
       }
       return true;
     } catch (e) {

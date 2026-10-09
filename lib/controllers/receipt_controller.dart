@@ -174,7 +174,7 @@ class ReceiptController extends GetxController {
         await _receiptService.createReceipt(receipt);
         await loadReceipts();
         if (Get.context != null) {
-          Get.snackbar('Success', 'Receipt created successfully',
+          Get.snackbar('Success', 'Receipt added successfully',
               snackPosition: SnackPosition.BOTTOM);
         }
         return true;
@@ -194,7 +194,7 @@ class ReceiptController extends GetxController {
       await _receiptService.deleteReceipt(receipt.id!);
       await loadReceipts();
       if (Get.context != null) {
-        Get.snackbar('Success', 'Receipt #${receipt.receiptNumber} deleted successfully', snackPosition: SnackPosition.BOTTOM);
+        Get.snackbar('Success', 'Receipt deleted successfully', snackPosition: SnackPosition.BOTTOM);
       }
       return true;
     } catch (e) {

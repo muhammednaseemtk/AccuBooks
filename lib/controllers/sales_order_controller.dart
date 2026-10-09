@@ -339,7 +339,7 @@ class SalesOrderController extends GetxController {
         if (Get.context != null) {
           Get.snackbar(
             'Success',
-            'Sales Order created successfully',
+            'Sales Order added successfully',
             snackPosition: SnackPosition.BOTTOM,
           );
         }
@@ -541,7 +541,7 @@ class SalesOrderController extends GetxController {
         if (Get.context != null) {
           Get.snackbar(
             'Success',
-            'Sales Return created successfully',
+            'Sales Return added successfully',
             snackPosition: SnackPosition.BOTTOM,
           );
         }

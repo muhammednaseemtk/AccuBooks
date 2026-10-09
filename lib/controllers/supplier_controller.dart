@@ -65,7 +65,7 @@ class SupplierController extends GetxController {
         await _supplierRepo.insertSupplier(supplier);
         await loadSuppliers();
         if (Get.context != null) {
-          Get.snackbar('Success', 'Supplier created successfully', snackPosition: SnackPosition.BOTTOM);
+          Get.snackbar('Success', 'Supplier added successfully', snackPosition: SnackPosition.BOTTOM);
         }
       } else {
         await _supplierRepo.updateSupplier(supplier);
@@ -98,7 +98,9 @@ class SupplierController extends GetxController {
       }
       await _supplierRepo.deleteSupplier(supplier.id!);
       await loadSuppliers();
-      Get.snackbar('Success', 'Supplier "${supplier.name}" deleted successfully', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Success', 'Supplier deleted successfully', snackPosition: SnackPosition.BOTTOM);
+      }
       return true;
     } catch (e) {
       Get.snackbar('Error', 'Unable to delete supplier: $e', snackPosition: SnackPosition.BOTTOM);
