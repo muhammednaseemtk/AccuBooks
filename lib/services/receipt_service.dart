@@ -44,6 +44,10 @@ class ReceiptService {
     );
   }
 
+  Future<ReceiptModel?> getReceiptById(int id) async {
+    return await _receiptRepo.getReceiptById(id);
+  }
+
   Future<int> createReceipt(ReceiptModel receipt) async {
     if (receipt.amount <= 0) {
       throw Exception('Receipt amount must be greater than zero.');
@@ -96,6 +100,63 @@ class ReceiptService {
     });
   }
 
+  Future<void> updateReceipt(ReceiptModel receipt) async {
+    if (receipt.id == null) throw Exception('Receipt ID is required for update.');
+    if (receipt.amount <= 0) throw Exception('Receipt amount must be greater than zero.');
+
+    final roundedAmount = CurrencyUtils.round(receipt.amount);
+    final finalReceipt = receipt.copyWith(amount: roundedAmount);
+
+    final customer = await _customerRepo.getCustomerById(finalReceipt.customerId);
+    if (customer == null) throw Exception('Customer not found: ${finalReceipt.customerId}');
+
+    final receivableAccountId = customer.accountId ??
+        (await _accountRepo.getAccountByCode(AccountingConstants.codeAccountsReceivable))?.id ??
+        3;
+
+    await _dbHelper.transaction((txn) async {
+      await _receiptRepo.updateReceipt(finalReceipt, txn: txn);
+
+      final lines = [
+        JournalLineModel(
+          accountId: finalReceipt.accountId,
+          debit: roundedAmount,
+          credit: 0.0,
+          description: 'Receipt #${finalReceipt.receiptNumber} from ${customer.name}',
+        ),
+        JournalLineModel(
+          accountId: receivableAccountId,
+          debit: 0.0,
+          credit: roundedAmount,
+          description: 'Payment from ${customer.name} via ${finalReceipt.paymentMethod}',
+        ),
+      ];
+
+      // Remove existing journal entries & post updated
+      final entries = await txn.query(
+        DatabaseTables.tableJournalEntries,
+        columns: ['id'],
+        where: '(reference_id = ? AND transaction_type = ?) OR transaction_number = ?',
+        whereArgs: [receipt.id!, AccountingConstants.transTypeReceipt, 'JV-REC-${receipt.id!}'],
+      );
+      for (final e in entries) {
+        final eId = e['id'] as int;
+        await txn.delete(DatabaseTables.tableJournalLines, where: 'journal_entry_id = ?', whereArgs: [eId]);
+        await txn.delete(DatabaseTables.tableJournalEntries, where: 'id = ?', whereArgs: [eId]);
+      }
+
+      await _accountingService.createJournalEntry(
+        date: finalReceipt.receiptDate,
+        type: AccountingConstants.transTypeReceipt,
+        description: 'Customer Receipt #${finalReceipt.receiptNumber} - ${customer.name}',
+        referenceId: receipt.id!,
+        transactionNumber: 'JV-REC-${receipt.id!}',
+        lines: lines,
+        txn: txn,
+      );
+    });
+  }
+
   Future<void> deleteReceipt(int receiptId) async {
     await _dbHelper.transaction((txn) async {
       final entries = await txn.query(
@@ -114,3 +175,4 @@ class ReceiptService {
     });
   }
 }
+

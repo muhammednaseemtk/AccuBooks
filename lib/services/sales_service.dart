@@ -426,4 +426,242 @@ class SalesService {
       await txn.delete(DatabaseTables.tableSalesInvoices, where: 'id = ?', whereArgs: [invoiceId]);
     });
   }
+
+  /// Update existing sales invoice: atomically reverses previous stock/journals and applies new invoice values
+  Future<int> updateSalesInvoice({
+    required SalesInvoiceModel invoice,
+    required List<SalesInvoiceItemModel> items,
+    int? paymentAccountId,
+  }) async {
+    if (invoice.id == null) {
+      throw Exception('Invoice ID is required for update.');
+    }
+    final oldInvoice = await _salesRepo.getSalesInvoiceById(invoice.id!);
+    if (oldInvoice == null) {
+      throw Exception('Invoice not found with ID: ${invoice.id}');
+    }
+    if (oldInvoice.isCancelled) {
+      throw Exception('Cancelled invoices cannot be modified.');
+    }
+    if (items.isEmpty) {
+      throw Exception('Sales Invoice must contain at least one item.');
+    }
+
+    double subtotal = 0.0;
+    double taxAmount = 0.0;
+    final totalDiscount = CurrencyUtils.round(invoice.discount);
+
+    final processedItems = <SalesInvoiceItemModel>[];
+    for (final item in items) {
+      if (item.quantity <= 0) {
+        throw Exception('Quantity must be greater than zero for all items.');
+      }
+      if (item.rate < 0) {
+        throw Exception('Rate cannot be negative.');
+      }
+
+      final itemTax = SalesInvoiceItemModel.calculateTax(item.quantity, item.rate, item.discount, item.taxRate);
+      final itemTotal = SalesInvoiceItemModel.calculateTotal(item.quantity, item.rate, item.discount, item.taxRate);
+      subtotal += (item.quantity * item.rate) - item.discount;
+      taxAmount += itemTax;
+
+      processedItems.add(item.copyWith(
+        taxAmount: itemTax,
+        total: itemTotal,
+      ));
+    }
+
+    subtotal = CurrencyUtils.round(subtotal);
+    taxAmount = CurrencyUtils.round(taxAmount);
+    final grandTotal = CurrencyUtils.round((subtotal - totalDiscount) + taxAmount);
+    final paidAmount = CurrencyUtils.round(invoice.paidAmount);
+    final balanceAmount = CurrencyUtils.round(grandTotal - paidAmount);
+
+    String paymentStatus;
+    if (paidAmount <= 0) {
+      paymentStatus = AccountingConstants.paymentUnpaid;
+    } else if (balanceAmount <= 0) {
+      paymentStatus = AccountingConstants.paymentPaid;
+    } else {
+      paymentStatus = AccountingConstants.paymentPartiallyPaid;
+    }
+
+    final customer = await _customerRepo.getCustomerById(invoice.customerId);
+    if (customer == null) throw Exception('Customer not found: ${invoice.customerId}');
+
+    final finalInvoice = invoice.copyWith(
+      subtotal: subtotal,
+      discount: totalDiscount,
+      taxAmount: taxAmount,
+      grandTotal: grandTotal,
+      paidAmount: paidAmount,
+      balanceAmount: balanceAmount,
+      paymentStatus: paymentStatus,
+      updatedAt: DateTime.now(),
+    );
+
+    int receivableAccountId = customer.accountId ??
+        (await _accountRepo.getAccountByCode(AccountingConstants.codeAccountsReceivable))?.id ??
+        3;
+    final salesAccountId = (await _accountRepo.getAccountByCode(AccountingConstants.codeSales))?.id ?? 10;
+    final gstAccountId = (await _accountRepo.getAccountByCode(AccountingConstants.codeGstPayable))?.id ?? 6;
+    final discountAccountId = (await _accountRepo.getAccountByCode(AccountingConstants.codeDiscountAllowed))?.id ?? 16;
+
+    int effectivePaymentAccountId = 1;
+    if (paidAmount > 0) {
+      if (paymentAccountId != null) {
+        effectivePaymentAccountId = paymentAccountId;
+      } else {
+        final cashAcc = await _accountRepo.getAccountByCode(AccountingConstants.codeCash);
+        effectivePaymentAccountId = cashAcc?.id ?? 1;
+      }
+    }
+
+    await _dbHelper.transaction((txn) async {
+      // 1. Revert previous stock movements
+      for (final oldItem in oldInvoice.items) {
+        await _productRepo.updateStock(
+          oldItem.productId,
+          oldItem.quantity, // restore stock
+          transactionType: AccountingConstants.stockSalesReturn,
+          referenceId: invoice.id!,
+          rate: oldItem.rate,
+          txn: txn,
+        );
+      }
+
+      // 2. Remove stock transactions directly linked to this sales invoice
+      await txn.delete(
+        DatabaseTables.tableStockTransactions,
+        where: 'reference_id = ? AND transaction_type IN (?, ?)',
+        whereArgs: [invoice.id!, AccountingConstants.stockSale, AccountingConstants.stockSalesReturn],
+      );
+
+      // 3. Apply new stock movements
+      for (final newItem in processedItems) {
+        await _productRepo.updateStock(
+          newItem.productId,
+          -newItem.quantity, // deduct stock
+          transactionType: AccountingConstants.stockSale,
+          referenceId: invoice.id!,
+          rate: newItem.rate,
+          txn: txn,
+        );
+      }
+
+      // 4. Update items table
+      await _salesRepo.deleteSalesInvoiceItems(invoice.id!, txn: txn);
+      await _salesRepo.insertSalesInvoiceItems(invoice.id!, processedItems, txn: txn);
+
+      // 5. Update invoice header
+      await _salesRepo.updateSalesInvoice(finalInvoice, txn: txn);
+
+      // 6. Remove existing journal entries & receipts
+      final entries = await txn.query(
+        DatabaseTables.tableJournalEntries,
+        columns: ['id'],
+        where: '(reference_id = ? AND transaction_type IN (?, ?)) OR transaction_number LIKE ?',
+        whereArgs: [invoice.id!, AccountingConstants.transTypeSales, AccountingConstants.transTypeReceipt, '%-${invoice.id!}%'],
+      );
+      for (final e in entries) {
+        final eId = e['id'] as int;
+        await txn.delete(DatabaseTables.tableJournalLines, where: 'journal_entry_id = ?', whereArgs: [eId]);
+        await txn.delete(DatabaseTables.tableJournalEntries, where: 'id = ?', whereArgs: [eId]);
+      }
+      await txn.delete(
+        DatabaseTables.tableReceipts,
+        where: "reference = ? OR notes LIKE ?",
+        whereArgs: [oldInvoice.invoiceNumber, '%#${oldInvoice.invoiceNumber}%'],
+      );
+
+      // 7. Post updated balanced journal entry
+      final journalLines = <JournalLineModel>[
+        JournalLineModel(
+          accountId: receivableAccountId,
+          debit: grandTotal,
+          credit: 0.0,
+          description: 'Sales Invoice #${finalInvoice.invoiceNumber} - ${customer.name}',
+        ),
+      ];
+
+      if (totalDiscount > 0) {
+        journalLines.add(JournalLineModel(
+          accountId: discountAccountId,
+          debit: totalDiscount,
+          credit: 0.0,
+          description: 'Discount allowed on Invoice #${finalInvoice.invoiceNumber}',
+        ));
+      }
+
+      journalLines.add(JournalLineModel(
+        accountId: salesAccountId,
+        debit: 0.0,
+        credit: subtotal,
+        description: 'Sales Revenue from Invoice #${finalInvoice.invoiceNumber}',
+      ));
+
+      if (taxAmount > 0) {
+        journalLines.add(JournalLineModel(
+          accountId: gstAccountId,
+          debit: 0.0,
+          credit: taxAmount,
+          description: 'GST Output Tax on Invoice #${finalInvoice.invoiceNumber}',
+        ));
+      }
+
+      await _accountingService.createJournalEntry(
+        date: finalInvoice.invoiceDate,
+        type: AccountingConstants.transTypeSales,
+        description: 'Sales Invoice #${finalInvoice.invoiceNumber} to ${customer.name}',
+        referenceId: invoice.id!,
+        transactionNumber: 'JV-SALES-${invoice.id!}',
+        lines: journalLines,
+        txn: txn,
+      );
+
+      // 8. If paidAmount > 0, insert receipt and receipt journal
+      if (paidAmount > 0) {
+        final receiptNumber = 'REC-SALES-${invoice.id!}';
+        await txn.insert(DatabaseTables.tableReceipts, {
+          'receipt_number': receiptNumber,
+          'receipt_date': AppDateUtils.formatDb(finalInvoice.invoiceDate),
+          'customer_id': finalInvoice.customerId,
+          'account_id': effectivePaymentAccountId,
+          'amount': paidAmount,
+          'payment_method': AccountingConstants.methodCash,
+          'reference': finalInvoice.invoiceNumber,
+          'notes': 'Payment on Invoice #${finalInvoice.invoiceNumber}',
+          'created_at': AppDateUtils.formatDb(DateTime.now()),
+        });
+
+        final recLines = [
+          JournalLineModel(
+            accountId: effectivePaymentAccountId,
+            debit: paidAmount,
+            credit: 0.0,
+            description: 'Payment received on Invoice #${finalInvoice.invoiceNumber}',
+          ),
+          JournalLineModel(
+            accountId: receivableAccountId,
+            debit: 0.0,
+            credit: paidAmount,
+            description: 'Customer credit for payment on Invoice #${finalInvoice.invoiceNumber}',
+          ),
+        ];
+
+        await _accountingService.createJournalEntry(
+          date: finalInvoice.invoiceDate,
+          type: AccountingConstants.transTypeReceipt,
+          description: 'Payment on Invoice #${finalInvoice.invoiceNumber}',
+          referenceId: invoice.id!,
+          transactionNumber: 'JV-REC-SALES-${invoice.id!}',
+          lines: recLines,
+          txn: txn,
+        );
+      }
+    });
+
+    return invoice.id!;
+  }
 }
+

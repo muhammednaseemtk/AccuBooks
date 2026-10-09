@@ -334,4 +334,255 @@ class SalesOrderService {
   Future<void> updateOrderStatus(int orderId, String status) async {
     await _orderRepo.updateSalesOrderStatus(orderId, status);
   }
+
+  Future<int> updateSalesOrder({
+    required SalesOrderModel order,
+    required List<SalesOrderItemModel> items,
+  }) async {
+    if (order.id == null) throw Exception('Order ID is required for update.');
+    if (items.isEmpty) throw Exception('Sales Order must contain at least one item.');
+
+    double subtotal = 0.0;
+    double taxAmount = 0.0;
+    final totalDiscount = CurrencyUtils.round(order.discount);
+
+    final processedItems = <SalesOrderItemModel>[];
+    for (final item in items) {
+      if (item.quantity <= 0) throw Exception('Quantity must be greater than zero for all items.');
+      if (item.rate < 0) throw Exception('Rate cannot be negative.');
+
+      final itemTax = SalesOrderItemModel.calculateTax(item.quantity, item.rate, item.discount, item.taxRate);
+      final itemTotal = SalesOrderItemModel.calculateTotal(item.quantity, item.rate, item.discount, item.taxRate);
+      subtotal += (item.quantity * item.rate) - item.discount;
+      taxAmount += itemTax;
+
+      processedItems.add(item.copyWith(
+        orderId: order.id,
+        taxAmount: itemTax,
+        total: itemTotal,
+      ));
+    }
+
+    subtotal = CurrencyUtils.round(subtotal);
+    taxAmount = CurrencyUtils.round(taxAmount);
+    final grandTotal = CurrencyUtils.round((subtotal - totalDiscount) + taxAmount);
+
+    final finalOrder = order.copyWith(
+      subtotal: subtotal,
+      discount: totalDiscount,
+      taxAmount: taxAmount,
+      grandTotal: grandTotal,
+      updatedAt: DateTime.now(),
+    );
+
+    return await _dbHelper.transaction<int>((txn) async {
+      await _orderRepo.updateSalesOrder(finalOrder, txn: txn);
+      await _orderRepo.deleteSalesOrderItems(order.id!, txn: txn);
+      await _orderRepo.insertSalesOrderItems(order.id!, processedItems, txn: txn);
+      return order.id!;
+    });
+  }
+
+  Future<void> deleteSalesOrder(int orderId) async {
+    final order = await _orderRepo.getSalesOrderById(orderId);
+    if (order == null) throw Exception('Sales order not found: $orderId');
+    if (order.status == AccountingConstants.statusCompleted) {
+      throw Exception('Cannot delete sales order that has already been completed or invoiced.');
+    }
+    await _orderRepo.deleteSalesOrder(orderId);
+  }
+
+  Future<int> updateSalesReturn({
+    required SalesReturnModel returnModel,
+    required List<SalesReturnItemModel> items,
+  }) async {
+    if (returnModel.id == null) throw Exception('Return ID is required for update.');
+    final oldReturn = await _orderRepo.getSalesReturnById(returnModel.id!);
+    if (oldReturn == null) throw Exception('Sales return not found: ${returnModel.id}');
+    if (items.isEmpty) throw Exception('Sales Return must contain at least one item.');
+
+    double subtotal = 0.0;
+    double taxAmount = 0.0;
+    final totalDiscount = CurrencyUtils.round(returnModel.discount);
+
+    final processedItems = <SalesReturnItemModel>[];
+    for (final item in items) {
+      if (item.quantity <= 0) throw Exception('Quantity must be greater than zero.');
+      if (item.rate < 0) throw Exception('Rate cannot be negative.');
+
+      final itemTax = SalesReturnItemModel.calculateTax(item.quantity, item.rate, item.discount, item.taxRate);
+      final itemTotal = SalesReturnItemModel.calculateTotal(item.quantity, item.rate, item.discount, item.taxRate);
+      subtotal += (item.quantity * item.rate) - item.discount;
+      taxAmount += itemTax;
+
+      processedItems.add(item.copyWith(
+        returnId: returnModel.id,
+        taxAmount: itemTax,
+        total: itemTotal,
+      ));
+    }
+
+    subtotal = CurrencyUtils.round(subtotal);
+    taxAmount = CurrencyUtils.round(taxAmount);
+    final grandTotal = CurrencyUtils.round((subtotal - totalDiscount) + taxAmount);
+
+    final customer = await _customerRepo.getCustomerById(returnModel.customerId);
+    if (customer == null) throw Exception('Customer not found: ${returnModel.customerId}');
+
+    final finalReturn = returnModel.copyWith(
+      subtotal: subtotal,
+      discount: totalDiscount,
+      taxAmount: taxAmount,
+      grandTotal: grandTotal,
+      updatedAt: DateTime.now(),
+    );
+
+    int receivableAccountId = customer.accountId ??
+        (await _accountRepo.getAccountByCode(AccountingConstants.codeAccountsReceivable))?.id ??
+        3;
+    final salesAccountId = (await _accountRepo.getAccountByCode(AccountingConstants.codeSales))?.id ?? 10;
+    final gstAccountId = (await _accountRepo.getAccountByCode(AccountingConstants.codeGstPayable))?.id ?? 6;
+    final discountAccountId = (await _accountRepo.getAccountByCode(AccountingConstants.codeDiscountAllowed))?.id ?? 16;
+
+    await _dbHelper.transaction((txn) async {
+      // 1. Revert previous stock increase
+      for (final oldItem in oldReturn.items) {
+        await _productRepo.updateStock(
+          oldItem.productId,
+          -oldItem.quantity,
+          transactionType: AccountingConstants.stockSale,
+          referenceId: returnModel.id!,
+          rate: oldItem.rate,
+          txn: txn,
+        );
+      }
+
+      // 2. Remove old return stock transactions
+      await txn.delete(
+        DatabaseTables.tableStockTransactions,
+        where: 'reference_id = ? AND transaction_type = ?',
+        whereArgs: [returnModel.id!, AccountingConstants.stockSalesReturn],
+      );
+
+      // 3. Apply new stock increase
+      for (final newItem in processedItems) {
+        await _productRepo.updateStock(
+          newItem.productId,
+          newItem.quantity,
+          transactionType: AccountingConstants.stockSalesReturn,
+          referenceId: returnModel.id!,
+          rate: newItem.rate,
+          txn: txn,
+        );
+      }
+
+      // 4. Update items table & return header
+      await _orderRepo.deleteSalesReturnItems(returnModel.id!, txn: txn);
+      await _orderRepo.insertSalesReturnItems(returnModel.id!, processedItems, txn: txn);
+      await _orderRepo.updateSalesReturn(finalReturn, txn: txn);
+
+      // 5. Update balanced journal entry
+      final journalLines = <JournalLineModel>[
+        JournalLineModel(
+          accountId: salesAccountId,
+          debit: subtotal,
+          credit: 0.0,
+          description: 'Sales Return #${finalReturn.returnNumber} - Revenue Reversal',
+        ),
+      ];
+
+      if (taxAmount > 0) {
+        journalLines.add(JournalLineModel(
+          accountId: gstAccountId,
+          debit: taxAmount,
+          credit: 0.0,
+          description: 'GST Output Tax Reversal on Return #${finalReturn.returnNumber}',
+        ));
+      }
+
+      journalLines.add(JournalLineModel(
+        accountId: receivableAccountId,
+        debit: 0.0,
+        credit: grandTotal,
+        description: 'Sales Return #${finalReturn.returnNumber} - Customer Credit: ${customer.name}',
+      ));
+
+      if (totalDiscount > 0) {
+        journalLines.add(JournalLineModel(
+          accountId: discountAccountId,
+          debit: 0.0,
+          credit: totalDiscount,
+          description: 'Discount Allowed Reversal on Return #${finalReturn.returnNumber}',
+        ));
+      }
+
+      // Remove old return journal and post new
+      final entries = await txn.query(
+        DatabaseTables.tableJournalEntries,
+        columns: ['id'],
+        where: 'reference_id = ? AND transaction_type = ?',
+        whereArgs: [returnModel.id!, AccountingConstants.transTypeSalesReturn],
+      );
+      for (final e in entries) {
+        final eId = e['id'] as int;
+        await txn.delete(DatabaseTables.tableJournalLines, where: 'journal_entry_id = ?', whereArgs: [eId]);
+        await txn.delete(DatabaseTables.tableJournalEntries, where: 'id = ?', whereArgs: [eId]);
+      }
+
+      await _accountingService.createJournalEntry(
+        date: finalReturn.returnDate,
+        type: AccountingConstants.transTypeSalesReturn,
+        description: 'Sales Return #${finalReturn.returnNumber} from ${customer.name}',
+        referenceId: returnModel.id!,
+        transactionNumber: 'JV-SR-${returnModel.id!}',
+        lines: journalLines,
+        txn: txn,
+      );
+    });
+
+    return returnModel.id!;
+  }
+
+  Future<void> deleteSalesReturn(int returnId) async {
+    final ret = await _orderRepo.getSalesReturnById(returnId);
+    if (ret == null) throw Exception('Sales return not found: $returnId');
+
+    await _dbHelper.transaction((txn) async {
+      // 1. Reverse restored inventory back
+      for (final item in ret.items) {
+        await _productRepo.updateStock(
+          item.productId,
+          -item.quantity,
+          transactionType: AccountingConstants.stockSale,
+          referenceId: returnId,
+          rate: item.rate,
+          txn: txn,
+        );
+      }
+
+      // 2. Remove stock transactions
+      await txn.delete(
+        DatabaseTables.tableStockTransactions,
+        where: 'reference_id = ? AND transaction_type = ?',
+        whereArgs: [returnId, AccountingConstants.stockSalesReturn],
+      );
+
+      // 3. Remove journal entries & lines
+      final entries = await txn.query(
+        DatabaseTables.tableJournalEntries,
+        columns: ['id'],
+        where: 'reference_id = ? AND transaction_type = ?',
+        whereArgs: [returnId, AccountingConstants.transTypeSalesReturn],
+      );
+      for (final e in entries) {
+        final eId = e['id'] as int;
+        await txn.delete(DatabaseTables.tableJournalLines, where: 'journal_entry_id = ?', whereArgs: [eId]);
+        await txn.delete(DatabaseTables.tableJournalEntries, where: 'id = ?', whereArgs: [eId]);
+      }
+
+      // 4. Delete return and items
+      await _orderRepo.deleteSalesReturn(returnId, txn: txn);
+    });
+  }
 }
+
