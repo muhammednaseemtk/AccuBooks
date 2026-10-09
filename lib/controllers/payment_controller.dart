@@ -31,7 +31,9 @@ class PaymentController extends GetxController {
   final searchQuery = ''.obs;
   final selectedSupplierId = 0.obs;
 
-  // New Payment Form
+  // New/Edit Payment Form
+  final editingPaymentId = Rxn<int>();
+  bool get isEditing => editingPaymentId.value != null;
   final formNextPaymentNumber = ''.obs;
   final formPaymentDate = DateTime.now().obs;
   final formSelectedSupplier = Rxn<SupplierModel>();
@@ -97,6 +99,7 @@ class PaymentController extends GetxController {
 
   Future<void> prepareNewPaymentForm({SupplierModel? defaultSupplier}) async {
     await loadMetadata();
+    editingPaymentId.value = null;
     formNextPaymentNumber.value = await _paymentService.getNextPaymentNumber();
     formPaymentDate.value = DateTime.now();
     formSelectedSupplier.value = defaultSupplier;
@@ -107,6 +110,20 @@ class PaymentController extends GetxController {
     formPaymentMethod.value = 'Cash';
     formReference.value = '';
     formNotes.value = '';
+  }
+
+  Future<void> prepareEditPaymentForm(PaymentModel payment) async {
+    await loadMetadata();
+    final full = await _paymentService.getPaymentById(payment.id!) ?? payment;
+    editingPaymentId.value = full.id;
+    formNextPaymentNumber.value = full.paymentNumber;
+    formPaymentDate.value = full.paymentDate;
+    formSelectedSupplier.value = suppliers.firstWhereOrNull((s) => s.id == full.supplierId);
+    formSelectedAccount.value = bankCashAccounts.firstWhereOrNull((a) => a.id == full.accountId);
+    formAmount.value = full.amount;
+    formPaymentMethod.value = full.paymentMethod;
+    formReference.value = full.reference ?? '';
+    formNotes.value = full.notes ?? '';
   }
 
   Future<bool> submitPayment() async {
@@ -132,6 +149,7 @@ class PaymentController extends GetxController {
     try {
       isSubmitting.value = true;
       final payment = PaymentModel(
+        id: editingPaymentId.value,
         paymentNumber: formNextPaymentNumber.value,
         paymentDate: formPaymentDate.value,
         supplierId: formSelectedSupplier.value!.id!,
@@ -142,13 +160,24 @@ class PaymentController extends GetxController {
         notes: formNotes.value,
       );
 
-      await _paymentService.createPayment(payment);
-      await loadPayments();
-      if (Get.context != null) {
-        Get.snackbar('Success', 'Payment created successfully',
-            snackPosition: SnackPosition.BOTTOM);
+      if (editingPaymentId.value != null) {
+        await _paymentService.updatePayment(payment);
+        await loadPayments();
+        editingPaymentId.value = null;
+        if (Get.context != null) {
+          Get.snackbar('Success', 'Payment updated successfully',
+              snackPosition: SnackPosition.BOTTOM);
+        }
+        return true;
+      } else {
+        await _paymentService.createPayment(payment);
+        await loadPayments();
+        if (Get.context != null) {
+          Get.snackbar('Success', 'Payment created successfully',
+              snackPosition: SnackPosition.BOTTOM);
+        }
+        return true;
       }
-      return true;
     } catch (e) {
       if (Get.context != null) {
         Get.snackbar('Error', 'Failed to save payment: $e', snackPosition: SnackPosition.BOTTOM);

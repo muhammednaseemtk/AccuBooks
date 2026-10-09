@@ -48,7 +48,9 @@ class SalesController extends GetxController {
   // Selected for viewing
   final selectedInvoice = Rxn<SalesInvoiceModel>();
 
-  // Form State for creating invoice
+  // Form State for creating/editing invoice
+  final editingInvoiceId = Rxn<int>();
+  bool get isEditing => editingInvoiceId.value != null;
   final formNextInvoiceNumber = ''.obs;
   final formInvoiceDate = DateTime.now().obs;
   final formSelectedCustomer = Rxn<CustomerModel>();
@@ -145,6 +147,7 @@ class SalesController extends GetxController {
 
   Future<void> prepareNewInvoiceForm() async {
     await loadMetadata();
+    editingInvoiceId.value = null;
     formNextInvoiceNumber.value = await _salesService.getNextInvoiceNumber();
     formInvoiceDate.value = DateTime.now();
     formSelectedCustomer.value = null;
@@ -154,7 +157,21 @@ class SalesController extends GetxController {
     formNotes.value = '';
   }
 
+  Future<void> loadInvoiceForEdit(SalesInvoiceModel invoice) async {
+    await loadMetadata();
+    final fullInvoice = await _salesService.getInvoiceById(invoice.id!) ?? invoice;
+    editingInvoiceId.value = fullInvoice.id;
+    formNextInvoiceNumber.value = fullInvoice.invoiceNumber;
+    formInvoiceDate.value = fullInvoice.invoiceDate;
+    formSelectedCustomer.value = customers.firstWhereOrNull((c) => c.id == fullInvoice.customerId);
+    formDiscount.value = fullInvoice.discount;
+    formPaidAmount.value = fullInvoice.paidAmount;
+    formNotes.value = fullInvoice.notes ?? '';
+    formItems.assignAll(fullInvoice.items);
+  }
+
   void resetForm() {
+    editingInvoiceId.value = null;
     formSelectedCustomer.value = null;
     formItems.clear();
     formDiscount.value = 0.0;
@@ -215,6 +232,7 @@ class SalesController extends GetxController {
       }
 
       final invoice = SalesInvoiceModel(
+        id: editingInvoiceId.value,
         invoiceNumber: formNextInvoiceNumber.value,
         invoiceDate: formInvoiceDate.value,
         customerId: formSelectedCustomer.value!.id!,
@@ -227,26 +245,49 @@ class SalesController extends GetxController {
         notes: formNotes.value,
       );
 
-      final id = await _salesService.createSalesInvoice(
-        invoice: invoice,
-        items: List.from(formItems),
-        paymentAccountId: paymentAccountId,
-      );
-
-      await loadInvoices();
-      final created = await _salesService.getInvoiceById(id);
-      selectedInvoice.value = created;
-
-      resetForm();
-
-      if (Get.context != null) {
-        Get.snackbar(
-          'Success',
-          'Sales invoice created successfully',
-          snackPosition: SnackPosition.BOTTOM,
+      if (editingInvoiceId.value != null) {
+        await _salesService.updateSalesInvoice(
+          invoice: invoice,
+          items: List.from(formItems),
+          paymentAccountId: paymentAccountId,
         );
+
+        await loadInvoices();
+        final updated = await _salesService.getInvoiceById(editingInvoiceId.value!);
+        selectedInvoice.value = updated;
+
+        resetForm();
+
+        if (Get.context != null) {
+          Get.snackbar(
+            'Success',
+            'Sales invoice updated successfully',
+            snackPosition: SnackPosition.BOTTOM,
+          );
+        }
+        return true;
+      } else {
+        final id = await _salesService.createSalesInvoice(
+          invoice: invoice,
+          items: List.from(formItems),
+          paymentAccountId: paymentAccountId,
+        );
+
+        await loadInvoices();
+        final created = await _salesService.getInvoiceById(id);
+        selectedInvoice.value = created;
+
+        resetForm();
+
+        if (Get.context != null) {
+          Get.snackbar(
+            'Success',
+            'Sales invoice created successfully',
+            snackPosition: SnackPosition.BOTTOM,
+          );
+        }
+        return true;
       }
-      return true;
     } catch (e, stack) {
       debugPrint('Failed to save invoice: $e\n$stack');
       if (Get.context != null) {

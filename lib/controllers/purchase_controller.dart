@@ -41,6 +41,10 @@ class PurchaseController extends GetxController {
   // Selected for viewing
   final selectedPurchase = Rxn<PurchaseInvoiceModel>();
 
+  // Editing state
+  final editingPurchaseId = Rxn<int>();
+  bool get isEditing => editingPurchaseId.value != null;
+
   // Form State
   final formNextPurchaseNumber = ''.obs;
   final formPurchaseDate = DateTime.now().obs;
@@ -135,6 +139,7 @@ class PurchaseController extends GetxController {
 
   Future<void> prepareNewPurchaseForm() async {
     await loadMetadata();
+    editingPurchaseId.value = null;
     formNextPurchaseNumber.value = await _purchaseService.getNextPurchaseNumber();
     formPurchaseDate.value = DateTime.now();
     formSelectedSupplier.value = null;
@@ -144,7 +149,21 @@ class PurchaseController extends GetxController {
     formNotes.value = '';
   }
 
+  Future<void> loadPurchaseForEdit(PurchaseInvoiceModel invoice) async {
+    await loadMetadata();
+    final full = await _purchaseService.getPurchaseById(invoice.id!) ?? invoice;
+    editingPurchaseId.value = full.id;
+    formNextPurchaseNumber.value = full.invoiceNumber;
+    formPurchaseDate.value = full.invoiceDate;
+    formSelectedSupplier.value = suppliers.firstWhereOrNull((s) => s.id == full.supplierId);
+    formDiscount.value = full.discount;
+    formPaidAmount.value = full.paidAmount;
+    formNotes.value = full.notes ?? '';
+    formItems.assignAll(full.items);
+  }
+
   void resetForm() {
+    editingPurchaseId.value = null;
     formSelectedSupplier.value = null;
     formItems.clear();
     formDiscount.value = 0.0;
@@ -205,6 +224,7 @@ class PurchaseController extends GetxController {
       }
 
       final invoice = PurchaseInvoiceModel(
+        id: editingPurchaseId.value,
         invoiceNumber: formNextPurchaseNumber.value,
         invoiceDate: formPurchaseDate.value,
         supplierId: formSelectedSupplier.value!.id!,
@@ -217,23 +237,43 @@ class PurchaseController extends GetxController {
         notes: formNotes.value,
       );
 
-      final id = await _purchaseService.createPurchaseInvoice(
-        invoice: invoice,
-        items: List.from(formItems),
-        paymentAccountId: paymentAccountId,
-      );
+      if (editingPurchaseId.value != null) {
+        await _purchaseService.updatePurchaseInvoice(
+          invoice: invoice,
+          items: List.from(formItems),
+          paymentAccountId: paymentAccountId,
+        );
 
-      await loadPurchases();
-      final created = await _purchaseService.getPurchaseById(id);
-      selectedPurchase.value = created;
+        await loadPurchases();
+        final updated = await _purchaseService.getPurchaseById(editingPurchaseId.value!);
+        selectedPurchase.value = updated;
 
-      resetForm();
+        resetForm();
 
-      if (Get.context != null) {
-        Get.snackbar('Success', 'Purchase invoice created successfully',
-            snackPosition: SnackPosition.BOTTOM);
+        if (Get.context != null) {
+          Get.snackbar('Success', 'Purchase bill updated successfully',
+              snackPosition: SnackPosition.BOTTOM);
+        }
+        return true;
+      } else {
+        final id = await _purchaseService.createPurchaseInvoice(
+          invoice: invoice,
+          items: List.from(formItems),
+          paymentAccountId: paymentAccountId,
+        );
+
+        await loadPurchases();
+        final created = await _purchaseService.getPurchaseById(id);
+        selectedPurchase.value = created;
+
+        resetForm();
+
+        if (Get.context != null) {
+          Get.snackbar('Success', 'Purchase invoice created successfully',
+              snackPosition: SnackPosition.BOTTOM);
+        }
+        return true;
       }
-      return true;
     } catch (e, stack) {
       debugPrint('[PurchaseController] submitPurchase error: $e\n$stack');
       if (Get.context != null) {

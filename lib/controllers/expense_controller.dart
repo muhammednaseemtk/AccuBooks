@@ -36,7 +36,9 @@ class ExpenseController extends GetxController {
   final searchQuery = ''.obs;
   final selectedAccountId = 0.obs;
 
-  // New Expense Form
+  // New/Edit Expense Form
+  final editingExpenseId = Rxn<int>();
+  bool get isEditing => editingExpenseId.value != null;
   final formNextExpenseNumber = ''.obs;
   final formExpenseDate = DateTime.now().obs;
   final formSelectedExpenseAccount = Rxn<AccountModel>();
@@ -103,6 +105,7 @@ class ExpenseController extends GetxController {
 
   Future<void> prepareNewExpenseForm() async {
     await loadMetadata();
+    editingExpenseId.value = null;
     formNextExpenseNumber.value = await _expenseRepo.getNextExpenseNumber();
     formExpenseDate.value = DateTime.now();
     formSelectedExpenseAccount.value = expenseAccounts.isNotEmpty ? expenseAccounts.first : null;
@@ -112,6 +115,21 @@ class ExpenseController extends GetxController {
     formPaymentMethod.value = 'Cash';
     formDescription.value = '';
     formReference.value = '';
+  }
+
+  Future<void> prepareEditExpenseForm(ExpenseModel expense) async {
+    await loadMetadata();
+    final full = await _expenseRepo.getExpenseById(expense.id!) ?? expense;
+    editingExpenseId.value = full.id;
+    formNextExpenseNumber.value = full.expenseNumber;
+    formExpenseDate.value = full.expenseDate;
+    formSelectedExpenseAccount.value = expenseAccounts.firstWhereOrNull((a) => a.id == full.accountId);
+    formSelectedPaymentAccount.value = paymentAccounts.firstWhereOrNull((a) => a.id == full.paymentAccountId);
+    formAmount.value = full.amount;
+    formTaxAmount.value = full.taxAmount;
+    formPaymentMethod.value = full.paymentMethod;
+    formDescription.value = full.description ?? '';
+    formReference.value = full.reference ?? '';
   }
 
   Future<bool> submitExpense() async {
@@ -141,6 +159,7 @@ class ExpenseController extends GetxController {
       final totalPaid = CurrencyUtils.round(roundedAmount + roundedTax);
 
       final expense = ExpenseModel(
+        id: editingExpenseId.value,
         expenseNumber: formNextExpenseNumber.value,
         expenseDate: formExpenseDate.value,
         accountId: formSelectedExpenseAccount.value!.id!,
@@ -152,56 +171,121 @@ class ExpenseController extends GetxController {
         reference: formReference.value,
       );
 
-      await _dbHelper.transaction((txn) async {
-        final expenseId = await _expenseRepo.insertExpense(expense, txn: txn);
+      if (editingExpenseId.value != null) {
+        await _dbHelper.transaction((txn) async {
+          await _expenseRepo.updateExpense(expense, txn: txn);
 
-        final lines = [
-          JournalLineModel(
-            accountId: expense.accountId,
-            debit: roundedAmount,
-            credit: 0.0,
-            description: '${formSelectedExpenseAccount.value!.accountName}: ${expense.description ?? ''}',
-          ),
-          JournalLineModel(
-            accountId: expense.paymentAccountId,
-            debit: 0.0,
-            credit: totalPaid,
-            description: 'Payment for Expense #${expense.expenseNumber} via ${expense.paymentMethod}',
-          ),
-        ];
-
-        // If tax is included on expense
-        if (roundedTax > 0) {
-          final gstInput = await _accountRepo.getAccountByCode(AccountingConstants.codeGstInputCredit);
-          final gstInputId = gstInput?.id ?? 7;
-          lines.insert(
-            1,
+          final lines = [
             JournalLineModel(
-              accountId: gstInputId,
-              debit: roundedTax,
+              accountId: expense.accountId,
+              debit: roundedAmount,
               credit: 0.0,
-              description: 'Input Tax on Expense #${expense.expenseNumber}',
+              description: '${formSelectedExpenseAccount.value!.accountName}: ${expense.description ?? ''}',
             ),
+            JournalLineModel(
+              accountId: expense.paymentAccountId,
+              debit: 0.0,
+              credit: totalPaid,
+              description: 'Payment for Expense #${expense.expenseNumber} via ${expense.paymentMethod}',
+            ),
+          ];
+
+          if (roundedTax > 0) {
+            final gstInput = await _accountRepo.getAccountByCode(AccountingConstants.codeGstInputCredit);
+            final gstInputId = gstInput?.id ?? 7;
+            lines.insert(
+              1,
+              JournalLineModel(
+                accountId: gstInputId,
+                debit: roundedTax,
+                credit: 0.0,
+                description: 'Input Tax on Expense #${expense.expenseNumber}',
+              ),
+            );
+          }
+
+          final entries = await txn.query(
+            DatabaseTables.tableJournalEntries,
+            columns: ['id'],
+            where: '(reference_id = ? AND transaction_type = ?) OR transaction_number = ?',
+            whereArgs: [expense.id, AccountingConstants.transTypeExpense, 'JV-EXP-${expense.id}'],
           );
+          for (final e in entries) {
+            final eId = e['id'] as int;
+            await txn.delete(DatabaseTables.tableJournalLines, where: 'journal_entry_id = ?', whereArgs: [eId]);
+            await txn.delete(DatabaseTables.tableJournalEntries, where: 'id = ?', whereArgs: [eId]);
+          }
+
+          await _accountingService.createJournalEntry(
+            date: expense.expenseDate,
+            type: AccountingConstants.transTypeExpense,
+            description: 'Expense #${expense.expenseNumber} - ${formSelectedExpenseAccount.value!.accountName}',
+            referenceId: expense.id,
+            transactionNumber: 'JV-EXP-${expense.id}',
+            lines: lines,
+            txn: txn,
+          );
+        });
+
+        await loadExpenses();
+        editingExpenseId.value = null;
+        if (Get.context != null) {
+          Get.snackbar('Success', 'Expense updated successfully',
+              snackPosition: SnackPosition.BOTTOM);
         }
+        return true;
+      } else {
+        await _dbHelper.transaction((txn) async {
+          final expenseId = await _expenseRepo.insertExpense(expense, txn: txn);
 
-        await _accountingService.createJournalEntry(
-          date: expense.expenseDate,
-          type: AccountingConstants.transTypeExpense,
-          description: 'Expense #${expense.expenseNumber} - ${formSelectedExpenseAccount.value!.accountName}',
-          referenceId: expenseId,
-          transactionNumber: 'JV-EXP-$expenseId',
-          lines: lines,
-          txn: txn,
-        );
-      });
+          final lines = [
+            JournalLineModel(
+              accountId: expense.accountId,
+              debit: roundedAmount,
+              credit: 0.0,
+              description: '${formSelectedExpenseAccount.value!.accountName}: ${expense.description ?? ''}',
+            ),
+            JournalLineModel(
+              accountId: expense.paymentAccountId,
+              debit: 0.0,
+              credit: totalPaid,
+              description: 'Payment for Expense #${expense.expenseNumber} via ${expense.paymentMethod}',
+            ),
+          ];
 
-      await loadExpenses();
-      if (Get.context != null) {
-        Get.snackbar('Success', 'Expense created successfully',
-            snackPosition: SnackPosition.BOTTOM);
+          // If tax is included on expense
+          if (roundedTax > 0) {
+            final gstInput = await _accountRepo.getAccountByCode(AccountingConstants.codeGstInputCredit);
+            final gstInputId = gstInput?.id ?? 7;
+            lines.insert(
+              1,
+              JournalLineModel(
+                accountId: gstInputId,
+                debit: roundedTax,
+                credit: 0.0,
+                description: 'Input Tax on Expense #${expense.expenseNumber}',
+              ),
+            );
+          }
+
+          await _accountingService.createJournalEntry(
+            date: expense.expenseDate,
+            type: AccountingConstants.transTypeExpense,
+            description: 'Expense #${expense.expenseNumber} - ${formSelectedExpenseAccount.value!.accountName}',
+            referenceId: expenseId,
+            transactionNumber: 'JV-EXP-$expenseId',
+            lines: lines,
+            txn: txn,
+          );
+        });
+
+        await loadExpenses();
+        if (Get.context != null) {
+          Get.snackbar('Success', 'Expense created successfully',
+              snackPosition: SnackPosition.BOTTOM);
+        }
+        return true;
       }
-      return true;
     } catch (e) {
       if (Get.context != null) {
         Get.snackbar('Error', 'Failed to save expense: $e', snackPosition: SnackPosition.BOTTOM);

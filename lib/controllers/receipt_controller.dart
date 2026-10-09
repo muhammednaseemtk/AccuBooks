@@ -31,7 +31,9 @@ class ReceiptController extends GetxController {
   final searchQuery = ''.obs;
   final selectedCustomerId = 0.obs;
 
-  // New Receipt Form
+  // New/Edit Receipt Form
+  final editingReceiptId = Rxn<int>();
+  bool get isEditing => editingReceiptId.value != null;
   final formNextReceiptNumber = ''.obs;
   final formReceiptDate = DateTime.now().obs;
   final formSelectedCustomer = Rxn<CustomerModel>();
@@ -98,6 +100,7 @@ class ReceiptController extends GetxController {
 
   Future<void> prepareNewReceiptForm({CustomerModel? defaultCustomer}) async {
     await loadMetadata();
+    editingReceiptId.value = null;
     formNextReceiptNumber.value = await _receiptService.getNextReceiptNumber();
     formReceiptDate.value = DateTime.now();
     formSelectedCustomer.value = defaultCustomer;
@@ -108,6 +111,20 @@ class ReceiptController extends GetxController {
     formPaymentMethod.value = 'Cash';
     formReference.value = '';
     formNotes.value = '';
+  }
+
+  Future<void> prepareEditReceiptForm(ReceiptModel receipt) async {
+    await loadMetadata();
+    final full = await _receiptService.getReceiptById(receipt.id!) ?? receipt;
+    editingReceiptId.value = full.id;
+    formNextReceiptNumber.value = full.receiptNumber;
+    formReceiptDate.value = full.receiptDate;
+    formSelectedCustomer.value = customers.firstWhereOrNull((c) => c.id == full.customerId);
+    formSelectedAccount.value = bankCashAccounts.firstWhereOrNull((a) => a.id == full.accountId);
+    formAmount.value = full.amount;
+    formPaymentMethod.value = full.paymentMethod;
+    formReference.value = full.reference ?? '';
+    formNotes.value = full.notes ?? '';
   }
 
   Future<bool> submitReceipt() async {
@@ -133,6 +150,7 @@ class ReceiptController extends GetxController {
     try {
       isSubmitting.value = true;
       final receipt = ReceiptModel(
+        id: editingReceiptId.value,
         receiptNumber: formNextReceiptNumber.value,
         receiptDate: formReceiptDate.value,
         customerId: formSelectedCustomer.value!.id!,
@@ -143,13 +161,24 @@ class ReceiptController extends GetxController {
         notes: formNotes.value,
       );
 
-      await _receiptService.createReceipt(receipt);
-      await loadReceipts();
-      if (Get.context != null) {
-        Get.snackbar('Success', 'Receipt created successfully',
-            snackPosition: SnackPosition.BOTTOM);
+      if (editingReceiptId.value != null) {
+        await _receiptService.updateReceipt(receipt);
+        await loadReceipts();
+        editingReceiptId.value = null;
+        if (Get.context != null) {
+          Get.snackbar('Success', 'Receipt updated successfully',
+              snackPosition: SnackPosition.BOTTOM);
+        }
+        return true;
+      } else {
+        await _receiptService.createReceipt(receipt);
+        await loadReceipts();
+        if (Get.context != null) {
+          Get.snackbar('Success', 'Receipt created successfully',
+              snackPosition: SnackPosition.BOTTOM);
+        }
+        return true;
       }
-      return true;
     } catch (e) {
       if (Get.context != null) {
         Get.snackbar('Error', 'Failed to save receipt: $e', snackPosition: SnackPosition.BOTTOM);

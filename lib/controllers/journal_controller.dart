@@ -52,6 +52,10 @@ class JournalController extends GetxController {
   // Selected for viewing
   final selectedEntry = Rxn<JournalEntryModel>();
 
+  // Editing state
+  final editingJournalId = Rxn<int>();
+  bool get isEditing => editingJournalId.value != null;
+
   // Form State for creating manual journal entry
   final formNextNumber = ''.obs;
   final formDate = DateTime.now().obs;
@@ -132,6 +136,7 @@ class JournalController extends GetxController {
 
   Future<void> prepareNewJournalForm() async {
     await loadAccounts();
+    editingJournalId.value = null;
     formNextNumber.value = await _journalRepo.getNextJournalNumber();
     formDate.value = DateTime.now();
     formDescription.value = '';
@@ -139,6 +144,21 @@ class JournalController extends GetxController {
       JournalDraftLine(),
       JournalDraftLine(),
     ]);
+  }
+
+  Future<void> prepareEditJournalForm(JournalEntryModel entry) async {
+    await loadAccounts();
+    final full = await _journalRepo.getJournalEntryById(entry.id!) ?? entry;
+    editingJournalId.value = full.id;
+    formNextNumber.value = full.transactionNumber;
+    formDate.value = full.transactionDate;
+    formDescription.value = full.description ?? '';
+    formLines.assignAll(full.lines.map((l) => JournalDraftLine(
+      account: accounts.firstWhereOrNull((a) => a.id == l.accountId),
+      debit: l.debit,
+      credit: l.credit,
+      description: l.description ?? '',
+    )).toList());
   }
 
   void addLine() {
@@ -197,17 +217,38 @@ class JournalController extends GetxController {
         );
       }).toList();
 
-      await _accountingService.postManualJournal(
-        date: formDate.value,
-        description: formDescription.value,
-        lines: linesToPost,
-      );
+      if (editingJournalId.value != null) {
+        final existing = await _journalRepo.getJournalEntryById(editingJournalId.value!);
+        final updatedHeader = (existing ?? JournalEntryModel(
+          id: editingJournalId.value,
+          transactionDate: formDate.value,
+          transactionType: AccountingConstants.transTypeJournal,
+          transactionNumber: formNextNumber.value,
+        )).copyWith(
+          transactionDate: formDate.value,
+          description: formDescription.value,
+        );
 
-      await loadJournalEntries();
-      if (Get.context != null) {
-        Get.snackbar('Success', 'Journal created successfully', snackPosition: SnackPosition.BOTTOM);
+        await _journalRepo.updateJournalEntry(updatedHeader, linesToPost);
+        await loadJournalEntries();
+        editingJournalId.value = null;
+        if (Get.context != null) {
+          Get.snackbar('Success', 'Journal updated successfully', snackPosition: SnackPosition.BOTTOM);
+        }
+        return true;
+      } else {
+        await _accountingService.postManualJournal(
+          date: formDate.value,
+          description: formDescription.value,
+          lines: linesToPost,
+        );
+
+        await loadJournalEntries();
+        if (Get.context != null) {
+          Get.snackbar('Success', 'Journal created successfully', snackPosition: SnackPosition.BOTTOM);
+        }
+        return true;
       }
-      return true;
     } catch (e) {
       if (Get.context != null) {
         Get.snackbar('Error', 'Failed to post journal entry: $e', snackPosition: SnackPosition.BOTTOM);

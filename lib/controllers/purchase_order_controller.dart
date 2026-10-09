@@ -59,6 +59,10 @@ class PurchaseOrderController extends GetxController {
   final selectedOrder = Rxn<PurchaseOrderModel>();
   final selectedReturn = Rxn<PurchaseReturnModel>();
 
+  // Editing record tracking
+  final editingOrderId = Rxn<int>();
+  final editingReturnId = Rxn<int>();
+
   // ===================== PURCHASE ORDER FORM =====================
   final formOrderNumber = ''.obs;
   final formOrderDate = DateTime.now().obs;
@@ -183,6 +187,7 @@ class PurchaseOrderController extends GetxController {
 
   Future<void> prepareNewOrderForm() async {
     try {
+      editingOrderId.value = null;
       formOrderNumber.value = await _service.getNextOrderNumber();
       formOrderDate.value = DateTime.now();
       formExpectedDeliveryDate.value = null;
@@ -194,7 +199,25 @@ class PurchaseOrderController extends GetxController {
     } catch (_) {}
   }
 
+  Future<void> prepareEditOrderForm(PurchaseOrderModel order) async {
+    try {
+      final fullOrder = await _service.getOrderById(order.id!) ?? order;
+      editingOrderId.value = fullOrder.id;
+      formOrderNumber.value = fullOrder.orderNumber;
+      formOrderDate.value = fullOrder.orderDate;
+      formExpectedDeliveryDate.value = fullOrder.expectedDeliveryDate;
+      formOrderSupplier.value = suppliers.firstWhereOrNull((s) => s.id == fullOrder.supplierId);
+      formOrderDiscount.value = fullOrder.discount;
+      formOrderStatus.value = fullOrder.status;
+      formOrderNotes.value = fullOrder.notes ?? '';
+      formOrderItems.assignAll(fullOrder.items);
+    } catch (e) {
+      debugPrint('Error preparing edit purchase order: $e');
+    }
+  }
+
   void resetOrderForm() {
+    editingOrderId.value = null;
     formOrderDate.value = DateTime.now();
     formExpectedDeliveryDate.value = null;
     formOrderSupplier.value = null;
@@ -272,6 +295,7 @@ class PurchaseOrderController extends GetxController {
       }
 
       final order = PurchaseOrderModel(
+        id: editingOrderId.value,
         orderNumber: formOrderNumber.value,
         orderDate: formOrderDate.value,
         expectedDeliveryDate: formExpectedDeliveryDate.value,
@@ -284,25 +308,44 @@ class PurchaseOrderController extends GetxController {
         notes: formOrderNotes.value,
       );
 
-      final id = await _service.createPurchaseOrder(
-        order: order,
-        items: List.from(formOrderItems),
-      );
-
-      await loadData();
-      final created = await _service.getOrderById(id);
-      selectedOrder.value = created;
-
-      resetOrderForm();
-
-      if (Get.context != null) {
-        Get.snackbar(
-          'Success',
-          'Purchase Order created successfully',
-          snackPosition: SnackPosition.BOTTOM,
+      if (editingOrderId.value != null) {
+        await _service.updatePurchaseOrder(
+          order: order,
+          items: List.from(formOrderItems),
         );
+        await loadData();
+        final updated = await _service.getOrderById(editingOrderId.value!);
+        selectedOrder.value = updated;
+        resetOrderForm();
+        if (Get.context != null) {
+          Get.snackbar(
+            'Success',
+            'Purchase Order updated successfully',
+            snackPosition: SnackPosition.BOTTOM,
+          );
+        }
+        return true;
+      } else {
+        final id = await _service.createPurchaseOrder(
+          order: order,
+          items: List.from(formOrderItems),
+        );
+
+        await loadData();
+        final created = await _service.getOrderById(id);
+        selectedOrder.value = created;
+
+        resetOrderForm();
+
+        if (Get.context != null) {
+          Get.snackbar(
+            'Success',
+            'Purchase Order created successfully',
+            snackPosition: SnackPosition.BOTTOM,
+          );
+        }
+        return true;
       }
-      return true;
     } catch (e, stack) {
       debugPrint('Failed to save Purchase Order: $e\n$stack');
       if (Get.context != null) {
@@ -314,10 +357,31 @@ class PurchaseOrderController extends GetxController {
     }
   }
 
+  Future<bool> deletePurchaseOrder(PurchaseOrderModel order) async {
+    try {
+      await _service.deletePurchaseOrder(order.id!);
+      await loadData();
+      if (selectedOrder.value?.id == order.id) {
+        selectedOrder.value = null;
+      }
+      if (Get.context != null) {
+        Get.snackbar('Success', 'Purchase Order deleted successfully', snackPosition: SnackPosition.BOTTOM);
+      }
+      return true;
+    } catch (e) {
+      debugPrint('Failed to delete purchase order: $e');
+      if (Get.context != null) {
+        Get.snackbar('Error', 'Failed to delete order: $e', snackPosition: SnackPosition.BOTTOM);
+      }
+      return false;
+    }
+  }
+
   // ===================== PURCHASE RETURN ACTIONS =====================
 
   Future<void> prepareNewReturnForm() async {
     try {
+      editingReturnId.value = null;
       formReturnNumber.value = await _service.getNextReturnNumber();
       formReturnDate.value = DateTime.now();
       formReturnSupplier.value = null;
@@ -328,7 +392,24 @@ class PurchaseOrderController extends GetxController {
     } catch (_) {}
   }
 
+  Future<void> prepareEditReturnForm(PurchaseReturnModel ret) async {
+    try {
+      final fullReturn = await _service.getReturnById(ret.id!) ?? ret;
+      editingReturnId.value = fullReturn.id;
+      formReturnNumber.value = fullReturn.returnNumber;
+      formReturnDate.value = fullReturn.returnDate;
+      formReturnSupplier.value = suppliers.firstWhereOrNull((s) => s.id == fullReturn.supplierId);
+      formReferenceInvoice.value = recentInvoices.firstWhereOrNull((i) => i.id == fullReturn.referenceInvoiceId);
+      formReturnDiscount.value = fullReturn.discount;
+      formReturnReason.value = fullReturn.reason ?? '';
+      formReturnItems.assignAll(fullReturn.items);
+    } catch (e) {
+      debugPrint('Error preparing edit purchase return: $e');
+    }
+  }
+
   void resetReturnForm() {
+    editingReturnId.value = null;
     formReturnDate.value = DateTime.now();
     formReturnSupplier.value = null;
     formReferenceInvoice.value = null;
@@ -415,6 +496,7 @@ class PurchaseOrderController extends GetxController {
       }
 
       final ret = PurchaseReturnModel(
+        id: editingReturnId.value,
         returnNumber: formReturnNumber.value,
         returnDate: formReturnDate.value,
         supplierId: formReturnSupplier.value!.id!,
@@ -427,25 +509,44 @@ class PurchaseOrderController extends GetxController {
         reason: formReturnReason.value,
       );
 
-      final id = await _service.createPurchaseReturn(
-        returnModel: ret,
-        items: List.from(formReturnItems),
-      );
-
-      await loadData();
-      final created = await _service.getReturnById(id);
-      selectedReturn.value = created;
-
-      resetReturnForm();
-
-      if (Get.context != null) {
-        Get.snackbar(
-          'Success',
-          'Purchase Return created successfully',
-          snackPosition: SnackPosition.BOTTOM,
+      if (editingReturnId.value != null) {
+        await _service.updatePurchaseReturn(
+          returnModel: ret,
+          items: List.from(formReturnItems),
         );
+        await loadData();
+        final updated = await _service.getReturnById(editingReturnId.value!);
+        selectedReturn.value = updated;
+        resetReturnForm();
+        if (Get.context != null) {
+          Get.snackbar(
+            'Success',
+            'Purchase Return updated successfully',
+            snackPosition: SnackPosition.BOTTOM,
+          );
+        }
+        return true;
+      } else {
+        final id = await _service.createPurchaseReturn(
+          returnModel: ret,
+          items: List.from(formReturnItems),
+        );
+
+        await loadData();
+        final created = await _service.getReturnById(id);
+        selectedReturn.value = created;
+
+        resetReturnForm();
+
+        if (Get.context != null) {
+          Get.snackbar(
+            'Success',
+            'Purchase Return created successfully',
+            snackPosition: SnackPosition.BOTTOM,
+          );
+        }
+        return true;
       }
-      return true;
     } catch (e, stack) {
       debugPrint('Failed to save Purchase Return: $e\n$stack');
       if (Get.context != null) {
@@ -454,6 +555,26 @@ class PurchaseOrderController extends GetxController {
       return false;
     } finally {
       isSubmitting.value = false;
+    }
+  }
+
+  Future<bool> deletePurchaseReturn(PurchaseReturnModel ret) async {
+    try {
+      await _service.deletePurchaseReturn(ret.id!);
+      await loadData();
+      if (selectedReturn.value?.id == ret.id) {
+        selectedReturn.value = null;
+      }
+      if (Get.context != null) {
+        Get.snackbar('Success', 'Purchase Return deleted successfully', snackPosition: SnackPosition.BOTTOM);
+      }
+      return true;
+    } catch (e) {
+      debugPrint('Failed to delete return: $e');
+      if (Get.context != null) {
+        Get.snackbar('Error', 'Failed to delete return: $e', snackPosition: SnackPosition.BOTTOM);
+      }
+      return false;
     }
   }
 }
