@@ -124,14 +124,14 @@ class ProfileScreen extends StatelessWidget {
                       children: [
                         AppTextField(
                           label: 'Full Name',
-                          hint: 'Your full name',
+                          hint: 'Full Name',
                           controller: controller.profileNameController,
                           prefixIcon: const Icon(Icons.person_outline, size: 20),
                         ),
                         const SizedBox(height: 16),
                         AppTextField(
                           label: 'Phone Number',
-                          hint: 'Your phone number',
+                          hint: 'Phone Number',
                           controller: controller.profilePhoneController,
                           keyboardType: TextInputType.phone,
                           inputFormatters: [AppInputFormatters.digitsOnly],
@@ -140,7 +140,7 @@ class ProfileScreen extends StatelessWidget {
                         const SizedBox(height: 16),
                         AppTextField(
                           label: 'Email (Read-only)',
-                          hint: user?.email ?? '',
+                          hint: 'Email',
                           initialValue: user?.email,
                           readOnly: true,
                           enabled: false,

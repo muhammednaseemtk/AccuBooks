@@ -147,7 +147,7 @@ class _CountryPickerDialogState extends State<CountryPickerDialog> {
                   color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
                 ),
                 decoration: InputDecoration(
-                  hintText: 'Search country or calling code...',
+                  hintText: 'Search...',
                   hintStyle: AppTextStyles.body2.copyWith(
                     color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
                   ),

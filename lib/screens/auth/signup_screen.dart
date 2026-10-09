@@ -135,7 +135,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     // Company / Organization Name
                     AppTextField(
                       label: 'Company Name',
-                      hint: 'ABC Traders Ltd.',
+                      hint: 'Company Name',
                       controller: controller.signupCompanyController,
                       focusNode: _companyFocusNode,
                       textInputAction: TextInputAction.next,
@@ -242,7 +242,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                             final phoneField = Obx(() {
                               final country = controller.signupCountry.value;
                               return AppTextField(
-                                hint: country.sampleNumber,
+                                hint: 'Phone Number',
                                 controller: controller.signupPhoneController,
                                 keyboardType: TextInputType.number,
                                 inputFormatters: [FilteringTextInputFormatter.digitsOnly],
@@ -290,7 +290,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
                     // Password Field
                     Obx(() => AppTextField(
                           label: 'Password',
-                          hint: 'Min 8 chars, 1 uppercase, 1 lowercase, 1 number',
+                          hint: 'Password',
                           controller: controller.signupPasswordController,
                           focusNode: _passwordFocusNode,
                           textInputAction: TextInputAction.done,

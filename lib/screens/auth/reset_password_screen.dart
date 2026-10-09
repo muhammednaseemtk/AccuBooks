@@ -80,7 +80,7 @@ class ResetPasswordScreen extends StatelessWidget {
                     // Verification Code Field
                     AppTextField(
                       label: 'Verification Code',
-                      hint: '6-digit code',
+                      hint: 'Verification Code',
                       controller: controller.resetCodeController,
                       keyboardType: TextInputType.number,
                       inputFormatters: [
@@ -95,7 +95,7 @@ class ResetPasswordScreen extends StatelessWidget {
                     // New Password Field
                     Obx(() => AppTextField(
                           label: 'New Password',
-                          hint: 'Min 8 chars, 1 uppercase, 1 lowercase, 1 number',
+                          hint: 'New Password',
                           controller: controller.resetNewPasswordController,
                           obscureText: controller.resetObscurePassword.value,
                           prefixIcon: const Icon(Icons.lock_outline, size: 20),
@@ -163,7 +163,7 @@ class ResetPasswordScreen extends StatelessWidget {
                     // Confirm Password Field
                     Obx(() => AppTextField(
                           label: 'Confirm Password',
-                          hint: 'Re-enter your new password',
+                          hint: 'Confirm Password',
                           controller: controller.resetConfirmPasswordController,
                           obscureText: controller.resetObscureConfirmPassword.value,
                           prefixIcon: const Icon(Icons.lock_reset_outlined, size: 20),
