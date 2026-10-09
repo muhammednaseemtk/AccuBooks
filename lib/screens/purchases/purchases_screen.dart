@@ -145,7 +145,7 @@ class PurchasesScreen extends GetView<PurchaseController> {
                   const AppTableColumn(title: 'Grand Total', width: 130, alignment: Alignment.centerRight),
                   const AppTableColumn(title: 'Balance Payable', width: 140, alignment: Alignment.centerRight),
                   const AppTableColumn(title: 'Status', width: 110, alignment: Alignment.center),
-                  const AppTableColumn(title: 'Actions', width: 140, alignment: Alignment.centerRight),
+                  const AppTableColumn(title: 'Actions', width: 175, alignment: Alignment.centerRight),
                 ];
 
                 final rows = controller.purchases.map((pur) {
@@ -184,6 +184,16 @@ class PurchasesScreen extends GetView<PurchaseController> {
                           splashRadius: 16,
                           onPressed: () => _showPurchaseDetailsDialog(context, pur),
                         ),
+                        if (!pur.isCancelled)
+                          IconButton(
+                            icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.primary),
+                            tooltip: 'Edit Bill',
+                            splashRadius: 16,
+                            onPressed: () async {
+                              await controller.loadPurchaseForEdit(pur);
+                              Get.toNamed(AppRoutes.purchasesCreate);
+                            },
+                          ),
                         if (!pur.isCancelled)
                           IconButton(
                             icon: const Icon(Icons.cancel_outlined, size: 18, color: AppColors.debit),
@@ -309,6 +319,17 @@ class PurchasesScreen extends GetView<PurchaseController> {
               _confirmDeletePurchase(context, purchase);
             },
           ),
+          if (!purchase.isCancelled)
+            AppButton(
+              label: 'Edit Bill',
+              icon: Icons.edit_outlined,
+              type: AppButtonType.secondary,
+              onPressed: () async {
+                Get.back();
+                await controller.loadPurchaseForEdit(purchase);
+                Get.toNamed(AppRoutes.purchasesCreate);
+              },
+            ),
           AppButton(
             label: 'Close',
             type: AppButtonType.text,

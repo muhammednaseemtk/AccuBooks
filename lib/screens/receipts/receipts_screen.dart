@@ -95,7 +95,7 @@ class ReceiptsScreen extends GetView<ReceiptController> {
                   const AppTableColumn(title: 'Deposited To', width: 150),
                   const AppTableColumn(title: 'Method', width: 90),
                   const AppTableColumn(title: 'Amount Received', width: 140, alignment: Alignment.centerRight),
-                  const AppTableColumn(title: 'Actions', width: 80, alignment: Alignment.centerRight),
+                  const AppTableColumn(title: 'Actions', width: 110, alignment: Alignment.centerRight),
                 ];
 
                 final rows = controller.receipts.map((r) {
@@ -116,11 +116,22 @@ class ReceiptsScreen extends GetView<ReceiptController> {
                       CurrencyUtils.format(r.amount),
                       style: AppTextStyles.tableCellBold.copyWith(color: AppColors.credit),
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.debit),
-                      tooltip: 'Delete Receipt',
-                      splashRadius: 16,
-                      onPressed: () => _confirmDeleteReceipt(context, r),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.primary),
+                          tooltip: 'Edit Receipt',
+                          splashRadius: 16,
+                          onPressed: () => _showReceiptFormDialog(context, receipt: r),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.debit),
+                          tooltip: 'Delete Receipt',
+                          splashRadius: 16,
+                          onPressed: () => _confirmDeleteReceipt(context, r),
+                        ),
+                      ],
                     ),
                   ];
                 }).toList();
@@ -143,16 +154,21 @@ class ReceiptsScreen extends GetView<ReceiptController> {
     );
   }
 
-  void _showReceiptFormDialog(BuildContext context) {
-    controller.prepareNewReceiptForm();
-    final amountCtrl = TextEditingController();
-    final refCtrl = TextEditingController();
-    final notesCtrl = TextEditingController();
+  void _showReceiptFormDialog(BuildContext context, {ReceiptModel? receipt}) async {
+    final isEdit = receipt != null;
+    if (isEdit) {
+      await controller.prepareEditReceiptForm(receipt);
+    } else {
+      await controller.prepareNewReceiptForm();
+    }
+    final amountCtrl = TextEditingController(text: isEdit ? receipt.amount.toString() : '');
+    final refCtrl = TextEditingController(text: isEdit ? (receipt.reference ?? '') : '');
+    final notesCtrl = TextEditingController(text: isEdit ? (receipt.notes ?? '') : '');
     final formKey = GlobalKey<FormState>();
 
     Get.dialog(
       AppDialog(
-        title: 'New Customer Receipt',
+        title: isEdit ? 'Edit Customer Receipt' : 'New Customer Receipt',
         maxWidth: 600,
         content: Form(
           key: formKey,
@@ -189,7 +205,7 @@ class ReceiptsScreen extends GetView<ReceiptController> {
                     }).toList(),
                     onChanged: (c) {
                       controller.formSelectedCustomer.value = c;
-                      if (c != null && c.outstandingBalance > 0) {
+                      if (!isEdit && c != null && c.outstandingBalance > 0) {
                         amountCtrl.text = c.outstandingBalance.toString();
                         controller.formAmount.value = c.outstandingBalance;
                       }
@@ -201,21 +217,21 @@ class ReceiptsScreen extends GetView<ReceiptController> {
                 breakpoint: 480,
                 children: [
                   Obx(() => AppDropdown<AccountModel>(
-                        label: 'Deposit To (Account) *',
-                        value: controller.formSelectedAccount.value,
-                        items: controller.bankCashAccounts.map((a) {
-                          return DropdownMenuItem(value: a, child: Text(a.accountName));
-                        }).toList(),
-                        onChanged: (a) => controller.formSelectedAccount.value = a,
-                      )),
+                    label: 'Deposit To (Account) *',
+                    value: controller.formSelectedAccount.value,
+                    items: controller.bankCashAccounts.map((a) {
+                      return DropdownMenuItem(value: a, child: Text(a.accountName));
+                    }).toList(),
+                    onChanged: (a) => controller.formSelectedAccount.value = a,
+                  )),
                   Obx(() => AppDropdown<String>(
-                        label: 'Payment Method',
-                        value: controller.formPaymentMethod.value,
-                        items: AccountingConstants.paymentMethods.map((m) {
-                          return DropdownMenuItem(value: m, child: Text(m));
-                        }).toList(),
-                        onChanged: (m) => controller.formPaymentMethod.value = m ?? 'Cash',
-                      )),
+                    label: 'Payment Method',
+                    value: controller.formPaymentMethod.value,
+                    items: AccountingConstants.paymentMethods.map((m) {
+                      return DropdownMenuItem(value: m, child: Text(m));
+                    }).toList(),
+                    onChanged: (m) => controller.formPaymentMethod.value = m ?? 'Cash',
+                  )),
                 ],
               ),
               const SizedBox(height: 12),
@@ -251,17 +267,21 @@ class ReceiptsScreen extends GetView<ReceiptController> {
         actions: [
           AppButton(label: 'Cancel', type: AppButtonType.text, onPressed: () => Get.back()),
           Obx(() => AppButton(
-                label: 'Save Receipt',
+                label: isEdit ? 'Update Receipt' : 'Save Receipt',
                 isLoading: controller.isSubmitting.value,
                 onPressed: () async {
                   if (!formKey.currentState!.validate()) return;
                   final ok = await controller.submitReceipt();
                   if (ok) {
-                    await controller.prepareNewReceiptForm();
-                    amountCtrl.clear();
-                    refCtrl.clear();
-                    notesCtrl.clear();
-                    formKey.currentState?.reset();
+                    if (isEdit) {
+                      Get.back();
+                    } else {
+                      await controller.prepareNewReceiptForm();
+                      amountCtrl.clear();
+                      refCtrl.clear();
+                      notesCtrl.clear();
+                      formKey.currentState?.reset();
+                    }
                   }
                 },
               )),

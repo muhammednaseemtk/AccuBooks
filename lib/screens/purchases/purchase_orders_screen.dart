@@ -181,7 +181,7 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
       AppTableColumn(title: 'Items', width: 70, alignment: Alignment.center),
       AppTableColumn(title: 'Grand Total', width: 130, alignment: Alignment.centerRight),
       AppTableColumn(title: 'Status', width: 120, alignment: Alignment.center),
-      AppTableColumn(title: 'Actions', width: 90, alignment: Alignment.center),
+      AppTableColumn(title: 'Actions', width: 130, alignment: Alignment.center),
     ];
 
     final rows = List.generate(controller.orders.length, (index) {
@@ -194,15 +194,33 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
         Text('${order.items.length}', style: AppTextStyles.tableCell),
         Text(CurrencyUtils.format(order.grandTotal), style: AppTextStyles.tableCellBold),
         _buildStatusBadge(order.status),
-        IconButton(
-          icon: const Icon(Icons.visibility_outlined, size: 18, color: AppColors.primary),
-          tooltip: 'View Details',
-          onPressed: () => _showOrderDetailsDialog(context, order),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.visibility_outlined, size: 18, color: AppColors.primary),
+              tooltip: 'View Details',
+              onPressed: () => _showOrderDetailsDialog(context, order),
+            ),
+            IconButton(
+              icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.primary),
+              tooltip: 'Edit Order',
+              onPressed: () async {
+                await controller.prepareEditOrderForm(order);
+                if (context.mounted) _showCreateOrderDialog(context, isEditing: true);
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.debit),
+              tooltip: 'Delete Order',
+              onPressed: () => _confirmDeleteOrder(context, order),
+            ),
+          ],
         ),
       ];
     });
 
-    return AppTable(columns: columns, rows: rows, minWidth: 940);
+    return AppTable(columns: columns, rows: rows, minWidth: 980);
   }
 
   Widget _buildReturnsList(BuildContext context) {
@@ -223,7 +241,7 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
       AppTableColumn(title: 'Items', width: 70, alignment: Alignment.center),
       AppTableColumn(title: 'Return Total', width: 130, alignment: Alignment.centerRight),
       AppTableColumn(title: 'Status', width: 110, alignment: Alignment.center),
-      AppTableColumn(title: 'Actions', width: 90, alignment: Alignment.center),
+      AppTableColumn(title: 'Actions', width: 130, alignment: Alignment.center),
     ];
 
     final rows = List.generate(controller.returns.length, (index) {
@@ -236,15 +254,33 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
         Text('${ret.items.length}', style: AppTextStyles.tableCell),
         Text(CurrencyUtils.format(ret.grandTotal), style: AppTextStyles.tableCellBold),
         _buildStatusBadge(ret.status),
-        IconButton(
-          icon: const Icon(Icons.visibility_outlined, size: 18, color: AppColors.primary),
-          tooltip: 'View Details',
-          onPressed: () => _showReturnDetailsDialog(context, ret),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.visibility_outlined, size: 18, color: AppColors.primary),
+              tooltip: 'View Details',
+              onPressed: () => _showReturnDetailsDialog(context, ret),
+            ),
+            IconButton(
+              icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.primary),
+              tooltip: 'Edit Return',
+              onPressed: () async {
+                await controller.prepareEditReturnForm(ret);
+                if (context.mounted) _showCreateReturnDialog(context, isEditing: true);
+              },
+            ),
+            IconButton(
+              icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.debit),
+              tooltip: 'Delete Return',
+              onPressed: () => _confirmDeleteReturn(context, ret),
+            ),
+          ],
         ),
       ];
     });
 
-    return AppTable(columns: columns, rows: rows, minWidth: 940);
+    return AppTable(columns: columns, rows: rows, minWidth: 980);
   }
 
   Widget _buildStatusBadge(String status) {
@@ -277,14 +313,16 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
 
   // ===================== DIALOG: CREATE PURCHASE ORDER =====================
 
-  void _showCreateOrderDialog(BuildContext context) {
-    controller.prepareNewOrderForm();
+  void _showCreateOrderDialog(BuildContext context, {bool isEditing = false}) {
+    if (!isEditing) {
+      controller.prepareNewOrderForm();
+    }
 
     Get.dialog(
       StatefulBuilder(
         builder: (context, setState) {
           return AppDialog(
-            title: 'New Purchase Order',
+            title: isEditing ? 'Edit Purchase Order' : 'New Purchase Order',
             maxWidth: 860,
             content: SingleChildScrollView(
               child: Column(
@@ -448,7 +486,7 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
                 },
               ),
               Obx(() => AppButton(
-                    label: 'Create Purchase Order',
+                    label: isEditing ? 'Update Purchase Order' : 'Create Purchase Order',
                     icon: Icons.check,
                     isLoading: controller.isSubmitting.value,
                     onPressed: controller.isSubmitting.value
@@ -558,14 +596,16 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
 
   // ===================== DIALOG: CREATE PURCHASE RETURN =====================
 
-  void _showCreateReturnDialog(BuildContext context) {
-    controller.prepareNewReturnForm();
+  void _showCreateReturnDialog(BuildContext context, {bool isEditing = false}) {
+    if (!isEditing) {
+      controller.prepareNewReturnForm();
+    }
 
     Get.dialog(
       StatefulBuilder(
         builder: (context, setState) {
           return AppDialog(
-            title: 'New Purchase Return',
+            title: isEditing ? 'Edit Purchase Return' : 'New Purchase Return',
             maxWidth: 860,
             content: SingleChildScrollView(
               child: Column(
@@ -722,7 +762,7 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
                 },
               ),
               Obx(() => AppButton(
-                    label: 'Create Purchase Return',
+                    label: isEditing ? 'Update Purchase Return' : 'Create Purchase Return',
                     icon: Icons.check,
                     isLoading: controller.isSubmitting.value,
                     onPressed: controller.isSubmitting.value
@@ -899,7 +939,66 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
           ],
         ),
         actions: [
+          AppButton(
+            label: 'Delete',
+            type: AppButtonType.danger,
+            icon: Icons.delete_outline,
+            onPressed: () {
+              Get.back();
+              _confirmDeleteOrder(context, order);
+            },
+          ),
+          AppButton(
+            label: 'Edit Order',
+            type: AppButtonType.secondary,
+            icon: Icons.edit_outlined,
+            onPressed: () async {
+              Get.back();
+              await controller.prepareEditOrderForm(order);
+              if (context.mounted) _showCreateOrderDialog(context, isEditing: true);
+            },
+          ),
           AppButton(label: 'Close', onPressed: () => Get.back()),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteOrder(BuildContext context, PurchaseOrderModel order) {
+    Get.dialog(
+      AppDialog(
+        title: 'Delete Purchase Order?',
+        maxWidth: 440,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Are you sure you want to delete Purchase Order "${order.orderNumber}" (${CurrencyUtils.format(order.grandTotal)})?',
+              style: AppTextStyles.body1,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'This action cannot be undone.',
+              style: AppTextStyles.caption.copyWith(color: AppColors.textSecondaryLight),
+            ),
+          ],
+        ),
+        actions: [
+          AppButton(
+            label: 'Cancel',
+            type: AppButtonType.text,
+            onPressed: () => Get.back(),
+          ),
+          AppButton(
+            label: 'Delete',
+            type: AppButtonType.danger,
+            icon: Icons.delete_outline,
+            onPressed: () async {
+              Get.back();
+              await controller.deletePurchaseOrder(order);
+            },
+          ),
         ],
       ),
     );
@@ -951,7 +1050,66 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
           ],
         ),
         actions: [
+          AppButton(
+            label: 'Delete',
+            type: AppButtonType.danger,
+            icon: Icons.delete_outline,
+            onPressed: () {
+              Get.back();
+              _confirmDeleteReturn(context, ret);
+            },
+          ),
+          AppButton(
+            label: 'Edit Return',
+            type: AppButtonType.secondary,
+            icon: Icons.edit_outlined,
+            onPressed: () async {
+              Get.back();
+              await controller.prepareEditReturnForm(ret);
+              if (context.mounted) _showCreateReturnDialog(context, isEditing: true);
+            },
+          ),
           AppButton(label: 'Close', onPressed: () => Get.back()),
+        ],
+      ),
+    );
+  }
+
+  void _confirmDeleteReturn(BuildContext context, PurchaseReturnModel ret) {
+    Get.dialog(
+      AppDialog(
+        title: 'Delete Purchase Return?',
+        maxWidth: 440,
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Are you sure you want to delete Purchase Return "${ret.returnNumber}" (${CurrencyUtils.format(ret.grandTotal)})?',
+              style: AppTextStyles.body1,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Deleting this return will revert stock deductions and accounting ledger entries.',
+              style: AppTextStyles.caption.copyWith(color: AppColors.textSecondaryLight),
+            ),
+          ],
+        ),
+        actions: [
+          AppButton(
+            label: 'Cancel',
+            type: AppButtonType.text,
+            onPressed: () => Get.back(),
+          ),
+          AppButton(
+            label: 'Delete',
+            type: AppButtonType.danger,
+            icon: Icons.delete_outline,
+            onPressed: () async {
+              Get.back();
+              await controller.deletePurchaseReturn(ret);
+            },
+          ),
         ],
       ),
     );

@@ -29,148 +29,233 @@ class SalesCreateScreen extends GetView<SalesController> {
       });
     }
 
-    return AppScaffold(
-      title: 'New Sales Invoice',
-      currentRoute: AppRoutes.salesCreate,
-      actions: [
-        AppButton(
-          label: 'Cancel',
-          type: AppButtonType.text,
-          onPressed: () => Get.back(),
-        ),
-        const SizedBox(width: 8),
-        Obx(() => AppButton(
-              label: 'Save Invoice',
-              icon: Icons.check,
-              isLoading: controller.isSubmitting.value,
-              onPressed: controller.isSubmitting.value
-                  ? null
-                  : () async {
-                      await controller.submitInvoice();
-                    },
-            )),
-      ],
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Header Information Card
-            AppCard(
-              title: 'Invoice Details',
-              child: ResponsiveRowColumn(
-                spacing: 16,
-                children: [
-                  Obx(() => AppTextField(
-                        key: ValueKey('sales_inv_${controller.formNextInvoiceNumber.value}'),
+    return Obx(
+      () => AppScaffold(
+        title: controller.isEditing
+            ? 'Edit Sales Invoice'
+            : 'New Sales Invoice',
+        currentRoute: AppRoutes.salesCreate,
+        actions: [
+          AppButton(
+            label: 'Cancel',
+            type: AppButtonType.text,
+            onPressed: () {
+              controller.resetForm();
+              Get.back();
+            },
+          ),
+          const SizedBox(width: 8),
+          AppButton(
+            label: controller.isEditing ? 'Update Invoice' : 'Save Invoice',
+            icon: Icons.check,
+            isLoading: controller.isSubmitting.value,
+            onPressed: controller.isSubmitting.value
+                ? null
+                : () async {
+                    final ok = await controller.submitInvoice();
+                    if (ok) {
+                      Get.back();
+                    }
+                  },
+          ),
+        ],
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Header Information Card
+              AppCard(
+                title: 'Invoice Details',
+                child: ResponsiveRowColumn(
+                  spacing: 16,
+                  children: [
+                    Obx(
+                      () => AppTextField(
+                        key: ValueKey(
+                          'sales_inv_${controller.formNextInvoiceNumber.value}',
+                        ),
                         label: 'Invoice Number',
                         initialValue: controller.formNextInvoiceNumber.value,
                         readOnly: true,
-                      )),
-                  Obx(() => AppDropdown<CustomerModel>(
-                        label: 'Customer *',
+                      ),
+                    ),
+                    Obx(
+                      () => AppDropdown<CustomerModel>(
+                        label: 'Customer ',
                         hint: 'Select Customer',
                         value: controller.formSelectedCustomer.value,
                         items: controller.customers.map((c) {
-                          return DropdownMenuItem(value: c, child: Text(c.name));
+                          return DropdownMenuItem(
+                            value: c,
+                            child: Text(c.name),
+                          );
                         }).toList(),
-                        onChanged: (c) => controller.formSelectedCustomer.value = c,
-                      )),
-                  Obx(() => AppDatePickerField(
-                        label: 'Invoice Date',
-                        value: controller.formInvoiceDate.value,
-                        onDateSelected: (d) => controller.formInvoiceDate.value = d,
-                      )),
-                ],
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            // Products Line Items Card
-            AppCard(
-              title: 'Line Items',
-              trailing: AppButton(
-                label: 'Add Item',
-                icon: Icons.add,
-                type: AppButtonType.outline,
-                onPressed: () => _showAddItemDialog(context),
-              ),
-              child: Obx(() {
-                if (controller.formItems.isEmpty) {
-                  return Padding(
-                    padding: const EdgeInsets.all(32),
-                    child: Center(
-                      child: Column(
-                        children: [
-                          const Icon(Icons.shopping_cart_outlined, size: 36, color: AppColors.neutral),
-                          const SizedBox(height: 8),
-                          const Text('No products added to this invoice yet.', style: AppTextStyles.body2),
-                          const SizedBox(height: 12),
-                          AppButton(
-                            label: 'Add Product Item',
-                            icon: Icons.add,
-                            onPressed: () => _showAddItemDialog(context),
-                          ),
-                        ],
+                        onChanged: (c) =>
+                            controller.formSelectedCustomer.value = c,
                       ),
                     ),
-                  );
-                }
-
-                final columns = const [
-                  AppTableColumn(title: 'Product', width: 220),
-                  AppTableColumn(title: 'Qty', width: 80, alignment: Alignment.centerRight),
-                  AppTableColumn(title: 'Rate', width: 110, alignment: Alignment.centerRight),
-                  AppTableColumn(title: 'Discount', width: 90, alignment: Alignment.centerRight),
-                  AppTableColumn(title: 'Tax', width: 90, alignment: Alignment.centerRight),
-                  AppTableColumn(title: 'Total', width: 120, alignment: Alignment.centerRight),
-                  AppTableColumn(title: '', width: 50, alignment: Alignment.center),
-                ];
-
-                final rows = List.generate(controller.formItems.length, (index) {
-                  final item = controller.formItems[index];
-                  return [
-                    Text(item.productName ?? 'Product', style: AppTextStyles.tableCellBold),
-                    Text('${item.quantity} ${item.unit ?? ''}', style: AppTextStyles.tableCell),
-                    Text(CurrencyUtils.format(item.rate), style: AppTextStyles.tableCell),
-                    Text(item.discount > 0 ? CurrencyUtils.format(item.discount) : '-', style: AppTextStyles.tableCell),
-                    Text(CurrencyUtils.format(item.taxAmount), style: AppTextStyles.tableCell),
-                    Text(CurrencyUtils.format(item.total), style: AppTextStyles.tableCellBold),
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.debit),
-                      splashRadius: 16,
-                      onPressed: () => controller.removeFormItem(index),
-                    ),
-                  ];
-                });
-
-                return AppTable(columns: columns, rows: rows, minWidth: 760);
-              }),
-            ),
-
-            const SizedBox(height: 20),
-
-            // Summary & Payment Card
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final isDesktop = constraints.maxWidth >= 800;
-
-                final notesWidget = Obx(() => Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    AppTextField(
-                      key: ValueKey('sales_notes_${controller.formNextInvoiceNumber.value}'),
-                      label: 'Notes / Memo',
-                      initialValue: controller.formNotes.value,
-                      hint: 'Special terms, payment instructions, delivery address...',
-                      maxLines: 3,
-                      onChanged: (v) => controller.formNotes.value = v,
+                    Obx(
+                      () => AppDatePickerField(
+                        label: 'Invoice Date',
+                        value: controller.formInvoiceDate.value,
+                        onDateSelected: (d) =>
+                            controller.formInvoiceDate.value = d,
+                      ),
                     ),
                   ],
-                ));
+                ),
+              ),
 
-                final totalsWidget = Obx(() => Container(
+              const SizedBox(height: 20),
+
+              // Products Line Items Card
+              AppCard(
+                title: 'Line Items',
+                trailing: AppButton(
+                  label: 'Add Item',
+                  icon: Icons.add,
+                  type: AppButtonType.outline,
+                  onPressed: () => _showAddItemDialog(context),
+                ),
+                child: Obx(() {
+                  if (controller.formItems.isEmpty) {
+                    return Padding(
+                      padding: const EdgeInsets.all(32),
+                      child: Center(
+                        child: Column(
+                          children: [
+                            const Icon(
+                              Icons.shopping_cart_outlined,
+                              size: 36,
+                              color: AppColors.neutral,
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'No products added to this invoice yet.',
+                              style: AppTextStyles.body2,
+                            ),
+                            const SizedBox(height: 12),
+                            AppButton(
+                              label: 'Add Product Item',
+                              icon: Icons.add,
+                              onPressed: () => _showAddItemDialog(context),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  final columns = const [
+                    AppTableColumn(title: 'Product', width: 220),
+                    AppTableColumn(
+                      title: 'Qty',
+                      width: 80,
+                      alignment: Alignment.centerRight,
+                    ),
+                    AppTableColumn(
+                      title: 'Rate',
+                      width: 110,
+                      alignment: Alignment.centerRight,
+                    ),
+                    AppTableColumn(
+                      title: 'Discount',
+                      width: 90,
+                      alignment: Alignment.centerRight,
+                    ),
+                    AppTableColumn(
+                      title: 'Tax',
+                      width: 90,
+                      alignment: Alignment.centerRight,
+                    ),
+                    AppTableColumn(
+                      title: 'Total',
+                      width: 120,
+                      alignment: Alignment.centerRight,
+                    ),
+                    AppTableColumn(
+                      title: '',
+                      width: 50,
+                      alignment: Alignment.center,
+                    ),
+                  ];
+
+                  final rows = List.generate(controller.formItems.length, (
+                    index,
+                  ) {
+                    final item = controller.formItems[index];
+                    return [
+                      Text(
+                        item.productName ?? 'Product',
+                        style: AppTextStyles.tableCellBold,
+                      ),
+                      Text(
+                        '${item.quantity} ${item.unit ?? ''}',
+                        style: AppTextStyles.tableCell,
+                      ),
+                      Text(
+                        CurrencyUtils.format(item.rate),
+                        style: AppTextStyles.tableCell,
+                      ),
+                      Text(
+                        item.discount > 0
+                            ? CurrencyUtils.format(item.discount)
+                            : '-',
+                        style: AppTextStyles.tableCell,
+                      ),
+                      Text(
+                        CurrencyUtils.format(item.taxAmount),
+                        style: AppTextStyles.tableCell,
+                      ),
+                      Text(
+                        CurrencyUtils.format(item.total),
+                        style: AppTextStyles.tableCellBold,
+                      ),
+                      IconButton(
+                        icon: const Icon(
+                          Icons.delete_outline,
+                          size: 18,
+                          color: AppColors.debit,
+                        ),
+                        splashRadius: 16,
+                        onPressed: () => controller.removeFormItem(index),
+                      ),
+                    ];
+                  });
+
+                  return AppTable(columns: columns, rows: rows, minWidth: 760);
+                }),
+              ),
+
+              const SizedBox(height: 20),
+
+              // Summary & Payment Card
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final isDesktop = constraints.maxWidth >= 800;
+
+                  final notesWidget = Obx(
+                    () => Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        AppTextField(
+                          key: ValueKey(
+                            'sales_notes_${controller.formNextInvoiceNumber.value}',
+                          ),
+                          label: 'Notes / Memo',
+                          initialValue: controller.formNotes.value,
+                          hint:
+                              'Special terms, payment instructions, delivery address...',
+                          maxLines: 3,
+                          onChanged: (v) => controller.formNotes.value = v,
+                        ),
+                      ],
+                    ),
+                  );
+
+                  final totalsWidget = Obx(
+                    () => Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: Theme.of(context).brightness == Brightness.dark
@@ -180,47 +265,83 @@ class SalesCreateScreen extends GetView<SalesController> {
                       ),
                       child: Column(
                         children: [
-                          _totalRow('Subtotal', CurrencyUtils.format(controller.formSubtotal)),
+                          _totalRow(
+                            'Subtotal',
+                            CurrencyUtils.format(controller.formSubtotal),
+                          ),
                           const SizedBox(height: 6),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               const Flexible(
-                                child: Text('Extra Discount', style: AppTextStyles.caption, overflow: TextOverflow.ellipsis),
+                                child: Text(
+                                  'Extra Discount',
+                                  style: AppTextStyles.caption,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                               const SizedBox(width: 8),
                               SizedBox(
                                 width: 110,
                                 child: AppTextField(
-                                  key: ValueKey('sales_disc_${controller.formNextInvoiceNumber.value}'),
+                                  key: ValueKey(
+                                    'sales_disc_${controller.formNextInvoiceNumber.value}',
+                                  ),
                                   initialValue: '0',
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                  inputFormatters: [AppInputFormatters.decimal()],
-                                  onChanged: (v) => controller.formDiscount.value = double.tryParse(v) ?? 0.0,
+                                  keyboardType:
+                                      const TextInputType.numberWithOptions(
+                                        decimal: true,
+                                      ),
+                                  inputFormatters: [
+                                    AppInputFormatters.decimal(),
+                                  ],
+                                  onChanged: (v) =>
+                                      controller.formDiscount.value =
+                                          double.tryParse(v) ?? 0.0,
                                 ),
                               ),
                             ],
                           ),
                           const SizedBox(height: 6),
-                          _totalRow('Tax (GST)', CurrencyUtils.format(controller.formTaxTotal)),
+                          _totalRow(
+                            'Tax (GST)',
+                            CurrencyUtils.format(controller.formTaxTotal),
+                          ),
                           const Divider(height: 16),
-                          _totalRow('Grand Total', CurrencyUtils.format(controller.formGrandTotal), isBold: true),
+                          _totalRow(
+                            'Grand Total',
+                            CurrencyUtils.format(controller.formGrandTotal),
+                            isBold: true,
+                          ),
                           const SizedBox(height: 8),
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
                               const Flexible(
-                                child: Text('Paid Amount', style: AppTextStyles.caption, overflow: TextOverflow.ellipsis),
+                                child: Text(
+                                  'Paid Amount',
+                                  style: AppTextStyles.caption,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
                               ),
                               const SizedBox(width: 8),
                               SizedBox(
                                 width: 110,
                                 child: AppTextField(
-                                  key: ValueKey('sales_paid_${controller.formNextInvoiceNumber.value}'),
+                                  key: ValueKey(
+                                    'sales_paid_${controller.formNextInvoiceNumber.value}',
+                                  ),
                                   initialValue: '0',
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                  inputFormatters: [AppInputFormatters.decimal()],
-                                  onChanged: (v) => controller.formPaidAmount.value = double.tryParse(v) ?? 0.0,
+                                  keyboardType:
+                                      const TextInputType.numberWithOptions(
+                                        decimal: true,
+                                      ),
+                                  inputFormatters: [
+                                    AppInputFormatters.decimal(),
+                                  ],
+                                  onChanged: (v) =>
+                                      controller.formPaidAmount.value =
+                                          double.tryParse(v) ?? 0.0,
                                 ),
                               ),
                             ],
@@ -230,39 +351,48 @@ class SalesCreateScreen extends GetView<SalesController> {
                             'Balance Due',
                             CurrencyUtils.format(controller.formBalanceAmount),
                             isBold: true,
-                            color: controller.formBalanceAmount > 0 ? AppColors.warning : AppColors.credit,
+                            color: controller.formBalanceAmount > 0
+                                ? AppColors.warning
+                                : AppColors.credit,
                           ),
                         ],
                       ),
-                    ));
+                    ),
+                  );
 
-                if (isDesktop) {
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(flex: 3, child: notesWidget),
-                      const SizedBox(width: 24),
-                      Expanded(flex: 2, child: totalsWidget),
-                    ],
-                  );
-                } else {
-                  return Column(
-                    children: [
-                      totalsWidget,
-                      const SizedBox(height: 16),
-                      notesWidget,
-                    ],
-                  );
-                }
-              },
-            ),
-          ],
+                  if (isDesktop) {
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(flex: 3, child: notesWidget),
+                        const SizedBox(width: 24),
+                        Expanded(flex: 2, child: totalsWidget),
+                      ],
+                    );
+                  } else {
+                    return Column(
+                      children: [
+                        totalsWidget,
+                        const SizedBox(height: 16),
+                        notesWidget,
+                      ],
+                    );
+                  }
+                },
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _totalRow(String label, String value, {bool isBold = false, Color? color}) {
+  Widget _totalRow(
+    String label,
+    String value, {
+    bool isBold = false,
+    Color? color,
+  }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -309,7 +439,9 @@ class SalesCreateScreen extends GetView<SalesController> {
                     items: controller.products.map((p) {
                       return DropdownMenuItem(
                         value: p,
-                        child: Text('${p.name} (Stock: ${p.stockQuantity} ${p.unit})'),
+                        child: Text(
+                          '${p.name} (Stock: ${p.stockQuantity} ${p.unit})',
+                        ),
                       );
                     }).toList(),
                     onChanged: (p) {
@@ -329,16 +461,24 @@ class SalesCreateScreen extends GetView<SalesController> {
                       AppTextField(
                         label: 'Quantity *',
                         controller: qtyCtrl,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                         inputFormatters: [AppInputFormatters.decimal()],
-                        validator: (v) => double.tryParse(v ?? '') == null ? 'Valid qty required' : null,
+                        validator: (v) => double.tryParse(v ?? '') == null
+                            ? 'Valid qty required'
+                            : null,
                       ),
                       AppTextField(
                         label: 'Rate *',
                         controller: rateCtrl,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                         inputFormatters: [AppInputFormatters.decimal()],
-                        validator: (v) => double.tryParse(v ?? '') == null ? 'Valid rate required' : null,
+                        validator: (v) => double.tryParse(v ?? '') == null
+                            ? 'Valid rate required'
+                            : null,
                       ),
                     ],
                   ),
@@ -350,7 +490,9 @@ class SalesCreateScreen extends GetView<SalesController> {
                       AppTextField(
                         label: 'Discount (₹)',
                         controller: discountCtrl,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                         inputFormatters: [AppInputFormatters.decimal()],
                       ),
                       AppTextField(
@@ -364,19 +506,32 @@ class SalesCreateScreen extends GetView<SalesController> {
               ),
             ),
             actions: [
-              AppButton(label: 'Cancel', type: AppButtonType.text, onPressed: () => Get.back()),
+              AppButton(
+                label: 'Cancel',
+                type: AppButtonType.text,
+                onPressed: () => Get.back(),
+              ),
               AppButton(
                 label: 'Add to Invoice',
                 onPressed: () {
                   if (selectedProd == null) {
-                    Get.snackbar('Error', 'Please select a product', snackPosition: SnackPosition.BOTTOM);
+                    Get.snackbar(
+                      'Error',
+                      'Please select a product',
+                      snackPosition: SnackPosition.BOTTOM,
+                    );
                     return;
                   }
                   if (!formKey.currentState!.validate()) return;
 
-                  final q = double.tryParse(qtyCtrl.text.replaceAll(',', '')) ?? 1.0;
-                  final r = double.tryParse(rateCtrl.text.replaceAll(',', '')) ?? selectedProd!.salesPrice;
-                  final d = double.tryParse(discountCtrl.text.replaceAll(',', '')) ?? 0.0;
+                  final q =
+                      double.tryParse(qtyCtrl.text.replaceAll(',', '')) ?? 1.0;
+                  final r =
+                      double.tryParse(rateCtrl.text.replaceAll(',', '')) ??
+                      selectedProd!.salesPrice;
+                  final d =
+                      double.tryParse(discountCtrl.text.replaceAll(',', '')) ??
+                      0.0;
 
                   controller.addFormItem(selectedProd!, q, r, d);
                   Get.back();

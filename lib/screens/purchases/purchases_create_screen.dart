@@ -29,26 +29,32 @@ class PurchasesCreateScreen extends GetView<PurchaseController> {
       });
     }
 
-    return AppScaffold(
-      title: 'Record Purchase Bill',
+    return Obx(() => AppScaffold(
+      title: controller.isEditing ? 'Edit Purchase Bill' : 'Record Purchase Bill',
       currentRoute: AppRoutes.purchasesCreate,
       actions: [
         AppButton(
           label: 'Cancel',
           type: AppButtonType.text,
-          onPressed: () => Get.back(),
+          onPressed: () {
+            controller.resetForm();
+            Get.back();
+          },
         ),
         const SizedBox(width: 8),
-        Obx(() => AppButton(
-              label: 'Save Bill',
-              icon: Icons.check,
-              isLoading: controller.isSubmitting.value,
-              onPressed: controller.isSubmitting.value
-                  ? null
-                  : () async {
-                      await controller.submitPurchase();
-                    },
-            )),
+        AppButton(
+          label: controller.isEditing ? 'Update Bill' : 'Save Bill',
+          icon: Icons.check,
+          isLoading: controller.isSubmitting.value,
+          onPressed: controller.isSubmitting.value
+              ? null
+              : () async {
+                  final ok = await controller.submitPurchase();
+                  if (ok) {
+                    Get.back();
+                  }
+                },
+        ),
       ],
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
@@ -237,7 +243,7 @@ class PurchasesCreateScreen extends GetView<PurchaseController> {
           ],
         ),
       ),
-    );
+    ));
   }
 
   Widget _totalRow(String label, String value, {bool isBold = false, Color? color}) {
