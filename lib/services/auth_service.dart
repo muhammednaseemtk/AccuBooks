@@ -1,8 +1,25 @@
 import 'package:get/get.dart';
+import '../controllers/account_controller.dart';
+import '../controllers/customer_controller.dart';
+import '../controllers/dashboard_controller.dart';
+import '../controllers/expense_controller.dart';
+import '../controllers/journal_controller.dart';
+import '../controllers/payment_controller.dart';
+import '../controllers/product_controller.dart';
+import '../controllers/purchase_controller.dart';
+import '../controllers/purchase_order_controller.dart';
+import '../controllers/receipt_controller.dart';
+import '../controllers/report_controller.dart';
+import '../controllers/sales_controller.dart';
+import '../controllers/sales_order_controller.dart';
+import '../controllers/settings_controller.dart';
+import '../controllers/supplier_controller.dart';
 import '../core/constants/auth_constants.dart';
+import '../core/database/database_helper.dart';
 import '../models/organization_model.dart';
 import '../models/user_model.dart';
 import '../repositories/auth_repository.dart';
+import '../repositories/company_repository.dart';
 
 class AuthService extends GetxService {
   final AuthRepository _authRepo;
@@ -19,12 +36,35 @@ class AuthService extends GetxService {
   bool get isAccountant => currentUser.value?.isAccountant ?? false;
   String get userRole => currentUser.value?.role ?? AuthConstants.roleViewer;
 
+  /// Safely purge all in-memory user-specific controllers, cached lists, and state
+  static void clearUserControllers() {
+    if (Get.isRegistered<AccountController>()) Get.delete<AccountController>(force: true);
+    if (Get.isRegistered<CustomerController>()) Get.delete<CustomerController>(force: true);
+    if (Get.isRegistered<SupplierController>()) Get.delete<SupplierController>(force: true);
+    if (Get.isRegistered<ProductController>()) Get.delete<ProductController>(force: true);
+    if (Get.isRegistered<SalesController>()) Get.delete<SalesController>(force: true);
+    if (Get.isRegistered<SalesOrderController>()) Get.delete<SalesOrderController>(force: true);
+    if (Get.isRegistered<PurchaseController>()) Get.delete<PurchaseController>(force: true);
+    if (Get.isRegistered<PurchaseOrderController>()) Get.delete<PurchaseOrderController>(force: true);
+    if (Get.isRegistered<ReceiptController>()) Get.delete<ReceiptController>(force: true);
+    if (Get.isRegistered<PaymentController>()) Get.delete<PaymentController>(force: true);
+    if (Get.isRegistered<ExpenseController>()) Get.delete<ExpenseController>(force: true);
+    if (Get.isRegistered<JournalController>()) Get.delete<JournalController>(force: true);
+    if (Get.isRegistered<ReportController>()) Get.delete<ReportController>(force: true);
+    if (Get.isRegistered<DashboardController>()) Get.delete<DashboardController>(force: true);
+    if (Get.isRegistered<SettingsController>()) {
+      Get.find<SettingsController>().company.value = null;
+    }
+  }
+
   /// Check and restore existing session from secure storage
   Future<UserModel?> restoreSession() async {
     try {
       final session = await _authRepo.loadSession();
       if (session == null) {
         isAuthenticated.value = false;
+        await DatabaseHelper().setActiveUser(null);
+        clearUserControllers();
         return null;
       }
 
@@ -32,18 +72,26 @@ class AuthService extends GetxService {
       final user = await _authRepo.findUserById(userId);
       if (user == null || !user.isActive) {
         await _authRepo.clearSession();
+        await DatabaseHelper().setActiveUser(null);
+        clearUserControllers();
         isAuthenticated.value = false;
         return null;
       }
 
       final org = await _authRepo.getOrganizationById(user.organizationId);
 
+      await DatabaseHelper().setActiveUser(user.id!);
       currentUser.value = user;
       currentOrganization.value = org;
       isAuthenticated.value = true;
+      if (Get.isRegistered<SettingsController>()) {
+        Get.find<SettingsController>().loadSettings();
+      }
       return user;
     } catch (_) {
       isAuthenticated.value = false;
+      await DatabaseHelper().setActiveUser(null);
+      clearUserControllers();
       return null;
     }
   }
@@ -99,10 +147,27 @@ class AuthService extends GetxService {
       await _authRepo.updateOrganizationOwner(org.id!, user.id!);
     }
 
-    // 4. Seed default chart of accounts for this organization
+    // 4. Initialize active user database for this user
+    await DatabaseHelper().setActiveUser(user.id!);
+    clearUserControllers();
+
+    // 5. Update Company details in the user's isolated database
+    try {
+      final companyRepo = CompanyRepository();
+      final existingCompany = await companyRepo.getCompany();
+      if (existingCompany != null) {
+        await companyRepo.updateCompany(existingCompany.copyWith(
+          name: cleanCompanyName,
+          email: cleanEmail,
+          phone: cleanPhone,
+        ));
+      }
+    } catch (_) {}
+
+    // 6. Seed default chart of accounts for this organization
     await _authRepo.seedDefaultAccountsForOrganization(org.id!);
 
-    // 5. Store session and set reactive user state
+    // 7. Store session and set reactive user state
     await _authRepo.saveSession(
       userId: user.id!,
       email: cleanEmail,
@@ -113,6 +178,9 @@ class AuthService extends GetxService {
     currentUser.value = user;
     currentOrganization.value = org.copyWith(ownerId: user.id);
     isAuthenticated.value = true;
+    if (Get.isRegistered<SettingsController>()) {
+      Get.find<SettingsController>().loadSettings();
+    }
 
     return user;
   }
@@ -148,7 +216,11 @@ class AuthService extends GetxService {
     final user = UserModel.fromMap(creds);
     final org = await _authRepo.getOrganizationById(user.organizationId);
 
-    // 4. Save session
+    // 4. Isolate database context for this user
+    await DatabaseHelper().setActiveUser(user.id!);
+    clearUserControllers();
+
+    // 5. Save session
     await _authRepo.saveSession(
       userId: user.id!,
       email: user.email,
@@ -159,6 +231,9 @@ class AuthService extends GetxService {
     currentUser.value = user;
     currentOrganization.value = org;
     isAuthenticated.value = true;
+    if (Get.isRegistered<SettingsController>()) {
+      Get.find<SettingsController>().loadSettings();
+    }
 
     return user;
   }
@@ -198,29 +273,53 @@ class AuthService extends GetxService {
   /// Update User Profile
   Future<void> updateProfile({
     required String fullName,
+    required String email,
     String? phone,
+    String? profileImage,
+    bool clearProfileImage = false,
   }) async {
     final user = currentUser.value;
     if (user == null || user.id == null) {
       throw Exception('No active user session found.');
     }
 
+    final cleanEmail = email.trim().toLowerCase();
+    final cleanFullName = fullName.trim();
+    final cleanPhone = phone?.trim();
+
     await _authRepo.updateProfile(
       userId: user.id!,
-      fullName: fullName,
-      phone: phone,
+      fullName: cleanFullName,
+      email: cleanEmail,
+      phone: cleanPhone,
+      profileImage: profileImage,
+      clearProfileImage: clearProfileImage,
     );
 
-    currentUser.value = user.copyWith(
-      fullName: fullName,
-      phone: phone,
-      updatedAt: DateTime.now(),
-    );
+    if (user.email != cleanEmail) {
+      await _authRepo.updateSessionEmail(cleanEmail);
+    }
+
+    final reloaded = await _authRepo.findUserById(user.id!);
+    if (reloaded != null) {
+      currentUser.value = reloaded;
+    } else {
+      currentUser.value = user.copyWith(
+        fullName: cleanFullName,
+        email: cleanEmail,
+        phone: cleanPhone,
+        profileImage: clearProfileImage ? null : (profileImage ?? user.profileImage),
+        clearProfileImage: clearProfileImage,
+        updatedAt: DateTime.now(),
+      );
+    }
   }
 
   /// Logout and clear session
   Future<void> logout() async {
     await _authRepo.clearSession();
+    await DatabaseHelper().setActiveUser(null);
+    clearUserControllers();
     currentUser.value = null;
     currentOrganization.value = null;
     isAuthenticated.value = false;

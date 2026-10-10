@@ -40,7 +40,7 @@ class AuthRepository {
   // User Queries & Creation
   // -------------------------------------------------------------
   Future<UserModel?> findUserByEmail(String email) async {
-    final db = await _dbHelper.database;
+    final db = await _dbHelper.authDatabase;
     final cleanEmail = email.trim().toLowerCase();
     final res = await db.query(
       DatabaseTables.tableUsers,
@@ -53,7 +53,7 @@ class AuthRepository {
   }
 
   Future<UserModel?> findUserById(int id) async {
-    final db = await _dbHelper.database;
+    final db = await _dbHelper.authDatabase;
     final res = await db.query(
       DatabaseTables.tableUsers,
       where: 'id = ?',
@@ -65,7 +65,7 @@ class AuthRepository {
   }
 
   Future<Map<String, dynamic>?> getAuthCredentialsByEmail(String email) async {
-    final db = await _dbHelper.database;
+    final db = await _dbHelper.authDatabase;
     final cleanEmail = email.trim().toLowerCase();
     final res = await db.query(
       DatabaseTables.tableUsers,
@@ -86,7 +86,7 @@ class AuthRepository {
     String role = AuthConstants.roleOwner,
     Transaction? txn,
   }) async {
-    final executor = txn ?? await _dbHelper.database;
+    final executor = txn ?? await _dbHelper.authDatabase;
     final salt = generateSalt();
     final hash = hashPassword(password, salt);
     final now = AppDateUtils.formatDb(DateTime.now());
@@ -119,17 +119,42 @@ class AuthRepository {
   Future<void> updateProfile({
     required int userId,
     required String fullName,
+    required String email,
     String? phone,
+    String? profileImage,
+    bool clearProfileImage = false,
   }) async {
-    final db = await _dbHelper.database;
+    final db = await _dbHelper.authDatabase;
     final now = AppDateUtils.formatDb(DateTime.now());
+    final cleanEmail = email.trim().toLowerCase();
+
+    // Ensure email is not already taken by another user
+    final existing = await db.query(
+      DatabaseTables.tableUsers,
+      where: 'LOWER(email) = ? AND id != ?',
+      whereArgs: [cleanEmail, userId],
+      limit: 1,
+    );
+    if (existing.isNotEmpty) {
+      throw Exception('This email is already in use by another account.');
+    }
+
+    final updateData = <String, dynamic>{
+      'full_name': fullName.trim(),
+      'email': cleanEmail,
+      'phone': phone?.trim(),
+      'updated_at': now,
+    };
+
+    if (clearProfileImage) {
+      updateData['profile_image'] = null;
+    } else if (profileImage != null) {
+      updateData['profile_image'] = profileImage.trim();
+    }
+
     await db.update(
       DatabaseTables.tableUsers,
-      {
-        'full_name': fullName.trim(),
-        'phone': phone?.trim(),
-        'updated_at': now,
-      },
+      updateData,
       where: 'id = ?',
       whereArgs: [userId],
     );
@@ -139,7 +164,7 @@ class AuthRepository {
     required int userId,
     required String newPassword,
   }) async {
-    final db = await _dbHelper.database;
+    final db = await _dbHelper.authDatabase;
     final salt = generateSalt();
     final hash = hashPassword(newPassword, salt);
     final now = AppDateUtils.formatDb(DateTime.now());
@@ -160,7 +185,7 @@ class AuthRepository {
   // Organization Management
   // -------------------------------------------------------------
   Future<OrganizationModel?> getOrganizationById(int id) async {
-    final db = await _dbHelper.database;
+    final db = await _dbHelper.authDatabase;
     final res = await db.query(
       DatabaseTables.tableOrganizations,
       where: 'id = ?',
@@ -178,7 +203,7 @@ class AuthRepository {
     String? address,
     Transaction? txn,
   }) async {
-    final executor = txn ?? await _dbHelper.database;
+    final executor = txn ?? await _dbHelper.authDatabase;
     final now = AppDateUtils.formatDb(DateTime.now());
 
     final id = await executor.insert(DatabaseTables.tableOrganizations, {
@@ -202,7 +227,7 @@ class AuthRepository {
   }
 
   Future<void> updateOrganizationOwner(int orgId, int ownerId, {Transaction? txn}) async {
-    final executor = txn ?? await _dbHelper.database;
+    final executor = txn ?? await _dbHelper.authDatabase;
     final now = AppDateUtils.formatDb(DateTime.now());
     await executor.update(
       DatabaseTables.tableOrganizations,
@@ -224,7 +249,7 @@ class AuthRepository {
   // Password Reset Management
   // -------------------------------------------------------------
   Future<String> createPasswordResetToken(String email) async {
-    final db = await _dbHelper.database;
+    final db = await _dbHelper.authDatabase;
     final cleanEmail = email.trim().toLowerCase();
 
     // 6-digit numeric verification code
@@ -251,7 +276,7 @@ class AuthRepository {
   }
 
   Future<bool> verifyPasswordResetToken(String email, String token) async {
-    final db = await _dbHelper.database;
+    final db = await _dbHelper.authDatabase;
     final cleanEmail = email.trim().toLowerCase();
     final cleanToken = token.trim();
 
@@ -287,7 +312,7 @@ class AuthRepository {
     await updatePassword(userId: user.id!, newPassword: newPassword);
 
     // Clean up used token
-    final db = await _dbHelper.database;
+    final db = await _dbHelper.authDatabase;
     await db.delete(
       DatabaseTables.tablePasswordResets,
       where: 'LOWER(email) = ?',
@@ -320,6 +345,13 @@ class AuthRepository {
       await prefs.remove(AuthConstants.prefUserId);
       await prefs.remove(AuthConstants.prefUserEmail);
       await prefs.remove(AuthConstants.prefActiveOrgId);
+    }
+  }
+
+  Future<void> updateSessionEmail(String email) async {
+    final prefs = await SharedPreferences.getInstance();
+    if (prefs.containsKey(AuthConstants.prefUserEmail)) {
+      await prefs.setString(AuthConstants.prefUserEmail, email.trim().toLowerCase());
     }
   }
 

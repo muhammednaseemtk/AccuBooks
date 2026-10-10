@@ -7,6 +7,7 @@ class UserModel {
   final String email;
   final String fullName;
   final String? phone;
+  final String? profileImage;
   final String role;
   final bool isActive;
   final DateTime createdAt;
@@ -18,6 +19,7 @@ class UserModel {
     required this.email,
     required this.fullName,
     this.phone,
+    this.profileImage,
     this.role = AuthConstants.roleOwner,
     this.isActive = true,
     DateTime? createdAt,
@@ -55,6 +57,7 @@ class UserModel {
       'email': email.trim().toLowerCase(),
       'full_name': fullName.trim(),
       'phone': phone?.trim(),
+      'profile_image': profileImage?.trim(),
       'role': role,
       'is_active': isActive ? 1 : 0,
       'created_at': AppDateUtils.formatDb(createdAt),
@@ -69,6 +72,7 @@ class UserModel {
       email: map['email'] as String? ?? '',
       fullName: map['full_name'] as String? ?? '',
       phone: map['phone'] as String?,
+      profileImage: map['profile_image'] as String?,
       role: map['role'] as String? ?? AuthConstants.roleOwner,
       isActive: (map['is_active'] as int? ?? 1) == 1,
       createdAt: AppDateUtils.parseDb(map['created_at'] as String?),
@@ -82,6 +86,8 @@ class UserModel {
     String? email,
     String? fullName,
     String? phone,
+    String? profileImage,
+    bool clearProfileImage = false,
     String? role,
     bool? isActive,
     DateTime? createdAt,
@@ -93,6 +99,7 @@ class UserModel {
       email: email ?? this.email,
       fullName: fullName ?? this.fullName,
       phone: phone ?? this.phone,
+      profileImage: clearProfileImage ? null : (profileImage ?? this.profileImage),
       role: role ?? this.role,
       isActive: isActive ?? this.isActive,
       createdAt: createdAt ?? this.createdAt,

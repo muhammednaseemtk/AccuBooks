@@ -211,7 +211,7 @@ class SalesOrdersScreen extends GetView<SalesOrderController> {
     }
 
     final columns = const [
-      AppTableColumn(title: 'Order #', width: 130),
+      AppTableColumn(title: 'Order ', width: 130),
       AppTableColumn(title: 'Date', width: 110),
       AppTableColumn(title: 'Customer', width: 180),
       AppTableColumn(title: 'Delivery', width: 110),
@@ -304,7 +304,7 @@ class SalesOrdersScreen extends GetView<SalesOrderController> {
     }
 
     final columns = const [
-      AppTableColumn(title: 'Return #', width: 130),
+      AppTableColumn(title: 'Return ', width: 130),
       AppTableColumn(title: 'Date', width: 110),
       AppTableColumn(title: 'Customer', width: 180),
       AppTableColumn(title: 'Ref Invoice', width: 130),

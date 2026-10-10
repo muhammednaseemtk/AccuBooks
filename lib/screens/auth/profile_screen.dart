@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../app/routes/app_routes.dart';
@@ -29,6 +30,19 @@ class ProfileScreen extends StatelessWidget {
             child: Obx(() {
               final user = controller.currentUser;
               final org = controller.currentOrganization;
+              final previewPath = controller.selectedImagePreviewPath.value;
+              final isMarkedForRemoval = controller.isImageMarkedForRemoval.value;
+
+              ImageProvider? imageProvider;
+              if (previewPath != null && File(previewPath).existsSync()) {
+                imageProvider = FileImage(File(previewPath));
+              } else if (!isMarkedForRemoval &&
+                  user?.profileImage != null &&
+                  File(user!.profileImage!).existsSync()) {
+                imageProvider = FileImage(File(user.profileImage!));
+              }
+
+              final hasImage = imageProvider != null;
 
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -37,16 +51,54 @@ class ProfileScreen extends StatelessWidget {
                   AppCard(
                     padding: const EdgeInsets.all(24),
                     child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        CircleAvatar(
-                          radius: 36,
-                          backgroundColor: AppColors.primary,
-                          child: Text(
-                            (user?.fullName.isNotEmpty ?? false)
-                                ? user!.fullName[0].toUpperCase()
-                                : 'U',
-                            style: AppTextStyles.h1.copyWith(color: Colors.white, fontSize: 28),
-                          ),
+                        Stack(
+                          children: [
+                            CircleAvatar(
+                              radius: 38,
+                              backgroundColor: AppColors.primary,
+                              backgroundImage: imageProvider,
+                              child: hasImage
+                                  ? null
+                                  : Text(
+                                      (user?.fullName.isNotEmpty ?? false)
+                                          ? user!.fullName[0].toUpperCase()
+                                          : 'U',
+                                      style: AppTextStyles.h1.copyWith(
+                                        color: Colors.white,
+                                        fontSize: 28,
+                                      ),
+                                    ),
+                            ),
+                            Positioned(
+                              bottom: 0,
+                              right: 0,
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  onTap: () => controller.pickProfileImage(),
+                                  borderRadius: BorderRadius.circular(16),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(6),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary,
+                                      shape: BoxShape.circle,
+                                      border: Border.all(
+                                        color: isDark ? AppColors.surfaceDark : Colors.white,
+                                        width: 2,
+                                      ),
+                                    ),
+                                    child: const Icon(
+                                      Icons.camera_alt,
+                                      size: 14,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(width: 20),
                         Expanded(
@@ -57,53 +109,118 @@ class ProfileScreen extends StatelessWidget {
                                 user?.fullName ?? 'User Profile',
                                 style: AppTextStyles.h2.copyWith(
                                   fontWeight: FontWeight.bold,
-                                  color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+                                  color: isDark
+                                      ? AppColors.textPrimaryDark
+                                      : AppColors.textPrimaryLight,
                                 ),
                               ),
                               const SizedBox(height: 4),
                               Text(
                                 user?.email ?? '',
                                 style: AppTextStyles.body2.copyWith(
-                                  color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+                                  color: isDark
+                                      ? AppColors.textSecondaryDark
+                                      : AppColors.textSecondaryLight,
                                 ),
                               ),
                               const SizedBox(height: 8),
-                              Row(
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 6,
                                 children: [
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 4,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: AppColors.primary.withValues(alpha: 0.15),
                                       borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(color: AppColors.primaryLight.withValues(alpha: 0.3)),
+                                      border: Border.all(
+                                        color: AppColors.primaryLight.withValues(alpha: 0.3),
+                                      ),
                                     ),
                                     child: Text(
                                       user?.roleDisplayName ?? 'Owner',
                                       style: AppTextStyles.caption.copyWith(
-                                        color: isDark ? AppColors.primaryLight : AppColors.primary,
+                                        color: isDark
+                                            ? AppColors.primaryLight
+                                            : AppColors.primary,
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 4,
+                                    ),
                                     decoration: BoxDecoration(
-                                      color: isDark ? AppColors.surfaceVariantDark : Colors.grey.shade100,
+                                      color: isDark
+                                          ? AppColors.surfaceVariantDark
+                                          : Colors.grey.shade100,
                                       borderRadius: BorderRadius.circular(12),
                                     ),
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        const Icon(Icons.business_rounded, size: 14, color: AppColors.secondary),
+                                        const Icon(
+                                          Icons.business_rounded,
+                                          size: 14,
+                                          color: AppColors.secondary,
+                                        ),
                                         const SizedBox(width: 4),
                                         Text(
                                           org?.name ?? 'Company',
-                                          style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.w600),
+                                          style: AppTextStyles.caption.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                          ),
                                         ),
                                       ],
                                     ),
                                   ),
+                                ],
+                              ),
+                              const SizedBox(height: 10),
+                              Wrap(
+                                spacing: 8,
+                                runSpacing: 6,
+                                children: [
+                                  OutlinedButton.icon(
+                                    style: OutlinedButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 4,
+                                      ),
+                                      visualDensity: VisualDensity.compact,
+                                    ),
+                                    icon: const Icon(
+                                      Icons.photo_library_outlined,
+                                      size: 14,
+                                    ),
+                                    label: Text(
+                                      hasImage ? 'Change Photo' : 'Select Photo',
+                                      style: const TextStyle(fontSize: 12),
+                                    ),
+                                    onPressed: () => controller.pickProfileImage(),
+                                  ),
+                                  if (hasImage)
+                                    OutlinedButton.icon(
+                                      style: OutlinedButton.styleFrom(
+                                        foregroundColor: Colors.red,
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 4,
+                                        ),
+                                        visualDensity: VisualDensity.compact,
+                                      ),
+                                      icon: const Icon(Icons.delete_outline, size: 14),
+                                      label: const Text(
+                                        'Remove Photo',
+                                        style: TextStyle(fontSize: 12),
+                                      ),
+                                      onPressed: () => controller.removeProfileImage(),
+                                    ),
                                 ],
                               ),
                             ],
@@ -114,10 +231,20 @@ class ProfileScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 24),
 
-                  // Editable Information
+                  // Editable Personal Information
                   AppCard(
                     title: 'Personal Information',
-                    subtitle: 'Update your profile details',
+                    subtitle: controller.isEditingProfile.value
+                        ? 'Modify your profile details and save changes'
+                        : 'Your personal account details',
+                    trailing: !controller.isEditingProfile.value
+                        ? AppButton(
+                            text: 'Edit Profile',
+                            icon: Icons.edit_outlined,
+                            type: AppButtonType.secondary,
+                            onPressed: () => controller.startEditingProfile(),
+                          )
+                        : null,
                     padding: const EdgeInsets.all(24),
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -126,36 +253,61 @@ class ProfileScreen extends StatelessWidget {
                           label: 'Full Name',
                           hint: 'Full Name',
                           controller: controller.profileNameController,
+                          enabled: controller.isEditingProfile.value,
+                          readOnly: !controller.isEditingProfile.value,
                           prefixIcon: const Icon(Icons.person_outline, size: 20),
+                        ),
+                        const SizedBox(height: 16),
+                        AppTextField(
+                          label: 'Email',
+                          hint: 'Email',
+                          controller: controller.profileEmailController,
+                          enabled: controller.isEditingProfile.value,
+                          readOnly: !controller.isEditingProfile.value,
+                          keyboardType: TextInputType.emailAddress,
+                          prefixIcon: const Icon(Icons.email_outlined, size: 20),
                         ),
                         const SizedBox(height: 16),
                         AppTextField(
                           label: 'Phone Number',
                           hint: 'Phone Number',
                           controller: controller.profilePhoneController,
+                          enabled: controller.isEditingProfile.value,
+                          readOnly: !controller.isEditingProfile.value,
                           keyboardType: TextInputType.phone,
                           inputFormatters: [AppInputFormatters.digitsOnly],
                           prefixIcon: const Icon(Icons.phone_outlined, size: 20),
                         ),
-                        const SizedBox(height: 16),
-                        AppTextField(
-                          label: 'Email (Read-only)',
-                          hint: 'Email',
-                          initialValue: user?.email,
-                          readOnly: true,
-                          enabled: false,
-                          prefixIcon: const Icon(Icons.email_outlined, size: 20),
-                        ),
                         const SizedBox(height: 24),
-                        Align(
-                          alignment: Alignment.centerRight,
-                          child: Obx(() => AppButton(
-                                text: controller.isLoading.value ? 'Saving Changes...' : 'Save Changes',
+                        if (!controller.isEditingProfile.value)
+                          Align(
+                            alignment: Alignment.centerRight,
+                            child: AppButton(
+                              text: 'Edit Profile',
+                              icon: Icons.edit_outlined,
+                              onPressed: () => controller.startEditingProfile(),
+                            ),
+                          )
+                        else
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              AppButton(
+                                text: 'Cancel',
+                                type: AppButtonType.secondary,
+                                onPressed: () => controller.cancelEditingProfile(),
+                              ),
+                              const SizedBox(width: 12),
+                              AppButton(
+                                text: controller.isLoading.value
+                                    ? 'Saving Changes...'
+                                    : 'Save Changes',
                                 icon: Icons.save_outlined,
                                 isLoading: controller.isLoading.value,
                                 onPressed: () => controller.updateProfile(),
-                              )),
-                        ),
+                              ),
+                            ],
+                          ),
                       ],
                     ),
                   ),

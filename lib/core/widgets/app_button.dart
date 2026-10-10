@@ -39,13 +39,29 @@ class AppButton extends StatelessWidget {
 
     Widget child;
     if (isLoading) {
-      child = const SizedBox(
-        width: 18,
-        height: 18,
-        child: CircularProgressIndicator(
-          strokeWidth: 2,
-          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
-        ),
+      child = Row(
+        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const SizedBox(
+            width: 18,
+            height: 18,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+            ),
+          ),
+          if (effectiveLabel.isNotEmpty) ...[
+            const SizedBox(width: 8),
+            Flexible(
+              child: Text(
+                effectiveLabel,
+                style: AppTextStyles.button,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ],
       );
     } else if (icon != null) {
       child = Row(

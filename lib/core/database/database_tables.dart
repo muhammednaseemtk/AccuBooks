@@ -70,6 +70,7 @@ class DatabaseTables {
       salt TEXT NOT NULL,
       full_name TEXT NOT NULL,
       phone TEXT,
+      profile_image TEXT,
       role TEXT NOT NULL DEFAULT 'OWNER',
       is_active INTEGER DEFAULT 1,
       created_at TEXT NOT NULL,
