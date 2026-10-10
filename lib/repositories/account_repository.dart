@@ -39,10 +39,11 @@ class AccountRepository {
     final query = '''
       SELECT 
         a.*,
-        COALESCE(SUM(jl.debit), 0.0) as agg_debits,
-        COALESCE(SUM(jl.credit), 0.0) as agg_credits
+        COALESCE(SUM(CASE WHEN je.transaction_type != '${AccountingConstants.transTypeOpeningBalance}' THEN jl.debit ELSE 0.0 END), 0.0) as agg_debits,
+        COALESCE(SUM(CASE WHEN je.transaction_type != '${AccountingConstants.transTypeOpeningBalance}' THEN jl.credit ELSE 0.0 END), 0.0) as agg_credits
       FROM ${DatabaseTables.tableAccounts} a
       LEFT JOIN ${DatabaseTables.tableJournalLines} jl ON a.id = jl.account_id
+      LEFT JOIN ${DatabaseTables.tableJournalEntries} je ON jl.journal_entry_id = je.id
       $whereString
       GROUP BY a.id
       ORDER BY a.account_code ASC
@@ -111,10 +112,11 @@ class AccountRepository {
     final executor = txn ?? await _dbHelper.database;
     final result = await executor.rawQuery('''
       SELECT 
-        COALESCE(SUM(debit), 0.0) as total_debit,
-        COALESCE(SUM(credit), 0.0) as total_credit
-      FROM ${DatabaseTables.tableJournalLines}
-      WHERE account_id = ?
+        COALESCE(SUM(jl.debit), 0.0) as total_debit,
+        COALESCE(SUM(jl.credit), 0.0) as total_credit
+      FROM ${DatabaseTables.tableJournalLines} jl
+      LEFT JOIN ${DatabaseTables.tableJournalEntries} je ON jl.journal_entry_id = je.id
+      WHERE jl.account_id = ? AND (je.transaction_type IS NULL OR je.transaction_type != '${AccountingConstants.transTypeOpeningBalance}')
     ''', [accountId]);
 
     final totalDebit = (result.first['total_debit'] as num?)?.toDouble() ?? 0.0;
@@ -184,12 +186,65 @@ class AccountRepository {
 
   Future<int> updateAccount(AccountModel account) async {
     final db = await _dbHelper.database;
-    return await db.update(
+    final res = await db.update(
       DatabaseTables.tableAccounts,
       account.toMap(),
       where: 'id = ?',
       whereArgs: [account.id],
     );
+
+    // Synchronize opening balance journal entry
+    await _dbHelper.transaction((txn) async {
+      final obEntries = await txn.query(
+        DatabaseTables.tableJournalEntries,
+        where: 'reference_id = ? AND transaction_type = ?',
+        whereArgs: [account.id, AccountingConstants.transTypeOpeningBalance],
+      );
+
+      for (final e in obEntries) {
+        final eId = e['id'] as int;
+        await txn.delete(DatabaseTables.tableJournalLines, where: 'journal_entry_id = ?', whereArgs: [eId]);
+        await txn.delete(DatabaseTables.tableJournalEntries, where: 'id = ?', whereArgs: [eId]);
+      }
+
+      if (account.openingBalance > 0) {
+        final now = AppDateUtils.formatDb(DateTime.now());
+        final jId = await txn.insert(DatabaseTables.tableJournalEntries, {
+          'transaction_number': 'OB-${account.accountCode}',
+          'transaction_date': now,
+          'transaction_type': AccountingConstants.transTypeOpeningBalance,
+          'reference_id': account.id,
+          'description': 'Opening balance for ${account.accountName}',
+          'created_at': now,
+        });
+
+        final isDebit = account.openingBalanceType == AccountingConstants.balanceDebit;
+        final equityAcc = await txn.query(
+          DatabaseTables.tableAccounts,
+          where: 'account_code = ?',
+          whereArgs: [AccountingConstants.codeRetainedEarnings],
+        );
+        final equityId = equityAcc.isNotEmpty ? equityAcc.first['id'] as int : account.id!;
+
+        await txn.insert(DatabaseTables.tableJournalLines, {
+          'journal_entry_id': jId,
+          'account_id': account.id,
+          'debit': isDebit ? account.openingBalance : 0.0,
+          'credit': isDebit ? 0.0 : account.openingBalance,
+          'description': 'Opening balance',
+        });
+
+        await txn.insert(DatabaseTables.tableJournalLines, {
+          'journal_entry_id': jId,
+          'account_id': equityId,
+          'debit': isDebit ? 0.0 : account.openingBalance,
+          'credit': isDebit ? account.openingBalance : 0.0,
+          'description': 'Opening balance offset',
+        });
+      }
+    });
+
+    return res;
   }
 
   Future<bool> canDeleteAccount(int id) async {

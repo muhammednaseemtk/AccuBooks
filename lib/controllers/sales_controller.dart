@@ -202,6 +202,27 @@ class SalesController extends GetxController {
     ));
   }
 
+  void updateFormItem(int index, ProductModel product, double quantity, double rate, double discount) {
+    if (index >= 0 && index < formItems.length) {
+      final taxRate = product.taxRate;
+      final taxAmount = SalesInvoiceItemModel.calculateTax(quantity, rate, discount, taxRate);
+      final total = SalesInvoiceItemModel.calculateTotal(quantity, rate, discount, taxRate);
+
+      formItems[index] = formItems[index].copyWith(
+        productId: product.id!,
+        productName: product.name,
+        productCode: product.productCode,
+        unit: product.unit,
+        quantity: quantity,
+        rate: rate,
+        discount: discount,
+        taxRate: taxRate,
+        taxAmount: taxAmount,
+        total: total,
+      );
+    }
+  }
+
   void removeFormItem(int index) {
     if (index >= 0 && index < formItems.length) {
       formItems.removeAt(index);

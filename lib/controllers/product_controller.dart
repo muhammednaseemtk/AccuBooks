@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:get/get.dart';
+import '../core/constants/accounting_constants.dart';
 import '../models/category_model.dart';
 import '../models/product_model.dart';
 import '../models/stock_transaction_model.dart';
@@ -104,6 +105,18 @@ class ProductController extends GetxController {
           Get.snackbar('Success', 'Product added successfully', snackPosition: SnackPosition.BOTTOM);
         }
       } else {
+        final existingProd = await _productRepo.getProductById(product.id!);
+        if (existingProd != null) {
+          final diff = product.stockQuantity - existingProd.stockQuantity;
+          if (diff != 0) {
+            await _productRepo.updateStock(
+              product.id!,
+              diff,
+              transactionType: AccountingConstants.stockAdjustment,
+              rate: product.purchasePrice,
+            );
+          }
+        }
         await _productRepo.updateProduct(product);
         await loadProducts();
         if (Get.context != null) {

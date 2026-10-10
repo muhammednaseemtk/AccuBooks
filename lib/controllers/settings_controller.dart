@@ -68,10 +68,14 @@ class SettingsController extends GetxController {
       isSubmitting.value = true;
       await _companyRepo.updateCompany(updated);
       company.value = updated;
-      Get.snackbar('Success', 'Company details updated successfully', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Success', 'Company details updated successfully', snackPosition: SnackPosition.BOTTOM);
+      }
       return true;
     } catch (e) {
-      Get.snackbar('Error', 'Failed to update company: $e', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Error', 'Failed to update company: $e', snackPosition: SnackPosition.BOTTOM);
+      }
       return false;
     } finally {
       isSubmitting.value = false;
@@ -83,14 +87,18 @@ class SettingsController extends GetxController {
       isSubmitting.value = true;
       final path = await _backupService.createBackup();
       await loadSettings();
-      Get.snackbar(
-        'Backup Created',
-        'Database backup successfully saved at: $path',
-        snackPosition: SnackPosition.BOTTOM,
-        duration: const Duration(seconds: 4),
-      );
+      if (Get.context != null) {
+        Get.snackbar(
+          'Backup Created',
+          'Database backup successfully saved at: $path',
+          snackPosition: SnackPosition.BOTTOM,
+          duration: const Duration(seconds: 4),
+        );
+      }
     } catch (e) {
-      Get.snackbar('Backup Error', 'Failed to create backup: $e', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Backup Error', 'Failed to create backup: $e', snackPosition: SnackPosition.BOTTOM);
+      }
     } finally {
       isSubmitting.value = false;
     }
@@ -102,15 +110,19 @@ class SettingsController extends GetxController {
       final success = await _backupService.restoreFromBackup();
       if (success) {
         await loadSettings();
-        Get.snackbar(
-          'Restore Complete',
-          'Database restored successfully. Please restart or refresh application.',
-          snackPosition: SnackPosition.BOTTOM,
-          duration: const Duration(seconds: 4),
-        );
+        if (Get.context != null) {
+          Get.snackbar(
+            'Restore Complete',
+            'Database restored successfully. Please restart or refresh application.',
+            snackPosition: SnackPosition.BOTTOM,
+            duration: const Duration(seconds: 4),
+          );
+        }
       }
     } catch (e) {
-      Get.snackbar('Restore Error', 'Failed to restore database: $e', snackPosition: SnackPosition.BOTTOM);
+      if (Get.context != null) {
+        Get.snackbar('Restore Error', 'Failed to restore database: $e', snackPosition: SnackPosition.BOTTOM);
+      }
     } finally {
       isSubmitting.value = false;
     }
