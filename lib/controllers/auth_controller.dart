@@ -1,12 +1,18 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:get/get.dart';
+import 'package:path/path.dart' as p;
+import 'package:path_provider/path_provider.dart';
 import '../app/routes/app_routes.dart';
 import '../app/theme/app_colors.dart';
+import '../core/database/database_helper.dart';
 import '../core/widgets/app_dialog.dart';
 import '../models/country_model.dart';
 import '../models/organization_model.dart';
 import '../models/user_model.dart';
 import '../services/auth_service.dart';
+import '../services/report_service.dart';
 
 class AuthController extends GetxController {
   final AuthService _authService;
@@ -60,7 +66,11 @@ class AuthController extends GetxController {
 
   // Controllers: Profile
   final profileNameController = TextEditingController();
+  final profileEmailController = TextEditingController();
   final profilePhoneController = TextEditingController();
+  final RxBool isEditingProfile = false.obs;
+  final Rx<String?> selectedImagePreviewPath = Rx<String?>(null);
+  final RxBool isImageMarkedForRemoval = false.obs;
 
   // Getters for Auth State
   UserModel? get currentUser => _authService.currentUser.value;
@@ -83,11 +93,19 @@ class AuthController extends GetxController {
 
     // Populate profile controllers if user session changes
     ever(_authService.currentUser, (user) {
-      if (user != null) {
+      if (user != null && !isEditingProfile.value) {
         profileNameController.text = user.fullName;
+        profileEmailController.text = user.email;
         profilePhoneController.text = user.phone ?? '';
       }
     });
+
+    final initialUser = _authService.currentUser.value;
+    if (initialUser != null) {
+      profileNameController.text = initialUser.fullName;
+      profileEmailController.text = initialUser.email;
+      profilePhoneController.text = initialUser.phone ?? '';
+    }
   }
 
   @override
@@ -105,6 +123,7 @@ class AuthController extends GetxController {
     resetNewPasswordController.dispose();
     resetConfirmPasswordController.dispose();
     profileNameController.dispose();
+    profileEmailController.dispose();
     profilePhoneController.dispose();
     super.onClose();
   }
@@ -213,6 +232,18 @@ class AuthController extends GetxController {
         password: password,
         rememberMe: rememberMe.value,
       );
+
+      // Initialize the correct user's data context and verify database access
+      try {
+        AuthService.clearUserControllers();
+        await DatabaseHelper().database;
+        final reportService = ReportService();
+        await reportService.getDashboardMetrics();
+      } catch (dataInitError) {
+        // Safe fallback: rollback authentication state if user data context fails
+        await _authService.logout();
+        throw Exception('Failed to initialize user accounting workspace. Please try again.');
+      }
 
       // Clean controllers
       loginPasswordController.clear();
@@ -412,37 +443,180 @@ class AuthController extends GetxController {
   }
 
   // -------------------------------------------------------------
-  // Profile Update
+  // Profile Management & Image
   // -------------------------------------------------------------
+  void startEditingProfile() {
+    final user = currentUser;
+    if (user != null) {
+      profileNameController.text = user.fullName;
+      profileEmailController.text = user.email;
+      profilePhoneController.text = user.phone ?? '';
+    }
+    selectedImagePreviewPath.value = null;
+    isImageMarkedForRemoval.value = false;
+    isEditingProfile.value = true;
+  }
+
+  void cancelEditingProfile() {
+    final user = currentUser;
+    if (user != null) {
+      profileNameController.text = user.fullName;
+      profileEmailController.text = user.email;
+      profilePhoneController.text = user.phone ?? '';
+    }
+    selectedImagePreviewPath.value = null;
+    isImageMarkedForRemoval.value = false;
+    isEditingProfile.value = false;
+  }
+
+  Future<void> pickProfileImage() async {
+    try {
+      final result = await FilePicker.pickFiles(
+        dialogTitle: 'Select Profile Photo',
+        type: FileType.custom,
+        allowedExtensions: ['jpg', 'jpeg', 'png', 'webp', 'gif'],
+      );
+
+      if (result.isEmpty) {
+        return; // Canceled by user
+      }
+
+      final file = result.first;
+      final path = file.path;
+      if (path == null) {
+        _showError('Unable to access selected image file.');
+        return;
+      }
+
+      final ext = (file.extension ?? p.extension(path).replaceFirst('.', '')).toLowerCase();
+      const validExtensions = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+      if (!validExtensions.contains(ext)) {
+        _showError('Invalid file type. Please select a JPG, PNG, WEBP, or GIF image.');
+        return;
+      }
+
+      final ioFile = File(path);
+      if (!await ioFile.exists()) {
+        _showError('Selected file does not exist.');
+        return;
+      }
+
+      final fileSize = await ioFile.length();
+      if (fileSize > 5 * 1024 * 1024) {
+        _showError('Image size exceeds 5MB limit. Please choose a smaller image.');
+        return;
+      }
+
+      selectedImagePreviewPath.value = path;
+      isImageMarkedForRemoval.value = false;
+      isEditingProfile.value = true;
+    } catch (e) {
+      debugPrint('Error picking profile image: $e');
+      _showError('Failed to select image: $e');
+    }
+  }
+
+  void removeProfileImage() {
+    selectedImagePreviewPath.value = null;
+    isImageMarkedForRemoval.value = true;
+  }
+
   Future<void> updateProfile() async {
     if (isLoading.value) return;
 
+    final user = currentUser;
+    if (user == null || user.id == null) {
+      _showError('No active user session found.');
+      return;
+    }
+
     final fullName = profileNameController.text.trim();
+    final email = profileEmailController.text.trim();
     final phone = profilePhoneController.text.trim();
 
     if (fullName.isEmpty || fullName.length < 2) {
-      _showError('Please enter a valid full name.');
+      _showError('Please enter a valid full name (minimum 2 characters).');
+      return;
+    }
+
+    if (email.isEmpty || !isValidEmail(email)) {
+      _showError('Please enter a valid email address.');
       return;
     }
 
     try {
       isLoading.value = true;
+
+      String? persistentImagePath;
+      final clearImage = isImageMarkedForRemoval.value;
+
+      if (clearImage) {
+        // Remove image
+        if (user.profileImage != null) {
+          final oldFile = File(user.profileImage!);
+          if (await oldFile.exists()) {
+            try {
+              await oldFile.delete();
+            } catch (_) {}
+          }
+        }
+        persistentImagePath = null;
+      } else if (selectedImagePreviewPath.value != null) {
+        // Persist newly selected preview image
+        final previewFile = File(selectedImagePreviewPath.value!);
+        if (await previewFile.exists()) {
+          final docDir = await getApplicationDocumentsDirectory();
+          final storageDir = Directory(p.join(docDir.path, 'AccuBooks', 'profile_images'));
+          if (!await storageDir.exists()) {
+            await storageDir.create(recursive: true);
+          }
+
+          final ext = p.extension(selectedImagePreviewPath.value!).toLowerCase();
+          final targetFileName = 'user_${user.id}_profile_${DateTime.now().millisecondsSinceEpoch}$ext';
+          final targetFile = File(p.join(storageDir.path, targetFileName));
+
+          await previewFile.copy(targetFile.path);
+
+          // Clean up old avatar file if different
+          if (user.profileImage != null && user.profileImage != targetFile.path) {
+            final oldFile = File(user.profileImage!);
+            if (await oldFile.exists()) {
+              try {
+                await oldFile.delete();
+              } catch (_) {}
+            }
+          }
+
+          persistentImagePath = targetFile.path;
+        }
+      } else {
+        // Retain existing profile image
+        persistentImagePath = user.profileImage;
+      }
+
       await _authService.updateProfile(
         fullName: fullName,
+        email: email,
         phone: phone.isNotEmpty ? phone : null,
+        profileImage: persistentImagePath,
+        clearProfileImage: clearImage,
       );
 
-      Get.snackbar(
-        'Profile Updated',
-        'Your profile has been saved successfully.',
-        backgroundColor: AppColors.credit,
-        colorText: Colors.white,
-        snackPosition: SnackPosition.TOP,
-        margin: const EdgeInsets.all(16),
-      );
+      selectedImagePreviewPath.value = null;
+      isImageMarkedForRemoval.value = false;
+      isEditingProfile.value = false;
+
+      if (Get.context != null) {
+        Get.snackbar(
+          'Success',
+          'Profile updated successfully',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      }
     } catch (e) {
       final msg = e.toString().replaceFirst('Exception: ', '');
       _showError(msg);
+      // NOTE: User's entered data is preserved!
     } finally {
       isLoading.value = false;
     }
@@ -462,20 +636,31 @@ class AuthController extends GetxController {
 
     if (confirmed == true) {
       await _authService.logout();
+      profileNameController.clear();
+      profileEmailController.clear();
+      profilePhoneController.clear();
+      loginPasswordController.clear();
+      selectedImagePreviewPath.value = null;
+      isEditingProfile.value = false;
+      isImageMarkedForRemoval.value = false;
+      errorMessage.value = '';
+      successMessage.value = '';
       Get.offAllNamed(AppRoutes.login);
     }
   }
 
   void _showError(String message) {
     errorMessage.value = message;
-    Get.snackbar(
-      'Authentication Error',
-      message,
-      backgroundColor: AppColors.debit,
-      colorText: Colors.white,
-      snackPosition: SnackPosition.TOP,
-      margin: const EdgeInsets.all(16),
-      duration: const Duration(seconds: 4),
-    );
+    if (Get.overlayContext != null) {
+      Get.snackbar(
+        'Authentication Error',
+        message,
+        backgroundColor: AppColors.debit,
+        colorText: Colors.white,
+        snackPosition: SnackPosition.TOP,
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 4),
+      );
+    }
   }
 }

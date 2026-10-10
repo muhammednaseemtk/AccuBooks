@@ -4,7 +4,7 @@ import '../utils/date_utils.dart';
 import 'database_tables.dart';
 
 class DatabaseMigrations {
-  static const int currentVersion = 3;
+  static const int currentVersion = 4;
 
   static Future<void> onCreate(Database db, int version) async {
     final batch = db.batch();
@@ -83,6 +83,12 @@ class DatabaseMigrations {
       await db.execute('CREATE INDEX IF NOT EXISTS idx_purchase_orders_date ON ${DatabaseTables.tablePurchaseOrders}(order_date);');
       await db.execute('CREATE INDEX IF NOT EXISTS idx_purchase_returns_supp ON ${DatabaseTables.tablePurchaseReturns}(supplier_id);');
       await db.execute('CREATE INDEX IF NOT EXISTS idx_purchase_returns_date ON ${DatabaseTables.tablePurchaseReturns}(return_date);');
+    }
+
+    if (oldVersion < 4) {
+      try {
+        await db.execute('ALTER TABLE ${DatabaseTables.tableUsers} ADD COLUMN profile_image TEXT;');
+      } catch (_) {}
     }
   }
 
