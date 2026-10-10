@@ -20,7 +20,9 @@ import '../../models/customer_model.dart';
 import '../../models/product_model.dart';
 import '../../models/sales_invoice_model.dart';
 import '../../models/sales_order_model.dart';
+import '../../models/sales_order_item_model.dart';
 import '../../models/sales_return_model.dart';
+import '../../models/sales_return_item_model.dart';
 import '../navigation/app_scaffold.dart';
 
 class SalesOrdersScreen extends GetView<SalesOrderController> {
@@ -585,6 +587,19 @@ class SalesOrdersScreen extends GetView<SalesOrderController> {
                                 ),
                                 IconButton(
                                   icon: const Icon(
+                                    Icons.edit_outlined,
+                                    size: 18,
+                                    color: AppColors.primary,
+                                  ),
+                                  tooltip: 'Edit Item',
+                                  onPressed: () => _showAddOrderItemDialog(
+                                    context,
+                                    editIndex: i,
+                                    existingItem: item,
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(
                                     Icons.delete_outline,
                                     size: 18,
                                     color: AppColors.debit,
@@ -620,7 +635,24 @@ class SalesOrdersScreen extends GetView<SalesOrderController> {
                             'Subtotal',
                             CurrencyUtils.format(controller.formOrderSubtotal),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 6),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('Order Discount', style: AppTextStyles.caption),
+                              SizedBox(
+                                width: 110,
+                                child: AppTextField(
+                                  hint: 'Discount',
+                                  initialValue: controller.formOrderDiscount.value > 0 ? controller.formOrderDiscount.value.toString() : '0',
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  inputFormatters: [AppInputFormatters.decimal()],
+                                  onChanged: (v) => controller.formOrderDiscount.value = double.tryParse(v) ?? 0.0,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
                           _calcRow(
                             'Tax Total',
                             CurrencyUtils.format(controller.formOrderTaxTotal),
@@ -683,18 +715,20 @@ class SalesOrdersScreen extends GetView<SalesOrderController> {
     );
   }
 
-  void _showAddOrderItemDialog(BuildContext context) {
-    ProductModel? selectedProd;
-    final qtyCtrl = TextEditingController(text: '1');
-    final rateCtrl = TextEditingController();
-    final discountCtrl = TextEditingController(text: '0');
+  void _showAddOrderItemDialog(BuildContext context, {int? editIndex, SalesOrderItemModel? existingItem}) {
+    ProductModel? selectedProd = existingItem != null
+        ? controller.products.firstWhereOrNull((p) => p.id == existingItem.productId)
+        : null;
+    final qtyCtrl = TextEditingController(text: existingItem != null ? existingItem.quantity.toString() : '1');
+    final rateCtrl = TextEditingController(text: existingItem != null ? existingItem.rate.toString() : '');
+    final discountCtrl = TextEditingController(text: existingItem != null ? existingItem.discount.toString() : '0');
     final formKey = GlobalKey<FormState>();
 
     Get.dialog(
       StatefulBuilder(
         builder: (context, setState) {
           return AppDialog(
-            title: 'Add Product Item',
+            title: existingItem != null ? 'Edit Product Item' : 'Add Product Item',
             maxWidth: 500,
             content: Form(
               key: formKey,
@@ -769,7 +803,7 @@ class SalesOrdersScreen extends GetView<SalesOrderController> {
                 onPressed: () => Get.back(),
               ),
               AppButton(
-                label: 'Add to Order',
+                label: existingItem != null ? 'Update Item' : 'Add to Order',
                 onPressed: () {
                   if (selectedProd == null) {
                     Get.snackbar(
@@ -790,7 +824,11 @@ class SalesOrdersScreen extends GetView<SalesOrderController> {
                       double.tryParse(discountCtrl.text.replaceAll(',', '')) ??
                       0.0;
 
-                  controller.addOrderItem(selectedProd!, q, r, d);
+                  if (editIndex != null) {
+                    controller.updateOrderItem(editIndex, q, r, d);
+                  } else {
+                    controller.addOrderItem(selectedProd!, q, r, d);
+                  }
                   Get.back();
                 },
               ),
@@ -958,6 +996,19 @@ class SalesOrdersScreen extends GetView<SalesOrderController> {
                                 ),
                                 IconButton(
                                   icon: const Icon(
+                                    Icons.edit_outlined,
+                                    size: 18,
+                                    color: AppColors.primary,
+                                  ),
+                                  tooltip: 'Edit Item',
+                                  onPressed: () => _showAddReturnItemDialog(
+                                    context,
+                                    editIndex: i,
+                                    existingItem: item,
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(
                                     Icons.delete_outline,
                                     size: 18,
                                     color: AppColors.debit,
@@ -993,7 +1044,24 @@ class SalesOrdersScreen extends GetView<SalesOrderController> {
                             'Return Subtotal',
                             CurrencyUtils.format(controller.formReturnSubtotal),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 6),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text('Extra Discount', style: AppTextStyles.caption),
+                              SizedBox(
+                                width: 110,
+                                child: AppTextField(
+                                  hint: 'Discount',
+                                  initialValue: controller.formReturnDiscount.value > 0 ? controller.formReturnDiscount.value.toString() : '0',
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  inputFormatters: [AppInputFormatters.decimal()],
+                                  onChanged: (v) => controller.formReturnDiscount.value = double.tryParse(v) ?? 0.0,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
                           _calcRow(
                             'Return Tax',
                             CurrencyUtils.format(controller.formReturnTaxTotal),
@@ -1056,11 +1124,13 @@ class SalesOrdersScreen extends GetView<SalesOrderController> {
     );
   }
 
-  void _showAddReturnItemDialog(BuildContext context) {
-    ProductModel? selectedProd;
-    final qtyCtrl = TextEditingController(text: '1');
-    final rateCtrl = TextEditingController();
-    final discountCtrl = TextEditingController(text: '0');
+  void _showAddReturnItemDialog(BuildContext context, {int? editIndex, SalesReturnItemModel? existingItem}) {
+    ProductModel? selectedProd = existingItem != null
+        ? controller.products.firstWhereOrNull((p) => p.id == existingItem.productId)
+        : null;
+    final qtyCtrl = TextEditingController(text: existingItem != null ? existingItem.quantity.toString() : '1');
+    final rateCtrl = TextEditingController(text: existingItem != null ? existingItem.rate.toString() : '');
+    final discountCtrl = TextEditingController(text: existingItem != null ? existingItem.discount.toString() : '0');
     final formKey = GlobalKey<FormState>();
 
     // If a reference invoice is chosen, pre-filter or check available items
@@ -1070,7 +1140,7 @@ class SalesOrdersScreen extends GetView<SalesOrderController> {
       StatefulBuilder(
         builder: (context, setState) {
           return AppDialog(
-            title: 'Add Return Item',
+            title: existingItem != null ? 'Edit Return Item' : 'Add Return Item',
             maxWidth: 500,
             content: Form(
               key: formKey,
@@ -1158,7 +1228,7 @@ class SalesOrdersScreen extends GetView<SalesOrderController> {
                 onPressed: () => Get.back(),
               ),
               AppButton(
-                label: 'Add to Return',
+                label: existingItem != null ? 'Update Item' : 'Add to Return',
                 onPressed: () {
                   if (selectedProd == null) {
                     Get.snackbar(
@@ -1179,7 +1249,11 @@ class SalesOrdersScreen extends GetView<SalesOrderController> {
                       double.tryParse(discountCtrl.text.replaceAll(',', '')) ??
                       0.0;
 
-                  controller.addReturnItem(selectedProd!, q, r, d);
+                  if (editIndex != null) {
+                    controller.updateReturnItem(editIndex, q, r, d);
+                  } else {
+                    controller.addReturnItem(selectedProd!, q, r, d);
+                  }
                   Get.back();
                 },
               ),

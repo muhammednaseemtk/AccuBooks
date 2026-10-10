@@ -14,6 +14,7 @@ import '../../core/widgets/app_table.dart';
 import '../../core/widgets/app_text_field.dart';
 import '../../models/customer_model.dart';
 import '../../models/product_model.dart';
+import '../../models/sales_invoice_item_model.dart';
 import '../navigation/app_scaffold.dart';
 
 class SalesCreateScreen extends GetView<SalesController> {
@@ -178,7 +179,7 @@ class SalesCreateScreen extends GetView<SalesController> {
                     ),
                     AppTableColumn(
                       title: '',
-                      width: 50,
+                      width: 90,
                       alignment: Alignment.center,
                     ),
                   ];
@@ -214,14 +215,32 @@ class SalesCreateScreen extends GetView<SalesController> {
                         CurrencyUtils.format(item.total),
                         style: AppTextStyles.tableCellBold,
                       ),
-                      IconButton(
-                        icon: const Icon(
-                          Icons.delete_outline,
-                          size: 18,
-                          color: AppColors.debit,
-                        ),
-                        splashRadius: 16,
-                        onPressed: () => controller.removeFormItem(index),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            icon: const Icon(
+                              Icons.edit_outlined,
+                              size: 18,
+                              color: AppColors.primary,
+                            ),
+                            splashRadius: 16,
+                            onPressed: () => _showAddItemDialog(
+                              context,
+                              editIndex: index,
+                              existingItem: item,
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.delete_outline,
+                              size: 18,
+                              color: AppColors.debit,
+                            ),
+                            splashRadius: 16,
+                            onPressed: () => controller.removeFormItem(index),
+                          ),
+                        ],
                       ),
                     ];
                   });
@@ -289,7 +308,9 @@ class SalesCreateScreen extends GetView<SalesController> {
                                     'sales_disc_${controller.formNextInvoiceNumber.value}',
                                   ),
                                   hint: 'Discount',
-                                  initialValue: '0',
+                                  initialValue: controller.formDiscount.value == 0
+                                      ? '0'
+                                      : controller.formDiscount.value.toStringAsFixed(2),
                                   keyboardType:
                                       const TextInputType.numberWithOptions(
                                         decimal: true,
@@ -334,7 +355,9 @@ class SalesCreateScreen extends GetView<SalesController> {
                                     'sales_paid_${controller.formNextInvoiceNumber.value}',
                                   ),
                                   hint: 'Amount',
-                                  initialValue: '0',
+                                  initialValue: controller.formPaidAmount.value == 0
+                                      ? '0'
+                                      : controller.formPaidAmount.value.toStringAsFixed(2),
                                   keyboardType:
                                       const TextInputType.numberWithOptions(
                                         decimal: true,
@@ -417,18 +440,36 @@ class SalesCreateScreen extends GetView<SalesController> {
     );
   }
 
-  void _showAddItemDialog(BuildContext context) {
+  void _showAddItemDialog(
+    BuildContext context, {
+    int? editIndex,
+    SalesInvoiceItemModel? existingItem,
+  }) {
     ProductModel? selectedProd;
-    final qtyCtrl = TextEditingController(text: '1');
-    final rateCtrl = TextEditingController();
-    final discountCtrl = TextEditingController(text: '0');
+    if (existingItem != null) {
+      selectedProd = controller.products.firstWhereOrNull(
+        (p) => p.id == existingItem.productId,
+      );
+      selectedProd ??= controller.products.firstWhereOrNull(
+        (p) => p.name == existingItem.productName,
+      );
+    }
+    final qtyCtrl = TextEditingController(
+      text: existingItem != null ? existingItem.quantity.toString() : '1',
+    );
+    final rateCtrl = TextEditingController(
+      text: existingItem != null ? existingItem.rate.toString() : '',
+    );
+    final discountCtrl = TextEditingController(
+      text: existingItem != null ? existingItem.discount.toString() : '0',
+    );
     final formKey = GlobalKey<FormState>();
 
     Get.dialog(
       StatefulBuilder(
         builder: (context, setState) {
           return AppDialog(
-            title: 'Add Product to Invoice',
+            title: editIndex != null ? 'Edit Invoice Item' : 'Add Product to Invoice',
             maxWidth: 550,
             content: Form(
               key: formKey,
@@ -519,7 +560,7 @@ class SalesCreateScreen extends GetView<SalesController> {
                 onPressed: () => Get.back(),
               ),
               AppButton(
-                label: 'Add to Invoice',
+                label: editIndex != null ? 'Update Item' : 'Add to Invoice',
                 onPressed: () {
                   if (selectedProd == null) {
                     Get.snackbar(
@@ -540,7 +581,11 @@ class SalesCreateScreen extends GetView<SalesController> {
                       double.tryParse(discountCtrl.text.replaceAll(',', '')) ??
                       0.0;
 
-                  controller.addFormItem(selectedProd!, q, r, d);
+                  if (editIndex != null) {
+                    controller.updateFormItem(editIndex, selectedProd!, q, r, d);
+                  } else {
+                    controller.addFormItem(selectedProd!, q, r, d);
+                  }
                   Get.back();
                 },
               ),

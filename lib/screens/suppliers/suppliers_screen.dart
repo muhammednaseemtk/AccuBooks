@@ -274,35 +274,33 @@ class SuppliersScreen extends GetView<SupplierController> {
                       return null;
                     },
                   ),
-                  if (!isEdit)
-                    AppTextField(
-                      label: 'Opening Balance',
-                      hint: 'Opening Balance',
-                      controller: openingCtrl,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: true,
-                      ),
-                      inputFormatters: [AppInputFormatters.decimal()],
+                  AppTextField(
+                    label: 'Opening Balance',
+                    hint: 'Opening Balance',
+                    controller: openingCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
                     ),
-                  if (!isEdit)
-                    Obx(
-                      () => AppDropdown<String>(
-                        label: 'Balance Type',
-                        value: selectedObType.value,
-                        items: const [
-                          DropdownMenuItem(
-                            value: AccountingConstants.balanceCredit,
-                            child: Text('Credit (Payable)'),
-                          ),
-                          DropdownMenuItem(
-                            value: AccountingConstants.balanceDebit,
-                            child: Text('Debit (Advance)'),
-                          ),
-                        ],
-                        onChanged: (v) => selectedObType.value =
-                            v ?? AccountingConstants.balanceCredit,
-                      ),
+                    inputFormatters: [AppInputFormatters.decimal()],
+                  ),
+                  Obx(
+                    () => AppDropdown<String>(
+                      label: 'Balance Type',
+                      value: selectedObType.value,
+                      items: const [
+                        DropdownMenuItem(
+                          value: AccountingConstants.balanceCredit,
+                          child: Text('Credit (Payable)'),
+                        ),
+                        DropdownMenuItem(
+                          value: AccountingConstants.balanceDebit,
+                          child: Text('Debit (Advance)'),
+                        ),
+                      ],
+                      onChanged: (v) => selectedObType.value =
+                          v ?? AccountingConstants.balanceCredit,
                     ),
+                  ),
                 ],
               ),
             ],

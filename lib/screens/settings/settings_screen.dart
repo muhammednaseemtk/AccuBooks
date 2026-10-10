@@ -5,7 +5,10 @@ import '../../controllers/settings_controller.dart';
 import '../../core/widgets/app_button.dart';
 import '../../core/widgets/app_card.dart';
 import '../../core/widgets/app_dialog.dart';
+import '../../core/widgets/app_text_field.dart';
 import '../../core/widgets/loading_widget.dart';
+import '../../core/widgets/responsive_layout.dart';
+import '../../models/company_model.dart';
 import '../navigation/app_scaffold.dart';
 
 class SettingsScreen extends StatelessWidget {
@@ -32,6 +35,8 @@ class SettingsScreen extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  _buildCompanySection(context, controller, theme),
+                  const SizedBox(height: 24),
                   _buildThemeSection(context, controller, theme),
                   const SizedBox(height: 24),
                   _buildDatabaseSection(context, controller, theme),
@@ -217,6 +222,195 @@ class SettingsScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildCompanySection(
+    BuildContext context,
+    SettingsController controller,
+    ThemeData theme,
+  ) {
+    return AppCard(
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(Icons.business_outlined, color: theme.colorScheme.primary),
+                    const SizedBox(width: 12),
+                    Text(
+                      'Company Information',
+                      style: theme.textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+                AppButton(
+                  text: 'Edit Details',
+                  icon: Icons.edit_outlined,
+                  type: AppButtonType.secondary,
+                  onPressed: () => _showEditCompanyDialog(context, controller),
+                ),
+              ],
+            ),
+            const Divider(height: 24),
+            Obx(() {
+              final comp = controller.company.value;
+              if (comp == null) {
+                return const Text('No company profile configured.');
+              }
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildCompanyRow('Company Name', comp.name),
+                  const SizedBox(height: 8),
+                  _buildCompanyRow('Address', comp.address ?? 'Not specified'),
+                  const SizedBox(height: 8),
+                  _buildCompanyRow('Phone', comp.phone ?? 'Not specified'),
+                  const SizedBox(height: 8),
+                  _buildCompanyRow('Email', comp.email ?? 'Not specified'),
+                  const SizedBox(height: 8),
+                  _buildCompanyRow('Tax / GSTIN', comp.taxNumber ?? 'Not specified'),
+                  const SizedBox(height: 8),
+                  _buildCompanyRow('Base Currency', comp.currency),
+                ],
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCompanyRow(String label, String value) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: 150,
+          child: Text(
+            label,
+            style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.grey),
+          ),
+        ),
+        Expanded(
+          child: Text(
+            value,
+            style: const TextStyle(fontWeight: FontWeight.w500),
+          ),
+        ),
+      ],
+    );
+  }
+
+  void _showEditCompanyDialog(BuildContext context, SettingsController controller) {
+    final comp = controller.company.value;
+    final nameCtrl = TextEditingController(text: comp?.name ?? '');
+    final addressCtrl = TextEditingController(text: comp?.address ?? '');
+    final phoneCtrl = TextEditingController(text: comp?.phone ?? '');
+    final emailCtrl = TextEditingController(text: comp?.email ?? '');
+    final taxCtrl = TextEditingController(text: comp?.taxNumber ?? '');
+    final currencyCtrl = TextEditingController(text: comp?.currency ?? '₹');
+    final formKey = GlobalKey<FormState>();
+
+    Get.dialog(
+      AppDialog(
+        title: 'Edit Company Information',
+        maxWidth: 600,
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AppTextField(
+                label: 'Company Name *',
+                hint: 'Enter company name',
+                controller: nameCtrl,
+                validator: (v) => v == null || v.trim().isEmpty ? 'Company name is required' : null,
+              ),
+              const SizedBox(height: 12),
+              AppTextField(
+                label: 'Address',
+                hint: 'Company physical address',
+                controller: addressCtrl,
+                maxLines: 2,
+              ),
+              const SizedBox(height: 12),
+              ResponsiveRowColumn(
+                spacing: 12,
+                breakpoint: 450,
+                children: [
+                  AppTextField(
+                    label: 'Phone',
+                    hint: 'Contact number',
+                    controller: phoneCtrl,
+                  ),
+                  AppTextField(
+                    label: 'Email',
+                    hint: 'Company email',
+                    controller: emailCtrl,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              ResponsiveRowColumn(
+                spacing: 12,
+                breakpoint: 450,
+                children: [
+                  AppTextField(
+                    label: 'Tax / GSTIN #',
+                    hint: 'Tax identification number',
+                    controller: taxCtrl,
+                  ),
+                  AppTextField(
+                    label: 'Currency Symbol',
+                    hint: 'e.g. ₹, \$, €',
+                    controller: currencyCtrl,
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          AppButton(
+            text: 'Cancel',
+            type: AppButtonType.text,
+            onPressed: () => Get.back(),
+          ),
+          Obx(
+            () => AppButton(
+              text: 'Save Changes',
+              icon: Icons.check,
+              isLoading: controller.isSubmitting.value,
+              onPressed: controller.isSubmitting.value
+                  ? null
+                  : () async {
+                      if (!formKey.currentState!.validate()) return;
+                      final updated = (comp ?? CompanyModel(name: nameCtrl.text.trim())).copyWith(
+                        name: nameCtrl.text.trim(),
+                        address: addressCtrl.text.trim().isEmpty ? null : addressCtrl.text.trim(),
+                        phone: phoneCtrl.text.trim().isEmpty ? null : phoneCtrl.text.trim(),
+                        email: emailCtrl.text.trim().isEmpty ? null : emailCtrl.text.trim(),
+                        taxNumber: taxCtrl.text.trim().isEmpty ? null : taxCtrl.text.trim(),
+                        currency: currencyCtrl.text.trim().isEmpty ? '₹' : currencyCtrl.text.trim(),
+                        updatedAt: DateTime.now(),
+                      );
+                      final ok = await controller.updateCompany(updated);
+                      if (ok) {
+                        Get.back();
+                      }
+                    },
+            ),
+          ),
+        ],
       ),
     );
   }
