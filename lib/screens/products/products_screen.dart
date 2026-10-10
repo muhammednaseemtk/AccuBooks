@@ -325,14 +325,13 @@ class ProductsScreen extends GetView<ProductController> {
                 spacing: 12,
                 breakpoint: 480,
                 children: [
-                  if (!isEdit)
-                    AppTextField(
-                      label: 'Opening Stock',
-                      hint: 'Opening Stock',
-                      controller: stockCtrl,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      inputFormatters: [AppInputFormatters.decimal()],
-                    ),
+                  AppTextField(
+                    label: isEdit ? 'Stock Quantity' : 'Opening Stock',
+                    hint: isEdit ? 'Stock Quantity' : 'Opening Stock',
+                    controller: stockCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [AppInputFormatters.decimal()],
+                  ),
                   AppTextField(
                     label: 'Minimum Stock Alert',
                     hint: 'Minimum Stock',
@@ -384,7 +383,7 @@ class ProductsScreen extends GetView<ProductController> {
                           purchasePrice: pPrice,
                           salesPrice: sPrice,
                           taxRate: tRate,
-                          stockQuantity: product.stockQuantity,
+                          stockQuantity: qty,
                           minimumStock: minQty,
                         )
                       : ProductModel(

@@ -238,29 +238,27 @@ class AccountsScreen extends GetView<AccountController> {
                 controller: nameCtrl,
                 validator: (v) => v == null || v.isEmpty ? 'Name required' : null,
               ),
-              if (!isEdit) ...[
-                const SizedBox(height: 14),
-                ResponsiveRowColumn(
-                  children: [
-                    AppTextField(
-                      label: 'Opening Balance',
-                      hint: 'Opening Balance',
-                      controller: openingCtrl,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      inputFormatters: [AppInputFormatters.decimal()],
-                    ),
-                    Obx(() => AppDropdown<String>(
-                          label: 'Balance Type',
-                          value: selectedObType.value,
-                          items: const [
-                            DropdownMenuItem(value: AccountingConstants.balanceDebit, child: Text('Debit')),
-                            DropdownMenuItem(value: AccountingConstants.balanceCredit, child: Text('Credit')),
-                          ],
-                          onChanged: (v) => selectedObType.value = v ?? AccountingConstants.balanceDebit,
-                        )),
-                  ],
-                ),
-              ],
+              const SizedBox(height: 14),
+              ResponsiveRowColumn(
+                children: [
+                  AppTextField(
+                    label: 'Opening Balance',
+                    hint: 'Opening Balance',
+                    controller: openingCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [AppInputFormatters.decimal()],
+                  ),
+                  Obx(() => AppDropdown<String>(
+                        label: 'Balance Type',
+                        value: selectedObType.value,
+                        items: const [
+                          DropdownMenuItem(value: AccountingConstants.balanceDebit, child: Text('Debit')),
+                          DropdownMenuItem(value: AccountingConstants.balanceCredit, child: Text('Credit')),
+                        ],
+                        onChanged: (v) => selectedObType.value = v ?? AccountingConstants.balanceDebit,
+                      )),
+                ],
+              ),
             ],
           ),
         ),
@@ -293,6 +291,8 @@ class AccountsScreen extends GetView<AccountController> {
                           accountCode: cleanCode,
                           accountName: nameCtrl.text.trim(),
                           accountType: selectedType.value,
+                          openingBalance: opVal,
+                          openingBalanceType: selectedObType.value,
                         )
                       : AccountModel(
                           accountCode: cleanCode,

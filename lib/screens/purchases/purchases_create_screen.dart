@@ -13,6 +13,7 @@ import '../../core/widgets/app_dropdown.dart';
 import '../../core/widgets/app_table.dart';
 import '../../core/widgets/app_text_field.dart';
 import '../../models/product_model.dart';
+import '../../models/purchase_invoice_item_model.dart';
 import '../../models/supplier_model.dart';
 import '../navigation/app_scaffold.dart';
 
@@ -132,7 +133,7 @@ class PurchasesCreateScreen extends GetView<PurchaseController> {
                   AppTableColumn(title: 'Rate', width: 110, alignment: Alignment.centerRight),
                   AppTableColumn(title: 'Tax', width: 90, alignment: Alignment.centerRight),
                   AppTableColumn(title: 'Total', width: 120, alignment: Alignment.centerRight),
-                  AppTableColumn(title: '', width: 50, alignment: Alignment.center),
+                  AppTableColumn(title: '', width: 90, alignment: Alignment.center),
                 ];
 
                 final rows = List.generate(controller.formItems.length, (index) {
@@ -143,10 +144,20 @@ class PurchasesCreateScreen extends GetView<PurchaseController> {
                     Text(CurrencyUtils.format(item.rate), style: AppTextStyles.tableCell),
                     Text(CurrencyUtils.format(item.taxAmount), style: AppTextStyles.tableCell),
                     Text(CurrencyUtils.format(item.total), style: AppTextStyles.tableCellBold),
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.debit),
-                      splashRadius: 16,
-                      onPressed: () => controller.removeFormItem(index),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.primary),
+                          splashRadius: 16,
+                          onPressed: () => _showAddItemDialog(context, editIndex: index, existingItem: item),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.debit),
+                          splashRadius: 16,
+                          onPressed: () => controller.removeFormItem(index),
+                        ),
+                      ],
                     ),
                   ];
                 });
@@ -188,6 +199,29 @@ class PurchasesCreateScreen extends GetView<PurchaseController> {
                         children: [
                           _totalRow('Subtotal', CurrencyUtils.format(controller.formSubtotal)),
                           const SizedBox(height: 6),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Flexible(
+                                child: Text('Extra Discount', style: AppTextStyles.caption, overflow: TextOverflow.ellipsis),
+                              ),
+                              const SizedBox(width: 8),
+                              SizedBox(
+                                width: 110,
+                                child: AppTextField(
+                                  key: ValueKey('purch_disc_${controller.formNextPurchaseNumber.value}'),
+                                  hint: 'Discount',
+                                  initialValue: controller.formDiscount.value == 0
+                                      ? '0'
+                                      : controller.formDiscount.value.toStringAsFixed(2),
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  inputFormatters: [AppInputFormatters.decimal()],
+                                  onChanged: (v) => controller.formDiscount.value = double.tryParse(v) ?? 0.0,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
                           _totalRow('Tax Amount', CurrencyUtils.format(controller.formTaxTotal)),
                           const Divider(height: 16),
                           _totalRow('Grand Total', CurrencyUtils.format(controller.formGrandTotal), isBold: true),
@@ -204,7 +238,9 @@ class PurchasesCreateScreen extends GetView<PurchaseController> {
                                 child: AppTextField(
                                   key: ValueKey('purch_paid_${controller.formNextPurchaseNumber.value}'),
                                   hint: 'Amount',
-                                  initialValue: '0',
+                                  initialValue: controller.formPaidAmount.value == 0
+                                      ? '0'
+                                      : controller.formPaidAmount.value.toStringAsFixed(2),
                                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
                                   inputFormatters: [AppInputFormatters.decimal()],
                                   onChanged: (v) => controller.formPaidAmount.value = double.tryParse(v) ?? 0.0,
@@ -271,18 +307,26 @@ class PurchasesCreateScreen extends GetView<PurchaseController> {
     );
   }
 
-  void _showAddItemDialog(BuildContext context) {
+  void _showAddItemDialog(
+    BuildContext context, {
+    int? editIndex,
+    PurchaseInvoiceItemModel? existingItem,
+  }) {
     ProductModel? selectedProd;
-    final qtyCtrl = TextEditingController(text: '1');
-    final rateCtrl = TextEditingController();
-    final discountCtrl = TextEditingController(text: '0');
+    if (existingItem != null) {
+      selectedProd = controller.products.firstWhereOrNull((p) => p.id == existingItem.productId);
+      selectedProd ??= controller.products.firstWhereOrNull((p) => p.name == existingItem.productName);
+    }
+    final qtyCtrl = TextEditingController(text: existingItem != null ? existingItem.quantity.toString() : '1');
+    final rateCtrl = TextEditingController(text: existingItem != null ? existingItem.rate.toString() : '');
+    final discountCtrl = TextEditingController(text: existingItem != null ? existingItem.discount.toString() : '0');
     final formKey = GlobalKey<FormState>();
 
     Get.dialog(
       StatefulBuilder(
         builder: (context, setState) {
           return AppDialog(
-            title: 'Add Purchase Item',
+            title: editIndex != null ? 'Edit Purchase Item' : 'Add Purchase Item',
             maxWidth: 550,
             content: Form(
               key: formKey,
@@ -357,7 +401,7 @@ class PurchasesCreateScreen extends GetView<PurchaseController> {
             actions: [
               AppButton(label: 'Cancel', type: AppButtonType.text, onPressed: () => Get.back()),
               AppButton(
-                label: 'Add to Bill',
+                label: editIndex != null ? 'Update Item' : 'Add to Bill',
                 onPressed: () {
                   if (selectedProd == null) {
                     Get.snackbar('Error', 'Please select a product', snackPosition: SnackPosition.BOTTOM);
@@ -369,7 +413,11 @@ class PurchasesCreateScreen extends GetView<PurchaseController> {
                   final r = double.tryParse(rateCtrl.text.replaceAll(',', '')) ?? selectedProd!.purchasePrice;
                   final d = double.tryParse(discountCtrl.text.replaceAll(',', '')) ?? 0.0;
 
-                  controller.addFormItem(selectedProd!, q, r, d);
+                  if (editIndex != null) {
+                    controller.updateFormItem(editIndex, selectedProd!, q, r, d);
+                  } else {
+                    controller.addFormItem(selectedProd!, q, r, d);
+                  }
                   Get.back();
                 },
               ),

@@ -19,7 +19,9 @@ import '../../core/widgets/responsive_layout.dart';
 import '../../models/product_model.dart';
 import '../../models/purchase_invoice_model.dart';
 import '../../models/purchase_order_model.dart';
+import '../../models/purchase_order_item_model.dart';
 import '../../models/purchase_return_model.dart';
+import '../../models/purchase_return_item_model.dart';
 import '../../models/supplier_model.dart';
 import '../navigation/app_scaffold.dart';
 
@@ -434,6 +436,10 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
                                 ),
                                 Text(CurrencyUtils.format(item.total), style: AppTextStyles.metricMedium),
                                 IconButton(
+                                  icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.primary),
+                                  onPressed: () => _showAddOrderItemDialog(context, editIndex: i, existingItem: item),
+                                ),
+                                IconButton(
                                   icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.debit),
                                   onPressed: () => controller.removeOrderItem(i),
                                 ),
@@ -459,6 +465,25 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
                         child: Column(
                           children: [
                             _calcRow('Subtotal', CurrencyUtils.format(controller.formOrderSubtotal)),
+                            const SizedBox(height: 6),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text('Order Discount', style: AppTextStyles.caption),
+                                SizedBox(
+                                  width: 110,
+                                  child: AppTextField(
+                                    hint: 'Discount',
+                                    initialValue: controller.formOrderDiscount.value == 0
+                                        ? '0'
+                                        : controller.formOrderDiscount.value.toStringAsFixed(2),
+                                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                    inputFormatters: [AppInputFormatters.decimal()],
+                                    onChanged: (v) => controller.formOrderDiscount.value = double.tryParse(v) ?? 0.0,
+                                  ),
+                                ),
+                              ],
+                            ),
                             const SizedBox(height: 4),
                             _calcRow('Tax Total', CurrencyUtils.format(controller.formOrderTaxTotal)),
                             const Divider(height: 12),
@@ -506,18 +531,26 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
     );
   }
 
-  void _showAddOrderItemDialog(BuildContext context) {
+  void _showAddOrderItemDialog(
+    BuildContext context, {
+    int? editIndex,
+    PurchaseOrderItemModel? existingItem,
+  }) {
     ProductModel? selectedProd;
-    final qtyCtrl = TextEditingController(text: '1');
-    final rateCtrl = TextEditingController();
-    final discountCtrl = TextEditingController(text: '0');
+    if (existingItem != null) {
+      selectedProd = controller.products.firstWhereOrNull((p) => p.id == existingItem.productId);
+      selectedProd ??= controller.products.firstWhereOrNull((p) => p.name == existingItem.productName);
+    }
+    final qtyCtrl = TextEditingController(text: existingItem != null ? existingItem.quantity.toString() : '1');
+    final rateCtrl = TextEditingController(text: existingItem != null ? existingItem.rate.toString() : '');
+    final discountCtrl = TextEditingController(text: existingItem != null ? existingItem.discount.toString() : '0');
     final formKey = GlobalKey<FormState>();
 
     Get.dialog(
       StatefulBuilder(
         builder: (context, setState) {
           return AppDialog(
-            title: 'Add Product Item',
+            title: editIndex != null ? 'Edit Product Item' : 'Add Product Item',
             maxWidth: 500,
             content: Form(
               key: formKey,
@@ -575,7 +608,7 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
             actions: [
               AppButton(label: 'Cancel', type: AppButtonType.text, onPressed: () => Get.back()),
               AppButton(
-                label: 'Add to Order',
+                label: editIndex != null ? 'Update Item' : 'Add to Order',
                 onPressed: () {
                   if (selectedProd == null) {
                     Get.snackbar('Error', 'Please select a product', snackPosition: SnackPosition.BOTTOM);
@@ -587,7 +620,11 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
                   final r = double.tryParse(rateCtrl.text.replaceAll(',', '')) ?? selectedProd!.purchasePrice;
                   final d = double.tryParse(discountCtrl.text.replaceAll(',', '')) ?? 0.0;
 
-                  controller.addOrderItem(selectedProd!, q, r, d);
+                  if (editIndex != null) {
+                    controller.updateOrderItem(editIndex, q, r, d);
+                  } else {
+                    controller.addOrderItem(selectedProd!, q, r, d);
+                  }
                   Get.back();
                 },
               ),
@@ -714,6 +751,10 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
                                 ),
                                 Text(CurrencyUtils.format(item.total), style: AppTextStyles.metricMedium.copyWith(color: AppColors.debit)),
                                 IconButton(
+                                  icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.primary),
+                                  onPressed: () => _showAddReturnItemDialog(context, editIndex: i, existingItem: item),
+                                ),
+                                IconButton(
                                   icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.debit),
                                   onPressed: () => controller.removeReturnItem(i),
                                 ),
@@ -739,6 +780,25 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
                         child: Column(
                           children: [
                             _calcRow('Return Subtotal', CurrencyUtils.format(controller.formReturnSubtotal)),
+                            const SizedBox(height: 6),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                const Text('Extra Discount', style: AppTextStyles.caption),
+                                SizedBox(
+                                  width: 110,
+                                  child: AppTextField(
+                                    hint: 'Discount',
+                                    initialValue: controller.formReturnDiscount.value == 0
+                                        ? '0'
+                                        : controller.formReturnDiscount.value.toStringAsFixed(2),
+                                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                    inputFormatters: [AppInputFormatters.decimal()],
+                                    onChanged: (v) => controller.formReturnDiscount.value = double.tryParse(v) ?? 0.0,
+                                  ),
+                                ),
+                              ],
+                            ),
                             const SizedBox(height: 4),
                             _calcRow('Return Tax', CurrencyUtils.format(controller.formReturnTaxTotal)),
                             const Divider(height: 12),
@@ -786,11 +846,19 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
     );
   }
 
-  void _showAddReturnItemDialog(BuildContext context) {
+  void _showAddReturnItemDialog(
+    BuildContext context, {
+    int? editIndex,
+    PurchaseReturnItemModel? existingItem,
+  }) {
     ProductModel? selectedProd;
-    final qtyCtrl = TextEditingController(text: '1');
-    final rateCtrl = TextEditingController();
-    final discountCtrl = TextEditingController(text: '0');
+    if (existingItem != null) {
+      selectedProd = controller.products.firstWhereOrNull((p) => p.id == existingItem.productId);
+      selectedProd ??= controller.products.firstWhereOrNull((p) => p.name == existingItem.productName);
+    }
+    final qtyCtrl = TextEditingController(text: existingItem != null ? existingItem.quantity.toString() : '1');
+    final rateCtrl = TextEditingController(text: existingItem != null ? existingItem.rate.toString() : '');
+    final discountCtrl = TextEditingController(text: existingItem != null ? existingItem.discount.toString() : '0');
     final formKey = GlobalKey<FormState>();
 
     final refInvoice = controller.formReferenceInvoice.value;
@@ -799,7 +867,7 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
       StatefulBuilder(
         builder: (context, setState) {
           return AppDialog(
-            title: 'Add Return Item',
+            title: editIndex != null ? 'Edit Return Item' : 'Add Return Item',
             maxWidth: 500,
             content: Form(
               key: formKey,
@@ -846,9 +914,6 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
                         validator: (v) {
                           final q = double.tryParse(v ?? '') ?? 0;
                           if (q <= 0) return 'Quantity must be > 0';
-                          if (selectedProd != null && q > selectedProd!.stockQuantity) {
-                            return 'Exceeds stock (${selectedProd!.stockQuantity})';
-                          }
                           return null;
                         },
                       ),
@@ -876,7 +941,7 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
             actions: [
               AppButton(label: 'Cancel', type: AppButtonType.text, onPressed: () => Get.back()),
               AppButton(
-                label: 'Add to Return',
+                label: editIndex != null ? 'Update Item' : 'Add to Return',
                 onPressed: () {
                   if (selectedProd == null) {
                     Get.snackbar('Error', 'Please select a product', snackPosition: SnackPosition.BOTTOM);
@@ -888,7 +953,11 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
                   final r = double.tryParse(rateCtrl.text.replaceAll(',', '')) ?? selectedProd!.purchasePrice;
                   final d = double.tryParse(discountCtrl.text.replaceAll(',', '')) ?? 0.0;
 
-                  controller.addReturnItem(selectedProd!, q, r, d);
+                  if (editIndex != null) {
+                    controller.updateReturnItem(editIndex, q, r, d);
+                  } else {
+                    controller.addReturnItem(selectedProd!, q, r, d);
+                  }
                   Get.back();
                 },
               ),

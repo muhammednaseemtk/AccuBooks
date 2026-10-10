@@ -231,24 +231,22 @@ class CustomersScreen extends GetView<CustomerController> {
                       return null;
                     },
                   ),
-                  if (!isEdit)
-                    AppTextField(
-                      label: 'Opening Balance',
-                      hint: 'Opening Balance',
-                      controller: openingCtrl,
-                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                      inputFormatters: [AppInputFormatters.decimal()],
-                    ),
-                  if (!isEdit)
-                    Obx(() => AppDropdown<String>(
-                          label: 'Balance Type',
-                          value: selectedObType.value,
-                          items: const [
-                            DropdownMenuItem(value: AccountingConstants.balanceDebit, child: Text('Debit (Receivable)')),
-                            DropdownMenuItem(value: AccountingConstants.balanceCredit, child: Text('Credit (Advance)')),
-                          ],
-                          onChanged: (v) => selectedObType.value = v ?? AccountingConstants.balanceDebit,
-                        )),
+                  AppTextField(
+                    label: 'Opening Balance',
+                    hint: 'Opening Balance',
+                    controller: openingCtrl,
+                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    inputFormatters: [AppInputFormatters.decimal()],
+                  ),
+                  Obx(() => AppDropdown<String>(
+                        label: 'Balance Type',
+                        value: selectedObType.value,
+                        items: const [
+                          DropdownMenuItem(value: AccountingConstants.balanceDebit, child: Text('Debit (Receivable)')),
+                          DropdownMenuItem(value: AccountingConstants.balanceCredit, child: Text('Credit (Advance)')),
+                        ],
+                        onChanged: (v) => selectedObType.value = v ?? AccountingConstants.balanceDebit,
+                      )),
                 ],
               ),
             ],
