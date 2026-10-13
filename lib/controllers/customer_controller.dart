@@ -14,6 +14,7 @@ class CustomerController extends GetxController {
   final isSubmitting = false.obs;
   final errorMessage = ''.obs;
   final searchQuery = ''.obs;
+  final nextCustomerCode = ''.obs;
 
   Timer? _searchDebounce;
 
@@ -43,11 +44,28 @@ class CustomerController extends GetxController {
         activeOnly: false,
       );
       customers.assignAll(list);
+      await updateNextCustomerCode();
     } catch (e) {
       errorMessage.value = 'Failed to load customers: $e';
     } finally {
       isLoading.value = false;
     }
+  }
+
+  Future<String> getNextCustomerCode() async {
+    try {
+      final code = await _customerRepo.getNextCustomerCode();
+      nextCustomerCode.value = code;
+      return code;
+    } catch (_) {
+      return 'CUST-001';
+    }
+  }
+
+  Future<void> updateNextCustomerCode() async {
+    try {
+      nextCustomerCode.value = await _customerRepo.getNextCustomerCode();
+    } catch (_) {}
   }
 
   void setSearch(String query) {
@@ -58,26 +76,79 @@ class CustomerController extends GetxController {
     });
   }
 
-  Future<bool> saveCustomer(CustomerModel customer) async {
+  Future<bool> updateCustomer(CustomerModel customer) async {
+    if (customer.id == null) return false;
     try {
       isSubmitting.value = true;
-      if (customer.id == null) {
-        await _customerRepo.insertCustomer(customer);
-        await loadCustomers();
+      final exists = await _customerRepo.isCustomerCodeExists(
+        customer.customerCode,
+        excludeId: customer.id,
+      );
+      if (exists) {
         if (Get.context != null) {
-          Get.snackbar('Success', 'Customer added successfully', snackPosition: SnackPosition.BOTTOM);
+          Get.snackbar(
+            'Error',
+            'Customer code already exists. Please use a unique code.',
+            snackPosition: SnackPosition.BOTTOM,
+          );
         }
-      } else {
-        await _customerRepo.updateCustomer(customer);
-        await loadCustomers();
-        if (Get.context != null) {
-          Get.snackbar('Success', 'Customer updated successfully', snackPosition: SnackPosition.BOTTOM);
-        }
+        return false;
+      }
+      await _customerRepo.updateCustomer(customer);
+      await loadCustomers();
+      if (Get.isDialogOpen ?? false) {
+        Get.back();
+      }
+      if (Get.context != null) {
+        Get.snackbar('Success', 'Customer updated successfully', snackPosition: SnackPosition.BOTTOM);
       }
       return true;
     } catch (e) {
+      final isDuplicate = e.toString().contains('Customer code already exists') ||
+          e.toString().toLowerCase().contains('unique');
+      final msg = isDuplicate
+          ? 'Customer code already exists. Please use a unique code.'
+          : 'Failed to save customer: $e';
       if (Get.context != null) {
-        Get.snackbar('Error', 'Failed to save customer: $e', snackPosition: SnackPosition.BOTTOM);
+        Get.snackbar('Error', msg, snackPosition: SnackPosition.BOTTOM);
+      }
+      return false;
+    } finally {
+      isSubmitting.value = false;
+    }
+  }
+
+  Future<bool> saveCustomer(CustomerModel customer) async {
+    if (customer.id != null) {
+      return await updateCustomer(customer);
+    }
+    try {
+      isSubmitting.value = true;
+      final exists = await _customerRepo.isCustomerCodeExists(customer.customerCode);
+      if (exists) {
+        if (Get.context != null) {
+          Get.snackbar(
+            'Error',
+            'Customer code already exists. Please use a unique code.',
+            snackPosition: SnackPosition.BOTTOM,
+          );
+        }
+        return false;
+      }
+      await _customerRepo.insertCustomer(customer);
+      await loadCustomers();
+      if (Get.context != null) {
+        Get.snackbar('Success', 'Customer added successfully', snackPosition: SnackPosition.BOTTOM);
+      }
+      return true;
+    } catch (e) {
+      final isDuplicate = e.toString().contains('Customer code already exists') ||
+          e.toString().toLowerCase().contains('unique');
+      final msg = isDuplicate
+          ? 'Customer code already exists. Please use a unique code.'
+          : 'Failed to save customer: $e';
+      if (Get.context != null) {
+        Get.snackbar('Error', msg, snackPosition: SnackPosition.BOTTOM);
       }
       return false;
     } finally {

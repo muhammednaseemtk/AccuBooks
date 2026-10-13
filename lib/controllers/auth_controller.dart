@@ -606,6 +606,10 @@ class AuthController extends GetxController {
       isImageMarkedForRemoval.value = false;
       isEditingProfile.value = false;
 
+      if (Get.isDialogOpen ?? false) {
+        Get.back();
+      }
+
       if (Get.context != null) {
         Get.snackbar(
           'Success',

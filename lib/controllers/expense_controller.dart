@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 import '../core/constants/accounting_constants.dart';
 import '../core/database/database_helper.dart';
 import '../core/database/database_tables.dart';
+import '../app/theme/app_colors.dart';
 import '../core/utils/currency_utils.dart';
 import '../models/account_model.dart';
 import '../models/expense_model.dart';
@@ -154,6 +155,29 @@ class ExpenseController extends GetxController {
 
     try {
       isSubmitting.value = true;
+
+      if (formNextExpenseNumber.value.trim().isEmpty) {
+        formNextExpenseNumber.value = await _expenseRepo.getNextExpenseNumber();
+      }
+
+      final currentNumber = formNextExpenseNumber.value.trim();
+      final exists = await _expenseRepo.isExpenseNumberExists(
+        currentNumber,
+        excludeId: editingExpenseId.value,
+      );
+      if (exists) {
+        if (Get.context != null) {
+          Get.snackbar(
+            'Duplicate Expense Number',
+            'Expense number "$currentNumber" already exists. Please use a unique number.',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: AppColors.debit.withValues(alpha: 0.1),
+            colorText: AppColors.debit,
+          );
+        }
+        return false;
+      }
+
       final roundedAmount = CurrencyUtils.round(formAmount.value);
       final roundedTax = CurrencyUtils.round(formTaxAmount.value);
       final totalPaid = CurrencyUtils.round(roundedAmount + roundedTax);
@@ -229,6 +253,10 @@ class ExpenseController extends GetxController {
 
         await loadExpenses();
         editingExpenseId.value = null;
+        formNextExpenseNumber.value = await _expenseRepo.getNextExpenseNumber();
+        if (Get.isDialogOpen ?? false) {
+          Get.back();
+        }
         if (Get.context != null) {
           Get.snackbar('Success', 'Expense updated successfully',
               snackPosition: SnackPosition.BOTTOM);
@@ -280,6 +308,7 @@ class ExpenseController extends GetxController {
         });
 
         await loadExpenses();
+        formNextExpenseNumber.value = await _expenseRepo.getNextExpenseNumber();
         if (Get.context != null) {
           Get.snackbar('Success', 'Expense added successfully',
               snackPosition: SnackPosition.BOTTOM);
@@ -287,8 +316,18 @@ class ExpenseController extends GetxController {
         return true;
       }
     } catch (e) {
+      final isDuplicate = e.toString().toLowerCase().contains('already exists') ||
+          e.toString().toLowerCase().contains('unique constraint');
       if (Get.context != null) {
-        Get.snackbar('Error', 'Failed to save expense: $e', snackPosition: SnackPosition.BOTTOM);
+        Get.snackbar(
+          isDuplicate ? 'Duplicate Expense Number' : 'Error',
+          isDuplicate
+              ? 'Expense number "${formNextExpenseNumber.value.trim()}" already exists. Please choose a different number.'
+              : 'Failed to save expense: $e',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: isDuplicate ? AppColors.debit.withValues(alpha: 0.1) : null,
+          colorText: isDuplicate ? AppColors.debit : null,
+        );
       }
       return false;
     } finally {
@@ -298,6 +337,7 @@ class ExpenseController extends GetxController {
 
   Future<bool> deleteExpense(ExpenseModel expense) async {
     try {
+      await _expenseRepo.reserveExpenseNumber(expense.expenseNumber);
       await _dbHelper.transaction((txn) async {
         final entries = await txn.query(
           DatabaseTables.tableJournalEntries,

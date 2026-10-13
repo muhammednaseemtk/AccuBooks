@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:get/get.dart';
 import '../core/constants/accounting_constants.dart';
+import '../app/theme/app_colors.dart';
 import '../core/utils/currency_utils.dart';
 import '../models/account_model.dart';
 import '../models/journal_entry_model.dart';
@@ -208,6 +209,29 @@ class JournalController extends GetxController {
 
     try {
       isSubmitting.value = true;
+
+      if (formNextNumber.value.trim().isEmpty) {
+        formNextNumber.value = await _journalRepo.getNextJournalNumber();
+      }
+
+      final currentNumber = formNextNumber.value.trim();
+      final exists = await _journalRepo.isJournalNumberExists(
+        currentNumber,
+        excludeId: editingJournalId.value,
+      );
+      if (exists) {
+        if (Get.context != null) {
+          Get.snackbar(
+            'Duplicate Voucher Number',
+            'Journal Voucher number "$currentNumber" already exists. Please use a unique number.',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: AppColors.debit.withValues(alpha: 0.1),
+            colorText: AppColors.debit,
+          );
+        }
+        return false;
+      }
+
       final linesToPost = formLines.map((draft) {
         return JournalLineModel(
           accountId: draft.account!.id!,
@@ -223,8 +247,9 @@ class JournalController extends GetxController {
           id: editingJournalId.value,
           transactionDate: formDate.value,
           transactionType: AccountingConstants.transTypeJournal,
-          transactionNumber: formNextNumber.value,
+          transactionNumber: currentNumber,
         )).copyWith(
+          transactionNumber: currentNumber,
           transactionDate: formDate.value,
           description: formDescription.value,
         );
@@ -232,6 +257,10 @@ class JournalController extends GetxController {
         await _journalRepo.updateJournalEntry(updatedHeader, linesToPost);
         await loadJournalEntries();
         editingJournalId.value = null;
+        formNextNumber.value = await _journalRepo.getNextJournalNumber();
+        if (Get.isDialogOpen ?? false) {
+          Get.back();
+        }
         if (Get.context != null) {
           Get.snackbar('Success', 'Journal updated successfully', snackPosition: SnackPosition.BOTTOM);
         }
@@ -241,17 +270,29 @@ class JournalController extends GetxController {
           date: formDate.value,
           description: formDescription.value,
           lines: linesToPost,
+          transactionNumber: currentNumber,
         );
 
         await loadJournalEntries();
+        formNextNumber.value = await _journalRepo.getNextJournalNumber();
         if (Get.context != null) {
           Get.snackbar('Success', 'Journal added successfully', snackPosition: SnackPosition.BOTTOM);
         }
         return true;
       }
     } catch (e) {
+      final isDuplicate = e.toString().toLowerCase().contains('already exists') ||
+          e.toString().toLowerCase().contains('unique constraint');
       if (Get.context != null) {
-        Get.snackbar('Error', 'Failed to post journal entry: $e', snackPosition: SnackPosition.BOTTOM);
+        Get.snackbar(
+          isDuplicate ? 'Duplicate Voucher Number' : 'Error',
+          isDuplicate
+              ? 'Journal Voucher number "${formNextNumber.value.trim()}" already exists. Please choose a different number.'
+              : 'Failed to post journal entry: $e',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: isDuplicate ? AppColors.debit.withValues(alpha: 0.1) : null,
+          colorText: isDuplicate ? AppColors.debit : null,
+        );
       }
       return false;
     } finally {
@@ -269,6 +310,7 @@ class JournalController extends GetxController {
         );
         return false;
       }
+      await _journalRepo.reserveJournalNumber(entry.transactionNumber);
       await _journalRepo.deleteJournalEntry(entry.id!);
       await loadJournalEntries();
       if (Get.context != null) {
