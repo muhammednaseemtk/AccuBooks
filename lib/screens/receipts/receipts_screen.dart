@@ -276,11 +276,14 @@ class ReceiptsScreen extends GetView<ReceiptController> {
                 label: isEdit ? 'Update Receipt' : 'Save Receipt',
                 isLoading: controller.isSubmitting.value,
                 onPressed: () async {
+                  if (controller.isSubmitting.value) return;
                   if (!formKey.currentState!.validate()) return;
                   final ok = await controller.submitReceipt();
                   if (ok) {
                     if (isEdit) {
-                      Get.back();
+                      if (Get.isDialogOpen ?? false) {
+                        Get.back();
+                      }
                     } else {
                       await controller.prepareNewReceiptForm();
                       amountCtrl.clear();

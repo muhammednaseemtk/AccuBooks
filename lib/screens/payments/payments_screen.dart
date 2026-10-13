@@ -276,11 +276,14 @@ class PaymentsScreen extends GetView<PaymentController> {
                 label: isEdit ? 'Update Payment' : 'Save Payment',
                 isLoading: controller.isSubmitting.value,
                 onPressed: () async {
+                  if (controller.isSubmitting.value) return;
                   if (!formKey.currentState!.validate()) return;
                   final ok = await controller.submitPayment();
                   if (ok) {
                     if (isEdit) {
-                      Get.back();
+                      if (Get.isDialogOpen ?? false) {
+                        Get.back();
+                      }
                     } else {
                       await controller.prepareNewPaymentForm();
                       amountCtrl.clear();

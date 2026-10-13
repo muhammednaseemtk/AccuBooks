@@ -149,9 +149,13 @@ class CustomersScreen extends GetView<CustomerController> {
     );
   }
 
-  void _showCustomerFormDialog(BuildContext context, {CustomerModel? customer}) {
+  void _showCustomerFormDialog(BuildContext context, {CustomerModel? customer}) async {
     final isEdit = customer != null;
-    final codeCtrl = TextEditingController(text: customer?.customerCode ?? 'CUST-${DateTime.now().millisecondsSinceEpoch % 100000}');
+    String initialCode = customer?.customerCode ?? controller.nextCustomerCode.value;
+    if (!isEdit && initialCode.isEmpty) {
+      initialCode = await controller.getNextCustomerCode();
+    }
+    final codeCtrl = TextEditingController(text: initialCode);
     final nameCtrl = TextEditingController(text: customer?.name ?? '');
     final phoneCtrl = TextEditingController(text: customer?.phone ?? '');
     final emailCtrl = TextEditingController(text: customer?.email ?? '');
@@ -272,6 +276,7 @@ class CustomersScreen extends GetView<CustomerController> {
                 label: isEdit ? 'Update' : 'Save Customer',
                 isLoading: controller.isSubmitting.value,
                 onPressed: () async {
+                  if (controller.isSubmitting.value) return;
                   if (!formKey.currentState!.validate()) return;
                   final cleanTax = taxNumCtrl.text.trim();
                   if (cleanTax.isNotEmpty && !RegExp(r'^\d+$').hasMatch(cleanTax)) return;
@@ -298,12 +303,16 @@ class CustomersScreen extends GetView<CustomerController> {
                           openingBalanceType: selectedObType.value,
                         );
 
-                  final ok = await controller.saveCustomer(cust);
+                  final ok = isEdit
+                      ? await controller.updateCustomer(cust)
+                      : await controller.saveCustomer(cust);
                   if (ok) {
                     if (isEdit) {
-                      Get.back();
+                      if (Get.isDialogOpen ?? false) {
+                        Get.back();
+                      }
                     } else {
-                      codeCtrl.clear();
+                      final nextCode = await controller.getNextCustomerCode();
                       nameCtrl.clear();
                       phoneCtrl.clear();
                       emailCtrl.clear();
@@ -312,6 +321,7 @@ class CustomersScreen extends GetView<CustomerController> {
                       openingCtrl.clear();
                       selectedObType.value = AccountingConstants.balanceDebit;
                       formKey.currentState?.reset();
+                      codeCtrl.text = nextCode;
                     }
                   }
                 },

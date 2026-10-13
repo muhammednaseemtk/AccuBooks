@@ -269,11 +269,14 @@ class ExpensesScreen extends GetView<ExpenseController> {
                 label: isEdit ? 'Update Expense' : 'Save Expense',
                 isLoading: controller.isSubmitting.value,
                 onPressed: () async {
+                  if (controller.isSubmitting.value) return;
                   if (!formKey.currentState!.validate()) return;
                   final ok = await controller.submitExpense();
                   if (ok) {
                     if (isEdit) {
-                      Get.back();
+                      if (Get.isDialogOpen ?? false) {
+                        Get.back();
+                      }
                     } else {
                       await controller.prepareNewExpenseForm();
                       amountCtrl.clear();

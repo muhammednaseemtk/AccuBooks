@@ -393,6 +393,7 @@ class SettingsScreen extends StatelessWidget {
               onPressed: controller.isSubmitting.value
                   ? null
                   : () async {
+                      if (controller.isSubmitting.value) return;
                       if (!formKey.currentState!.validate()) return;
                       final updated = (comp ?? CompanyModel(name: nameCtrl.text.trim())).copyWith(
                         name: nameCtrl.text.trim(),
@@ -405,7 +406,9 @@ class SettingsScreen extends StatelessWidget {
                       );
                       final ok = await controller.updateCompany(updated);
                       if (ok) {
-                        Get.back();
+                        if (Get.isDialogOpen ?? false) {
+                          Get.back();
+                        }
                       }
                     },
             ),

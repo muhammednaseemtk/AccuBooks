@@ -427,10 +427,13 @@ class JournalsScreen extends GetView<JournalController> {
                 isLoading: controller.isSubmitting.value,
                 onPressed: controller.isFormBalanced
                     ? () async {
+                        if (controller.isSubmitting.value) return;
                         final ok = await controller.submitJournalEntry();
                         if (ok) {
                           if (isEdit) {
-                            Get.back();
+                            if (Get.isDialogOpen ?? false) {
+                              Get.back();
+                            }
                           } else {
                             await controller.prepareNewJournalForm();
                             descCtrl.clear();

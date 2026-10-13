@@ -216,9 +216,13 @@ class ProductsScreen extends GetView<ProductController> {
     );
   }
 
-  void _showProductFormDialog(BuildContext context, {ProductModel? product}) {
+  void _showProductFormDialog(BuildContext context, {ProductModel? product}) async {
     final isEdit = product != null;
-    final codeCtrl = TextEditingController(text: product?.productCode ?? 'PRD-${DateTime.now().millisecondsSinceEpoch % 100000}');
+    String initialCode = product?.productCode ?? controller.nextProductCode.value;
+    if (!isEdit && initialCode.isEmpty) {
+      initialCode = await controller.getNextProductCode();
+    }
+    final codeCtrl = TextEditingController(text: initialCode);
     final barcodeCtrl = TextEditingController(text: product?.barcode ?? '');
     final nameCtrl = TextEditingController(text: product?.name ?? '');
     final unitCtrl = TextEditingController(text: product?.unit ?? 'Nos');
@@ -364,6 +368,7 @@ class ProductsScreen extends GetView<ProductController> {
                 label: isEdit ? 'Update' : 'Save Product',
                 isLoading: controller.isSubmitting.value,
                 onPressed: () async {
+                  if (controller.isSubmitting.value) return;
                   if (!formKey.currentState!.validate()) return;
                   final cleanBarcode = barcodeCtrl.text.trim();
                   if (cleanBarcode.isNotEmpty && !RegExp(r'^\d+$').hasMatch(cleanBarcode)) return;
@@ -399,12 +404,17 @@ class ProductsScreen extends GetView<ProductController> {
                           minimumStock: minQty,
                         );
 
-                  final ok = await controller.saveProduct(prod);
+                  final ok = isEdit
+                      ? await controller.updateProduct(prod)
+                      : await controller.saveProduct(prod);
                   if (ok) {
                     if (isEdit) {
-                      Get.back();
+                      if (Get.isDialogOpen ?? false) {
+                        Get.back();
+                      }
                     } else {
-                      codeCtrl.text = 'PRD-${DateTime.now().millisecondsSinceEpoch % 100000}';
+                      final nextCode = await controller.getNextProductCode();
+                      codeCtrl.text = nextCode;
                       barcodeCtrl.clear();
                       nameCtrl.clear();
                       unitCtrl.text = 'Nos';

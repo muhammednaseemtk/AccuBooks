@@ -715,9 +715,12 @@ class SalesOrdersScreen extends GetView<SalesOrderController> {
                   onPressed: controller.isSubmitting.value
                       ? null
                       : () async {
+                          if (controller.isSubmitting.value) return;
                           final ok = await controller.submitOrder();
                           if (ok) {
-                            Get.back();
+                            if (Get.isDialogOpen ?? false) {
+                              Get.back();
+                            }
                           }
                         },
                 ),
@@ -1152,9 +1155,12 @@ class SalesOrdersScreen extends GetView<SalesOrderController> {
                   onPressed: controller.isSubmitting.value
                       ? null
                       : () async {
+                          if (controller.isSubmitting.value) return;
                           final ok = await controller.submitReturn();
                           if (ok) {
-                            Get.back();
+                            if (Get.isDialogOpen ?? false) {
+                              Get.back();
+                            }
                           }
                         },
                 ),

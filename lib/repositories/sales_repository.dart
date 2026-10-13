@@ -3,19 +3,52 @@ import '../core/constants/accounting_constants.dart';
 import '../core/database/database_helper.dart';
 import '../core/database/database_tables.dart';
 import '../core/utils/date_utils.dart';
+import '../core/utils/sequence_utils.dart';
 import '../models/sales_invoice_item_model.dart';
 import '../models/sales_invoice_model.dart';
 
 class SalesRepository {
   final DatabaseHelper _dbHelper = DatabaseHelper();
+  static const String prefReservedInvoiceNumbers = 'reserved_sales_invoice_numbers';
 
-  Future<String> getNextInvoiceNumber() async {
-    final db = await _dbHelper.database;
-    final res = await db.rawQuery('''
-      SELECT MAX(id) as max_id FROM ${DatabaseTables.tableSalesInvoices}
-    ''');
-    final nextId = ((res.first['max_id'] as int?) ?? 0) + 1;
-    return '${AccountingConstants.prefixSales}${nextId.toString().padLeft(6, '0')}';
+  static void clearReservedNumbersForTesting() {
+    SequenceUtils.clearReservedForTesting(prefReservedInvoiceNumbers);
+  }
+
+  Future<Set<String>> getReservedInvoiceNumbers() async {
+    return SequenceUtils.getReserved(prefReservedInvoiceNumbers);
+  }
+
+  Future<void> reserveInvoiceNumber(String invoiceNumber) async {
+    return SequenceUtils.reserve(prefReservedInvoiceNumbers, invoiceNumber);
+  }
+
+  Future<bool> isInvoiceNumberExists(
+    String invoiceNumber, {
+    int? excludeId,
+    Transaction? txn,
+  }) async {
+    return SequenceUtils.isNumberExists(
+      dbHelper: _dbHelper,
+      tableName: DatabaseTables.tableSalesInvoices,
+      columnName: 'invoice_number',
+      prefKey: prefReservedInvoiceNumbers,
+      codeOrNumber: invoiceNumber,
+      excludeId: excludeId,
+      txn: txn,
+    );
+  }
+
+  Future<String> getNextInvoiceNumber({Transaction? txn}) async {
+    return SequenceUtils.getNextNumber(
+      dbHelper: _dbHelper,
+      tableName: DatabaseTables.tableSalesInvoices,
+      columnName: 'invoice_number',
+      prefix: AccountingConstants.prefixSales,
+      padDigits: 6,
+      prefKey: prefReservedInvoiceNumbers,
+      txn: txn,
+    );
   }
 
   Future<List<SalesInvoiceModel>> getAllSalesInvoices({
@@ -130,6 +163,9 @@ class SalesRepository {
 
   Future<int> insertSalesInvoice(SalesInvoiceModel invoice, {Transaction? txn}) async {
     final executor = txn ?? await _dbHelper.database;
+    if (await isInvoiceNumberExists(invoice.invoiceNumber, txn: txn)) {
+      throw Exception('Sales invoice number already exists. Please use a unique number.');
+    }
     return await executor.insert(
       DatabaseTables.tableSalesInvoices,
       invoice.toMap(),
@@ -148,6 +184,9 @@ class SalesRepository {
 
   Future<int> updateSalesInvoice(SalesInvoiceModel invoice, {Transaction? txn}) async {
     final executor = txn ?? await _dbHelper.database;
+    if (await isInvoiceNumberExists(invoice.invoiceNumber, excludeId: invoice.id, txn: txn)) {
+      throw Exception('Sales invoice number already exists. Please use a unique number.');
+    }
     return await executor.update(
       DatabaseTables.tableSalesInvoices,
       invoice.toMap(),
@@ -180,6 +219,18 @@ class SalesRepository {
 
   Future<int> deleteSalesInvoice(int invoiceId, {Transaction? txn}) async {
     final executor = txn ?? await _dbHelper.database;
+    final maps = await executor.query(
+      DatabaseTables.tableSalesInvoices,
+      columns: ['invoice_number'],
+      where: 'id = ?',
+      whereArgs: [invoiceId],
+    );
+    if (maps.isNotEmpty) {
+      final num = maps.first['invoice_number'] as String?;
+      if (num != null) {
+        await reserveInvoiceNumber(num);
+      }
+    }
     await deleteSalesInvoiceItems(invoiceId, txn: txn);
     return await executor.delete(
       DatabaseTables.tableSalesInvoices,
