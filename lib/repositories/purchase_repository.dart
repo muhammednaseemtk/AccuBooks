@@ -3,19 +3,53 @@ import '../core/constants/accounting_constants.dart';
 import '../core/database/database_helper.dart';
 import '../core/database/database_tables.dart';
 import '../core/utils/date_utils.dart';
+import '../core/utils/sequence_utils.dart';
 import '../models/purchase_invoice_item_model.dart';
 import '../models/purchase_invoice_model.dart';
 
 class PurchaseRepository {
   final DatabaseHelper _dbHelper = DatabaseHelper();
 
-  Future<String> getNextPurchaseNumber() async {
-    final db = await _dbHelper.database;
-    final res = await db.rawQuery('''
-      SELECT MAX(id) as max_id FROM ${DatabaseTables.tablePurchaseInvoices}
-    ''');
-    final nextId = ((res.first['max_id'] as int?) ?? 0) + 1;
-    return '${AccountingConstants.prefixPurchase}${nextId.toString().padLeft(6, '0')}';
+  static const String prefReservedPurchaseNumbers = 'reserved_purchase_numbers';
+
+  static void clearReservedNumbersForTesting() {
+    SequenceUtils.clearReservedForTesting(prefReservedPurchaseNumbers);
+  }
+
+  Future<Set<String>> getReservedPurchaseNumbers() async {
+    return SequenceUtils.getReserved(prefReservedPurchaseNumbers);
+  }
+
+  Future<void> reservePurchaseNumber(String number) async {
+    return SequenceUtils.reserve(prefReservedPurchaseNumbers, number);
+  }
+
+  Future<bool> isPurchaseNumberExists(
+    String purchaseNumber, {
+    int? excludeId,
+    Transaction? txn,
+  }) async {
+    return SequenceUtils.isNumberExists(
+      dbHelper: _dbHelper,
+      tableName: DatabaseTables.tablePurchaseInvoices,
+      columnName: 'invoice_number',
+      prefKey: prefReservedPurchaseNumbers,
+      codeOrNumber: purchaseNumber,
+      excludeId: excludeId,
+      txn: txn,
+    );
+  }
+
+  Future<String> getNextPurchaseNumber({Transaction? txn}) async {
+    return SequenceUtils.getNextNumber(
+      dbHelper: _dbHelper,
+      tableName: DatabaseTables.tablePurchaseInvoices,
+      columnName: 'invoice_number',
+      prefix: AccountingConstants.prefixPurchase,
+      padDigits: 6,
+      prefKey: prefReservedPurchaseNumbers,
+      txn: txn,
+    );
   }
 
   Future<List<PurchaseInvoiceModel>> getAllPurchaseInvoices({
@@ -129,6 +163,9 @@ class PurchaseRepository {
   }
 
   Future<int> insertPurchaseInvoice(PurchaseInvoiceModel invoice, {Transaction? txn}) async {
+    if (await isPurchaseNumberExists(invoice.invoiceNumber, txn: txn)) {
+      throw Exception('Purchase Invoice number "${invoice.invoiceNumber}" already exists.');
+    }
     final executor = txn ?? await _dbHelper.database;
     return await executor.insert(
       DatabaseTables.tablePurchaseInvoices,
@@ -160,6 +197,9 @@ class PurchaseRepository {
   }
 
   Future<int> updatePurchaseInvoice(PurchaseInvoiceModel invoice, {Transaction? txn}) async {
+    if (invoice.id != null && await isPurchaseNumberExists(invoice.invoiceNumber, excludeId: invoice.id, txn: txn)) {
+      throw Exception('Purchase Invoice number "${invoice.invoiceNumber}" already exists.');
+    }
     final executor = txn ?? await _dbHelper.database;
     return await executor.update(
       DatabaseTables.tablePurchaseInvoices,
@@ -179,6 +219,10 @@ class PurchaseRepository {
   }
 
   Future<int> deletePurchaseInvoice(int invoiceId, {Transaction? txn}) async {
+    final invoice = await getPurchaseInvoiceById(invoiceId);
+    if (invoice != null) {
+      await reservePurchaseNumber(invoice.invoiceNumber);
+    }
     final executor = txn ?? await _dbHelper.database;
     await deletePurchaseInvoiceItems(invoiceId, txn: txn);
     return await executor.delete(

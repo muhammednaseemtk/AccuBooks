@@ -4,6 +4,7 @@ import '../core/database/database_helper.dart';
 import '../core/database/database_tables.dart';
 import '../core/utils/currency_utils.dart';
 import '../core/utils/date_utils.dart';
+import '../core/utils/sequence_utils.dart';
 import '../models/supplier_model.dart';
 
 class SupplierRepository {
@@ -144,22 +145,80 @@ class SupplierRepository {
     return (totalPurchases: totalPurchases, totalPayments: totalPayments, outstanding: outstanding);
   }
 
+  static const String prefKey = 'reserved_supplier_codes';
+
+  static void clearReservedCodesForTesting() {
+    SequenceUtils.clearReservedForTesting(prefKey);
+  }
+
+  Future<void> reserveSupplierCode(String code) async {
+    await SequenceUtils.reserve(prefKey, code);
+  }
+
+  Future<bool> isSupplierCodeExists(
+    String supplierCode, {
+    int? excludeId,
+    Transaction? txn,
+  }) async {
+    return await SequenceUtils.isNumberExists(
+      dbHelper: _dbHelper,
+      tableName: DatabaseTables.tableSuppliers,
+      columnName: 'supplier_code',
+      prefKey: prefKey,
+      codeOrNumber: supplierCode,
+      excludeId: excludeId,
+      txn: txn,
+      fallbackExistingList: () async {
+        final list = await getAllSuppliers();
+        return list.where((s) => excludeId == null || s.id != excludeId).map((s) => s.supplierCode).toList();
+      },
+    );
+  }
+
+  Future<String> getNextSupplierCode({Transaction? txn}) async {
+    return await SequenceUtils.getNextNumber(
+      dbHelper: _dbHelper,
+      tableName: DatabaseTables.tableSuppliers,
+      columnName: 'supplier_code',
+      prefix: AccountingConstants.prefixSupplier,
+      padDigits: 3,
+      prefKey: prefKey,
+      txn: txn,
+      fallbackExistingList: () async {
+        final list = await getAllSuppliers();
+        return list.map((s) => s.supplierCode).toList();
+      },
+    );
+  }
+
   Future<int> insertSupplier(SupplierModel supplier) async {
     final db = await _dbHelper.database;
-    return await db.insert(
-      DatabaseTables.tableSuppliers,
-      supplier.toMap(),
-    );
+    return await db.transaction<int>((txn) async {
+      final exists = await isSupplierCodeExists(supplier.supplierCode, txn: txn);
+      if (exists) {
+        throw Exception('Supplier code already exists. Please use a unique code.');
+      }
+      return await txn.insert(
+        DatabaseTables.tableSuppliers,
+        supplier.toMap(),
+      );
+    });
   }
 
   Future<int> updateSupplier(SupplierModel supplier) async {
     final db = await _dbHelper.database;
-    return await db.update(
-      DatabaseTables.tableSuppliers,
-      supplier.toMap(),
-      where: 'id = ?',
-      whereArgs: [supplier.id],
-    );
+    return await db.transaction<int>((txn) async {
+      final exists = await isSupplierCodeExists(supplier.supplierCode, excludeId: supplier.id, txn: txn);
+      if (exists) {
+        throw Exception('Supplier code already exists. Please use a unique code.');
+      }
+      return await txn.update(
+        DatabaseTables.tableSuppliers,
+        supplier.toMap(),
+        where: 'id = ?',
+        whereArgs: [supplier.id],
+      );
+    });
   }
 
   Future<bool> canDeleteSupplier(int id) async {
@@ -194,6 +253,19 @@ class SupplierRepository {
   Future<int> deleteSupplier(int id) async {
     final db = await _dbHelper.database;
     return await db.transaction<int>((txn) async {
+      final maps = await txn.query(
+        DatabaseTables.tableSuppliers,
+        columns: ['supplier_code'],
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+      if (maps.isNotEmpty) {
+        final code = maps.first['supplier_code'] as String?;
+        if (code != null) {
+          await reserveSupplierCode(code);
+        }
+      }
+
       // Clean up any non-posting purchase orders and items for this supplier
       final orders = await txn.query(
         DatabaseTables.tablePurchaseOrders,

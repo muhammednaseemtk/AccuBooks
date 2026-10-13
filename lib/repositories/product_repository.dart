@@ -3,6 +3,7 @@ import '../core/constants/accounting_constants.dart';
 import '../core/database/database_helper.dart';
 import '../core/database/database_tables.dart';
 import '../core/utils/date_utils.dart';
+import '../core/utils/sequence_utils.dart';
 import '../models/category_model.dart';
 import '../models/product_model.dart';
 import '../models/stock_transaction_model.dart';
@@ -10,6 +11,47 @@ import '../models/tax_model.dart';
 
 class ProductRepository {
   final DatabaseHelper _dbHelper = DatabaseHelper();
+  static const String prefReservedProductCodes = 'reserved_product_codes';
+
+  static void clearReservedCodesForTesting() {
+    SequenceUtils.clearReservedForTesting(prefReservedProductCodes);
+  }
+
+  Future<Set<String>> getReservedCodes() async {
+    return SequenceUtils.getReserved(prefReservedProductCodes);
+  }
+
+  Future<void> reserveProductCode(String code) async {
+    return SequenceUtils.reserve(prefReservedProductCodes, code);
+  }
+
+  Future<bool> isProductCodeExists(
+    String productCode, {
+    int? excludeId,
+    Transaction? txn,
+  }) async {
+    return SequenceUtils.isNumberExists(
+      dbHelper: _dbHelper,
+      tableName: DatabaseTables.tableProducts,
+      columnName: 'product_code',
+      prefKey: prefReservedProductCodes,
+      codeOrNumber: productCode,
+      excludeId: excludeId,
+      txn: txn,
+    );
+  }
+
+  Future<String> getNextProductCode({Transaction? txn}) async {
+    return SequenceUtils.getNextNumber(
+      dbHelper: _dbHelper,
+      tableName: DatabaseTables.tableProducts,
+      columnName: 'product_code',
+      prefix: AccountingConstants.prefixProduct,
+      padDigits: 3,
+      prefKey: prefReservedProductCodes,
+      txn: txn,
+    );
+  }
 
   Future<List<ProductModel>> getAllProducts({
     String? search,
@@ -86,31 +128,40 @@ class ProductRepository {
     return null;
   }
 
-  Future<int> insertProduct(ProductModel product) async {
-    final db = await _dbHelper.database;
-    final id = await db.insert(
+  Future<int> insertProduct(ProductModel product, {Transaction? txn}) async {
+    final executor = txn ?? await _dbHelper.database;
+    if (await isProductCodeExists(product.productCode, txn: txn)) {
+      throw Exception('Product code already exists. Please use a unique code.');
+    }
+    final id = await executor.insert(
       DatabaseTables.tableProducts,
       product.toMap(),
     );
 
     // If opening stock > 0, create stock transaction
     if (product.stockQuantity > 0) {
-      await insertStockTransaction(StockTransactionModel(
-        productId: id,
-        transactionType: AccountingConstants.stockOpeningStock,
-        quantityIn: product.stockQuantity,
-        rate: product.purchasePrice,
-        balanceQuantity: product.stockQuantity,
-        transactionDate: DateTime.now(),
-      ));
+      await insertStockTransaction(
+        StockTransactionModel(
+          productId: id,
+          transactionType: AccountingConstants.stockOpeningStock,
+          quantityIn: product.stockQuantity,
+          rate: product.purchasePrice,
+          balanceQuantity: product.stockQuantity,
+          transactionDate: DateTime.now(),
+        ),
+        txn: txn,
+      );
     }
 
     return id;
   }
 
-  Future<int> updateProduct(ProductModel product) async {
-    final db = await _dbHelper.database;
-    return await db.update(
+  Future<int> updateProduct(ProductModel product, {Transaction? txn}) async {
+    final executor = txn ?? await _dbHelper.database;
+    if (await isProductCodeExists(product.productCode, excludeId: product.id, txn: txn)) {
+      throw Exception('Product code already exists. Please use a unique code.');
+    }
+    return await executor.update(
       DatabaseTables.tableProducts,
       product.toMap(),
       where: 'id = ?',
@@ -172,6 +223,10 @@ class ProductRepository {
   }
 
   Future<int> deleteProduct(int id) async {
+    final product = await getProductById(id);
+    if (product != null) {
+      await reserveProductCode(product.productCode);
+    }
     final db = await _dbHelper.database;
     return await db.transaction((txn) async {
       await txn.delete(DatabaseTables.tableStockTransactions, where: 'product_id = ?', whereArgs: [id]);

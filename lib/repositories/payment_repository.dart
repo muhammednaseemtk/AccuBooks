@@ -3,18 +3,52 @@ import '../core/constants/accounting_constants.dart';
 import '../core/database/database_helper.dart';
 import '../core/database/database_tables.dart';
 import '../core/utils/date_utils.dart';
+import '../core/utils/sequence_utils.dart';
 import '../models/payment_model.dart';
 
 class PaymentRepository {
   final DatabaseHelper _dbHelper = DatabaseHelper();
 
-  Future<String> getNextPaymentNumber() async {
-    final db = await _dbHelper.database;
-    final res = await db.rawQuery('''
-      SELECT MAX(id) as max_id FROM ${DatabaseTables.tablePayments}
-    ''');
-    final nextId = ((res.first['max_id'] as int?) ?? 0) + 1;
-    return '${AccountingConstants.prefixPayment}${nextId.toString().padLeft(6, '0')}';
+  static const String prefReservedPaymentNumbers = 'reserved_payment_numbers';
+
+  static void clearReservedNumbersForTesting() {
+    SequenceUtils.clearReservedForTesting(prefReservedPaymentNumbers);
+  }
+
+  Future<Set<String>> getReservedPaymentNumbers() async {
+    return SequenceUtils.getReserved(prefReservedPaymentNumbers);
+  }
+
+  Future<void> reservePaymentNumber(String number) async {
+    return SequenceUtils.reserve(prefReservedPaymentNumbers, number);
+  }
+
+  Future<bool> isPaymentNumberExists(
+    String paymentNumber, {
+    int? excludeId,
+    Transaction? txn,
+  }) async {
+    return SequenceUtils.isNumberExists(
+      dbHelper: _dbHelper,
+      tableName: DatabaseTables.tablePayments,
+      columnName: 'payment_number',
+      prefKey: prefReservedPaymentNumbers,
+      codeOrNumber: paymentNumber,
+      excludeId: excludeId,
+      txn: txn,
+    );
+  }
+
+  Future<String> getNextPaymentNumber({Transaction? txn}) async {
+    return SequenceUtils.getNextNumber(
+      dbHelper: _dbHelper,
+      tableName: DatabaseTables.tablePayments,
+      columnName: 'payment_number',
+      prefix: AccountingConstants.prefixPayment,
+      padDigits: 6,
+      prefKey: prefReservedPaymentNumbers,
+      txn: txn,
+    );
   }
 
   Future<List<PaymentModel>> getAllPayments({
@@ -88,6 +122,9 @@ class PaymentRepository {
   }
 
   Future<int> insertPayment(PaymentModel payment, {Transaction? txn}) async {
+    if (await isPaymentNumberExists(payment.paymentNumber, txn: txn)) {
+      throw Exception('Payment number "${payment.paymentNumber}" already exists.');
+    }
     final executor = txn ?? await _dbHelper.database;
     return await executor.insert(
       DatabaseTables.tablePayments,
@@ -96,6 +133,9 @@ class PaymentRepository {
   }
 
   Future<int> updatePayment(PaymentModel payment, {Transaction? txn}) async {
+    if (payment.id != null && await isPaymentNumberExists(payment.paymentNumber, excludeId: payment.id, txn: txn)) {
+      throw Exception('Payment number "${payment.paymentNumber}" already exists.');
+    }
     final executor = txn ?? await _dbHelper.database;
     return await executor.update(
       DatabaseTables.tablePayments,
@@ -106,6 +146,10 @@ class PaymentRepository {
   }
 
   Future<int> deletePayment(int id, {Transaction? txn}) async {
+    final payment = await getPaymentById(id);
+    if (payment != null) {
+      await reservePaymentNumber(payment.paymentNumber);
+    }
     final executor = txn ?? await _dbHelper.database;
     return await executor.delete(
       DatabaseTables.tablePayments,

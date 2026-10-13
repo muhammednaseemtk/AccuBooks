@@ -3,18 +3,52 @@ import '../core/constants/accounting_constants.dart';
 import '../core/database/database_helper.dart';
 import '../core/database/database_tables.dart';
 import '../core/utils/date_utils.dart';
+import '../core/utils/sequence_utils.dart';
 import '../models/receipt_model.dart';
 
 class ReceiptRepository {
   final DatabaseHelper _dbHelper = DatabaseHelper();
 
-  Future<String> getNextReceiptNumber() async {
-    final db = await _dbHelper.database;
-    final res = await db.rawQuery('''
-      SELECT MAX(id) as max_id FROM ${DatabaseTables.tableReceipts}
-    ''');
-    final nextId = ((res.first['max_id'] as int?) ?? 0) + 1;
-    return '${AccountingConstants.prefixReceipt}${nextId.toString().padLeft(6, '0')}';
+  static const String prefReservedReceiptNumbers = 'reserved_receipt_numbers';
+
+  static void clearReservedNumbersForTesting() {
+    SequenceUtils.clearReservedForTesting(prefReservedReceiptNumbers);
+  }
+
+  Future<Set<String>> getReservedReceiptNumbers() async {
+    return SequenceUtils.getReserved(prefReservedReceiptNumbers);
+  }
+
+  Future<void> reserveReceiptNumber(String number) async {
+    return SequenceUtils.reserve(prefReservedReceiptNumbers, number);
+  }
+
+  Future<bool> isReceiptNumberExists(
+    String receiptNumber, {
+    int? excludeId,
+    Transaction? txn,
+  }) async {
+    return SequenceUtils.isNumberExists(
+      dbHelper: _dbHelper,
+      tableName: DatabaseTables.tableReceipts,
+      columnName: 'receipt_number',
+      prefKey: prefReservedReceiptNumbers,
+      codeOrNumber: receiptNumber,
+      excludeId: excludeId,
+      txn: txn,
+    );
+  }
+
+  Future<String> getNextReceiptNumber({Transaction? txn}) async {
+    return SequenceUtils.getNextNumber(
+      dbHelper: _dbHelper,
+      tableName: DatabaseTables.tableReceipts,
+      columnName: 'receipt_number',
+      prefix: AccountingConstants.prefixReceipt,
+      padDigits: 6,
+      prefKey: prefReservedReceiptNumbers,
+      txn: txn,
+    );
   }
 
   Future<List<ReceiptModel>> getAllReceipts({
@@ -88,6 +122,9 @@ class ReceiptRepository {
   }
 
   Future<int> insertReceipt(ReceiptModel receipt, {Transaction? txn}) async {
+    if (await isReceiptNumberExists(receipt.receiptNumber, txn: txn)) {
+      throw Exception('Receipt number "${receipt.receiptNumber}" already exists.');
+    }
     final executor = txn ?? await _dbHelper.database;
     return await executor.insert(
       DatabaseTables.tableReceipts,
@@ -96,6 +133,9 @@ class ReceiptRepository {
   }
 
   Future<int> updateReceipt(ReceiptModel receipt, {Transaction? txn}) async {
+    if (receipt.id != null && await isReceiptNumberExists(receipt.receiptNumber, excludeId: receipt.id, txn: txn)) {
+      throw Exception('Receipt number "${receipt.receiptNumber}" already exists.');
+    }
     final executor = txn ?? await _dbHelper.database;
     return await executor.update(
       DatabaseTables.tableReceipts,
@@ -106,6 +146,10 @@ class ReceiptRepository {
   }
 
   Future<int> deleteReceipt(int id, {Transaction? txn}) async {
+    final receipt = await getReceiptById(id);
+    if (receipt != null) {
+      await reserveReceiptNumber(receipt.receiptNumber);
+    }
     final executor = txn ?? await _dbHelper.database;
     return await executor.delete(
       DatabaseTables.tableReceipts,

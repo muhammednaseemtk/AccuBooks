@@ -3,18 +3,52 @@ import '../core/constants/accounting_constants.dart';
 import '../core/database/database_helper.dart';
 import '../core/database/database_tables.dart';
 import '../core/utils/date_utils.dart';
+import '../core/utils/sequence_utils.dart';
 import '../models/expense_model.dart';
 
 class ExpenseRepository {
   final DatabaseHelper _dbHelper = DatabaseHelper();
 
-  Future<String> getNextExpenseNumber() async {
-    final db = await _dbHelper.database;
-    final res = await db.rawQuery('''
-      SELECT MAX(id) as max_id FROM ${DatabaseTables.tableExpenses}
-    ''');
-    final nextId = ((res.first['max_id'] as int?) ?? 0) + 1;
-    return '${AccountingConstants.prefixExpense}${nextId.toString().padLeft(6, '0')}';
+  static const String prefReservedExpenseNumbers = 'reserved_expense_numbers';
+
+  static void clearReservedNumbersForTesting() {
+    SequenceUtils.clearReservedForTesting(prefReservedExpenseNumbers);
+  }
+
+  Future<Set<String>> getReservedExpenseNumbers() async {
+    return SequenceUtils.getReserved(prefReservedExpenseNumbers);
+  }
+
+  Future<void> reserveExpenseNumber(String number) async {
+    return SequenceUtils.reserve(prefReservedExpenseNumbers, number);
+  }
+
+  Future<bool> isExpenseNumberExists(
+    String expenseNumber, {
+    int? excludeId,
+    Transaction? txn,
+  }) async {
+    return SequenceUtils.isNumberExists(
+      dbHelper: _dbHelper,
+      tableName: DatabaseTables.tableExpenses,
+      columnName: 'expense_number',
+      prefKey: prefReservedExpenseNumbers,
+      codeOrNumber: expenseNumber,
+      excludeId: excludeId,
+      txn: txn,
+    );
+  }
+
+  Future<String> getNextExpenseNumber({Transaction? txn}) async {
+    return SequenceUtils.getNextNumber(
+      dbHelper: _dbHelper,
+      tableName: DatabaseTables.tableExpenses,
+      columnName: 'expense_number',
+      prefix: AccountingConstants.prefixExpense,
+      padDigits: 6,
+      prefKey: prefReservedExpenseNumbers,
+      txn: txn,
+    );
   }
 
   Future<List<ExpenseModel>> getAllExpenses({
@@ -88,6 +122,9 @@ class ExpenseRepository {
   }
 
   Future<int> insertExpense(ExpenseModel expense, {Transaction? txn}) async {
+    if (await isExpenseNumberExists(expense.expenseNumber, txn: txn)) {
+      throw Exception('Expense number "${expense.expenseNumber}" already exists.');
+    }
     final executor = txn ?? await _dbHelper.database;
     return await executor.insert(
       DatabaseTables.tableExpenses,
@@ -96,6 +133,9 @@ class ExpenseRepository {
   }
 
   Future<int> updateExpense(ExpenseModel expense, {Transaction? txn}) async {
+    if (expense.id != null && await isExpenseNumberExists(expense.expenseNumber, excludeId: expense.id, txn: txn)) {
+      throw Exception('Expense number "${expense.expenseNumber}" already exists.');
+    }
     final executor = txn ?? await _dbHelper.database;
     return await executor.update(
       DatabaseTables.tableExpenses,
@@ -106,6 +146,10 @@ class ExpenseRepository {
   }
 
   Future<int> deleteExpense(int id, {Transaction? txn}) async {
+    final expense = await getExpenseById(id);
+    if (expense != null) {
+      await reserveExpenseNumber(expense.expenseNumber);
+    }
     final executor = txn ?? await _dbHelper.database;
     return await executor.delete(
       DatabaseTables.tableExpenses,

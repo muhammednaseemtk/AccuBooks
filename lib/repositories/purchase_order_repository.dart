@@ -3,6 +3,7 @@ import '../core/constants/accounting_constants.dart';
 import '../core/database/database_helper.dart';
 import '../core/database/database_tables.dart';
 import '../core/utils/date_utils.dart';
+import '../core/utils/sequence_utils.dart';
 import '../models/purchase_order_item_model.dart';
 import '../models/purchase_order_model.dart';
 import '../models/purchase_return_item_model.dart';
@@ -10,16 +11,50 @@ import '../models/purchase_return_model.dart';
 
 class PurchaseOrderRepository {
   final DatabaseHelper _dbHelper = DatabaseHelper();
+  static const String prefReservedOrderNumbers = 'reserved_purchase_order_numbers';
+  static const String prefReservedReturnNumbers = 'reserved_purchase_return_numbers';
+
+  static void clearReservedNumbersForTesting() {
+    SequenceUtils.clearReservedForTesting(prefReservedOrderNumbers);
+    SequenceUtils.clearReservedForTesting(prefReservedReturnNumbers);
+  }
 
   // === PURCHASE ORDERS ===
 
-  Future<String> getNextOrderNumber() async {
-    final db = await _dbHelper.database;
-    final res = await db.rawQuery('''
-      SELECT MAX(id) as max_id FROM ${DatabaseTables.tablePurchaseOrders}
-    ''');
-    final nextId = ((res.first['max_id'] as int?) ?? 0) + 1;
-    return '${AccountingConstants.prefixPurchaseOrder}${nextId.toString().padLeft(6, '0')}';
+  Future<Set<String>> getReservedOrderNumbers() async {
+    return SequenceUtils.getReserved(prefReservedOrderNumbers);
+  }
+
+  Future<void> reserveOrderNumber(String orderNumber) async {
+    return SequenceUtils.reserve(prefReservedOrderNumbers, orderNumber);
+  }
+
+  Future<bool> isOrderNumberExists(
+    String orderNumber, {
+    int? excludeId,
+    Transaction? txn,
+  }) async {
+    return SequenceUtils.isNumberExists(
+      dbHelper: _dbHelper,
+      tableName: DatabaseTables.tablePurchaseOrders,
+      columnName: 'order_number',
+      prefKey: prefReservedOrderNumbers,
+      codeOrNumber: orderNumber,
+      excludeId: excludeId,
+      txn: txn,
+    );
+  }
+
+  Future<String> getNextOrderNumber({Transaction? txn}) async {
+    return SequenceUtils.getNextNumber(
+      dbHelper: _dbHelper,
+      tableName: DatabaseTables.tablePurchaseOrders,
+      columnName: 'order_number',
+      prefix: AccountingConstants.prefixPurchaseOrder,
+      padDigits: 6,
+      prefKey: prefReservedOrderNumbers,
+      txn: txn,
+    );
   }
 
   Future<List<PurchaseOrderModel>> getAllPurchaseOrders({
@@ -134,6 +169,9 @@ class PurchaseOrderRepository {
 
   Future<int> insertPurchaseOrder(PurchaseOrderModel order, {Transaction? txn}) async {
     final executor = txn ?? await _dbHelper.database;
+    if (await isOrderNumberExists(order.orderNumber, txn: txn)) {
+      throw Exception('Purchase order number already exists. Please use a unique number.');
+    }
     return await executor.insert(
       DatabaseTables.tablePurchaseOrders,
       order.toMap(),
@@ -165,13 +203,40 @@ class PurchaseOrderRepository {
 
   // === PURCHASE RETURNS ===
 
-  Future<String> getNextReturnNumber() async {
-    final db = await _dbHelper.database;
-    final res = await db.rawQuery('''
-      SELECT MAX(id) as max_id FROM ${DatabaseTables.tablePurchaseReturns}
-    ''');
-    final nextId = ((res.first['max_id'] as int?) ?? 0) + 1;
-    return '${AccountingConstants.prefixPurchaseReturn}${nextId.toString().padLeft(6, '0')}';
+  Future<Set<String>> getReservedReturnNumbers() async {
+    return SequenceUtils.getReserved(prefReservedReturnNumbers);
+  }
+
+  Future<void> reserveReturnNumber(String returnNumber) async {
+    return SequenceUtils.reserve(prefReservedReturnNumbers, returnNumber);
+  }
+
+  Future<bool> isReturnNumberExists(
+    String returnNumber, {
+    int? excludeId,
+    Transaction? txn,
+  }) async {
+    return SequenceUtils.isNumberExists(
+      dbHelper: _dbHelper,
+      tableName: DatabaseTables.tablePurchaseReturns,
+      columnName: 'return_number',
+      prefKey: prefReservedReturnNumbers,
+      codeOrNumber: returnNumber,
+      excludeId: excludeId,
+      txn: txn,
+    );
+  }
+
+  Future<String> getNextReturnNumber({Transaction? txn}) async {
+    return SequenceUtils.getNextNumber(
+      dbHelper: _dbHelper,
+      tableName: DatabaseTables.tablePurchaseReturns,
+      columnName: 'return_number',
+      prefix: AccountingConstants.prefixPurchaseReturn,
+      padDigits: 6,
+      prefKey: prefReservedReturnNumbers,
+      txn: txn,
+    );
   }
 
   Future<List<PurchaseReturnModel>> getAllPurchaseReturns({
@@ -280,6 +345,9 @@ class PurchaseOrderRepository {
 
   Future<int> insertPurchaseReturn(PurchaseReturnModel returnModel, {Transaction? txn}) async {
     final executor = txn ?? await _dbHelper.database;
+    if (await isReturnNumberExists(returnModel.returnNumber, txn: txn)) {
+      throw Exception('Purchase return number already exists. Please use a unique number.');
+    }
     return await executor.insert(
       DatabaseTables.tablePurchaseReturns,
       returnModel.toMap(),
@@ -298,6 +366,9 @@ class PurchaseOrderRepository {
 
   Future<int> updatePurchaseOrder(PurchaseOrderModel order, {Transaction? txn}) async {
     final executor = txn ?? await _dbHelper.database;
+    if (await isOrderNumberExists(order.orderNumber, excludeId: order.id, txn: txn)) {
+      throw Exception('Purchase order number already exists. Please use a unique number.');
+    }
     return await executor.update(
       DatabaseTables.tablePurchaseOrders,
       order.toMap(),
@@ -317,6 +388,18 @@ class PurchaseOrderRepository {
 
   Future<int> deletePurchaseOrder(int orderId, {Transaction? txn}) async {
     final executor = txn ?? await _dbHelper.database;
+    final maps = await executor.query(
+      DatabaseTables.tablePurchaseOrders,
+      columns: ['order_number'],
+      where: 'id = ?',
+      whereArgs: [orderId],
+    );
+    if (maps.isNotEmpty) {
+      final num = maps.first['order_number'] as String?;
+      if (num != null) {
+        await reserveOrderNumber(num);
+      }
+    }
     await deletePurchaseOrderItems(orderId, txn: txn);
     return await executor.delete(
       DatabaseTables.tablePurchaseOrders,
@@ -327,6 +410,9 @@ class PurchaseOrderRepository {
 
   Future<int> updatePurchaseReturn(PurchaseReturnModel returnModel, {Transaction? txn}) async {
     final executor = txn ?? await _dbHelper.database;
+    if (await isReturnNumberExists(returnModel.returnNumber, excludeId: returnModel.id, txn: txn)) {
+      throw Exception('Purchase return number already exists. Please use a unique number.');
+    }
     return await executor.update(
       DatabaseTables.tablePurchaseReturns,
       returnModel.toMap(),
@@ -346,6 +432,18 @@ class PurchaseOrderRepository {
 
   Future<int> deletePurchaseReturn(int returnId, {Transaction? txn}) async {
     final executor = txn ?? await _dbHelper.database;
+    final maps = await executor.query(
+      DatabaseTables.tablePurchaseReturns,
+      columns: ['return_number'],
+      where: 'id = ?',
+      whereArgs: [returnId],
+    );
+    if (maps.isNotEmpty) {
+      final num = maps.first['return_number'] as String?;
+      if (num != null) {
+        await reserveReturnNumber(num);
+      }
+    }
     await deletePurchaseReturnItems(returnId, txn: txn);
     return await executor.delete(
       DatabaseTables.tablePurchaseReturns,

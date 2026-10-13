@@ -1,3 +1,4 @@
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../core/constants/accounting_constants.dart';
 import '../core/database/database_helper.dart';
@@ -144,22 +145,164 @@ class CustomerRepository {
     return (totalSales: totalSales, totalReceipts: totalReceipts, outstanding: outstanding);
   }
 
+  static final Set<String> _inMemoryReservedCodes = {};
+
+  static void clearReservedCodesForTesting() {
+    _inMemoryReservedCodes.clear();
+  }
+
+  Future<Set<String>> getReservedCodes() async {
+    final reserved = Set<String>.from(_inMemoryReservedCodes);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final list = prefs.getStringList('reserved_customer_codes') ?? [];
+      reserved.addAll(list.map((c) => c.toUpperCase()));
+    } catch (_) {}
+    return reserved;
+  }
+
+  Future<void> reserveCustomerCode(String code) async {
+    final clean = code.trim().toUpperCase();
+    if (clean.isEmpty) return;
+    _inMemoryReservedCodes.add(clean);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final list = (prefs.getStringList('reserved_customer_codes') ?? []).toList();
+      if (!list.contains(clean)) {
+        list.add(clean);
+        await prefs.setStringList('reserved_customer_codes', list);
+      }
+    } catch (_) {}
+  }
+
+  int? _extractCodeNumber(String code) {
+    final matches = RegExp(r'\d+').allMatches(code);
+    if (matches.isNotEmpty) {
+      return int.tryParse(matches.last.group(0)!);
+    }
+    return null;
+  }
+
+  Future<bool> isCustomerCodeExists(
+    String customerCode, {
+    int? excludeId,
+    Transaction? txn,
+  }) async {
+    final cleanCode = customerCode.trim();
+    if (cleanCode.isEmpty) return false;
+
+    try {
+      final executor = txn ?? await _dbHelper.database;
+      final where = excludeId != null
+          ? 'LOWER(customer_code) = LOWER(?) AND id != ?'
+          : 'LOWER(customer_code) = LOWER(?)';
+      final whereArgs = excludeId != null ? [cleanCode, excludeId] : [cleanCode];
+
+      final res = await executor.query(
+        DatabaseTables.tableCustomers,
+        columns: ['id'],
+        where: where,
+        whereArgs: whereArgs,
+        limit: 1,
+      );
+
+      if (res.isNotEmpty) return true;
+    } catch (_) {
+      final list = await getAllCustomers();
+      final exists = list.any((c) =>
+          c.customerCode.trim().toLowerCase() == cleanCode.toLowerCase() &&
+          (excludeId == null || c.id != excludeId));
+      if (exists) return true;
+    }
+
+    final reserved = await getReservedCodes();
+    if (reserved.contains(cleanCode.toUpperCase())) {
+      return true;
+    }
+
+    return false;
+  }
+
+  Future<String> getNextCustomerCode({Transaction? txn}) async {
+    List<String> existingCodes = [];
+    int seqFromDb = 0;
+
+    try {
+      final executor = txn ?? await _dbHelper.database;
+      final rows = await executor.query(
+        DatabaseTables.tableCustomers,
+        columns: ['customer_code'],
+      );
+      existingCodes = rows.map((r) => (r['customer_code'] as String).trim()).toList();
+
+      final seqRows = await executor.rawQuery(
+        "SELECT seq FROM sqlite_sequence WHERE name = ?",
+        [DatabaseTables.tableCustomers],
+      );
+      if (seqRows.isNotEmpty) {
+        seqFromDb = (seqRows.first['seq'] as int?) ?? 0;
+      }
+    } catch (_) {
+      final list = await getAllCustomers();
+      existingCodes = list.map((c) => c.customerCode.trim()).toList();
+    }
+
+    final reservedCodes = await getReservedCodes();
+
+    int maxNumber = seqFromDb;
+    for (final code in existingCodes) {
+      final num = _extractCodeNumber(code);
+      if (num != null && num > maxNumber) {
+        maxNumber = num;
+      }
+    }
+    for (final code in reservedCodes) {
+      final num = _extractCodeNumber(code);
+      if (num != null && num > maxNumber) {
+        maxNumber = num;
+      }
+    }
+
+    int nextNumber = maxNumber + 1;
+    String candidate = '${AccountingConstants.prefixCustomer}${nextNumber.toString().padLeft(3, '0')}';
+
+    while (existingCodes.any((c) => c.toUpperCase() == candidate.toUpperCase()) ||
+        reservedCodes.contains(candidate.toUpperCase())) {
+      nextNumber++;
+      candidate = '${AccountingConstants.prefixCustomer}${nextNumber.toString().padLeft(3, '0')}';
+    }
+
+    return candidate;
+  }
+
   Future<int> insertCustomer(CustomerModel customer) async {
     final db = await _dbHelper.database;
-    return await db.insert(
-      DatabaseTables.tableCustomers,
-      customer.toMap(),
-    );
+    return await db.transaction<int>((txn) async {
+      final exists = await isCustomerCodeExists(customer.customerCode, txn: txn);
+      if (exists) {
+        throw Exception('Customer code already exists. Please use a unique code.');
+      }
+      return await txn.insert(
+        DatabaseTables.tableCustomers,
+        customer.toMap(),
+      );
+    });
   }
 
   Future<int> updateCustomer(CustomerModel customer) async {
     final db = await _dbHelper.database;
-    return await db.update(
-      DatabaseTables.tableCustomers,
-      customer.toMap(),
-      where: 'id = ?',
-      whereArgs: [customer.id],
-    );
+    return await db.transaction<int>((txn) async {
+      final exists = await isCustomerCodeExists(customer.customerCode, excludeId: customer.id, txn: txn);
+      if (exists) {
+        throw Exception('Customer code already exists. Please use a unique code.');
+      }
+      return await txn.update(
+        DatabaseTables.tableCustomers,
+        customer.toMap(),
+        where: 'id = ?',
+        whereArgs: [customer.id],
+      );
+    });
   }
 
   Future<bool> canDeleteCustomer(int id) async {
@@ -194,6 +337,19 @@ class CustomerRepository {
   Future<int> deleteCustomer(int id) async {
     final db = await _dbHelper.database;
     return await db.transaction<int>((txn) async {
+      final maps = await txn.query(
+        DatabaseTables.tableCustomers,
+        columns: ['customer_code'],
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+      if (maps.isNotEmpty) {
+        final code = maps.first['customer_code'] as String?;
+        if (code != null) {
+          await reserveCustomerCode(code);
+        }
+      }
+
       // Clean up any non-posting sales orders and items for this customer
       final orders = await txn.query(
         DatabaseTables.tableSalesOrders,

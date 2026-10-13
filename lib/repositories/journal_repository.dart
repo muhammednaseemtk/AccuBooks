@@ -3,13 +3,47 @@ import '../core/constants/accounting_constants.dart';
 import '../core/database/database_helper.dart';
 import '../core/database/database_tables.dart';
 import '../core/utils/date_utils.dart';
+import '../core/utils/sequence_utils.dart';
 import '../models/journal_entry_model.dart';
 import '../models/journal_line_model.dart';
 
 class JournalRepository {
   final DatabaseHelper _dbHelper = DatabaseHelper();
 
+  static const String prefReservedJournalNumbers = 'reserved_journal_numbers';
+
+  static void clearReservedNumbersForTesting() {
+    SequenceUtils.clearReservedForTesting(prefReservedJournalNumbers);
+  }
+
+  Future<Set<String>> getReservedJournalNumbers() async {
+    return SequenceUtils.getReserved(prefReservedJournalNumbers);
+  }
+
+  Future<void> reserveJournalNumber(String number) async {
+    return SequenceUtils.reserve(prefReservedJournalNumbers, number);
+  }
+
+  Future<bool> isJournalNumberExists(
+    String transactionNumber, {
+    int? excludeId,
+    Transaction? txn,
+  }) async {
+    return SequenceUtils.isNumberExists(
+      dbHelper: _dbHelper,
+      tableName: DatabaseTables.tableJournalEntries,
+      columnName: 'transaction_number',
+      prefKey: prefReservedJournalNumbers,
+      codeOrNumber: transactionNumber,
+      excludeId: excludeId,
+      txn: txn,
+    );
+  }
+
   Future<int> insertJournalEntry(JournalEntryModel entry, {Transaction? txn}) async {
+    if (await isJournalNumberExists(entry.transactionNumber, txn: txn)) {
+      throw Exception('Journal Voucher number "${entry.transactionNumber}" already exists.');
+    }
     final executor = txn ?? await _dbHelper.database;
 
     final entryId = await executor.insert(
@@ -28,12 +62,16 @@ class JournalRepository {
   }
 
   Future<String> getNextJournalNumber({Transaction? txn}) async {
-    final executor = txn ?? await _dbHelper.database;
-    final res = await executor.rawQuery('''
-      SELECT MAX(id) as max_id FROM ${DatabaseTables.tableJournalEntries}
-    ''');
-    final nextId = ((res.first['max_id'] as int?) ?? 0) + 1;
-    return '${AccountingConstants.prefixJournal}${nextId.toString().padLeft(6, '0')}';
+    return SequenceUtils.getNextNumber(
+      dbHelper: _dbHelper,
+      tableName: DatabaseTables.tableJournalEntries,
+      columnName: 'transaction_number',
+      prefix: AccountingConstants.prefixJournal,
+      padDigits: 6,
+      prefKey: prefReservedJournalNumbers,
+      useSqliteSequence: false,
+      txn: txn,
+    );
   }
 
   Future<List<JournalEntryModel>> getAllJournalEntries({
@@ -165,6 +203,9 @@ class JournalRepository {
   }
 
   Future<void> updateJournalEntry(JournalEntryModel entry, List<JournalLineModel> lines, {Transaction? txn}) async {
+    if (entry.id != null && await isJournalNumberExists(entry.transactionNumber, excludeId: entry.id, txn: txn)) {
+      throw Exception('Journal Voucher number "${entry.transactionNumber}" already exists.');
+    }
     final executor = txn ?? await _dbHelper.database;
     if (txn != null) {
       await executor.update(
@@ -208,6 +249,10 @@ class JournalRepository {
   }
 
   Future<void> deleteJournalEntry(int entryId) async {
+    final entry = await getJournalEntryById(entryId);
+    if (entry != null) {
+      await reserveJournalNumber(entry.transactionNumber);
+    }
     final db = await _dbHelper.database;
     await db.transaction((txn) async {
       await txn.delete(DatabaseTables.tableJournalLines, where: 'journal_entry_id = ?', whereArgs: [entryId]);
