@@ -294,6 +294,21 @@ class PurchaseOrderController extends GetxController {
         formOrderNumber.value = await _service.getNextOrderNumber();
       }
 
+      final exists = await _service.isOrderNumberExists(
+        formOrderNumber.value.trim(),
+        excludeId: editingOrderId.value,
+      );
+      if (exists) {
+        if (Get.context != null) {
+          Get.snackbar(
+            'Error',
+            'Purchase order number already exists. Please use a unique number.',
+            snackPosition: SnackPosition.BOTTOM,
+          );
+        }
+        return false;
+      }
+
       final order = PurchaseOrderModel(
         id: editingOrderId.value,
         orderNumber: formOrderNumber.value,
@@ -317,6 +332,9 @@ class PurchaseOrderController extends GetxController {
         final updated = await _service.getOrderById(editingOrderId.value!);
         selectedOrder.value = updated;
         resetOrderForm();
+        if (Get.isDialogOpen ?? false) {
+          Get.back();
+        }
         if (Get.context != null) {
           Get.snackbar(
             'Success',
@@ -334,7 +352,6 @@ class PurchaseOrderController extends GetxController {
         await loadData();
         final created = await _service.getOrderById(id);
         selectedOrder.value = created;
-
         resetOrderForm();
 
         if (Get.context != null) {
@@ -348,8 +365,13 @@ class PurchaseOrderController extends GetxController {
       }
     } catch (e, stack) {
       debugPrint('Failed to save Purchase Order: $e\n$stack');
+      final isDuplicate = e.toString().contains('already exists') ||
+          e.toString().toLowerCase().contains('unique');
+      final msg = isDuplicate
+          ? 'Purchase order number already exists. Please use a unique number.'
+          : 'Failed to save order: $e';
       if (Get.context != null) {
-        Get.snackbar('Error', 'Failed to save order: $e', snackPosition: SnackPosition.BOTTOM);
+        Get.snackbar('Error', msg, snackPosition: SnackPosition.BOTTOM);
       }
       return false;
     } finally {
@@ -495,6 +517,21 @@ class PurchaseOrderController extends GetxController {
         formReturnNumber.value = await _service.getNextReturnNumber();
       }
 
+      final exists = await _service.isReturnNumberExists(
+        formReturnNumber.value.trim(),
+        excludeId: editingReturnId.value,
+      );
+      if (exists) {
+        if (Get.context != null) {
+          Get.snackbar(
+            'Error',
+            'Purchase return number already exists. Please use a unique number.',
+            snackPosition: SnackPosition.BOTTOM,
+          );
+        }
+        return false;
+      }
+
       final ret = PurchaseReturnModel(
         id: editingReturnId.value,
         returnNumber: formReturnNumber.value,
@@ -518,6 +555,9 @@ class PurchaseOrderController extends GetxController {
         final updated = await _service.getReturnById(editingReturnId.value!);
         selectedReturn.value = updated;
         resetReturnForm();
+        if (Get.isDialogOpen ?? false) {
+          Get.back();
+        }
         if (Get.context != null) {
           Get.snackbar(
             'Success',
@@ -549,8 +589,13 @@ class PurchaseOrderController extends GetxController {
       }
     } catch (e, stack) {
       debugPrint('Failed to save Purchase Return: $e\n$stack');
+      final isDuplicate = e.toString().contains('already exists') ||
+          e.toString().toLowerCase().contains('unique');
+      final msg = isDuplicate
+          ? 'Purchase return number already exists. Please use a unique number.'
+          : 'Failed to save return: $e';
       if (Get.context != null) {
-        Get.snackbar('Error', 'Failed to save return: $e', snackPosition: SnackPosition.BOTTOM);
+        Get.snackbar('Error', msg, snackPosition: SnackPosition.BOTTOM);
       }
       return false;
     } finally {

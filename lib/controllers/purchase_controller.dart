@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
+import '../app/theme/app_colors.dart';
 import '../core/utils/currency_utils.dart';
 import '../models/product_model.dart';
 import '../models/purchase_invoice_item_model.dart';
@@ -244,6 +245,24 @@ class PurchaseController extends GetxController {
         formNextPurchaseNumber.value = await _purchaseService.getNextPurchaseNumber();
       }
 
+      final currentNumber = formNextPurchaseNumber.value.trim();
+      final exists = await _purchaseService.isPurchaseNumberExists(
+        currentNumber,
+        excludeId: editingPurchaseId.value,
+      );
+      if (exists) {
+        if (Get.context != null) {
+          Get.snackbar(
+            'Duplicate Invoice Number',
+            'Purchase invoice number "$currentNumber" already exists. Please use a unique number.',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: AppColors.debit.withValues(alpha: 0.1),
+            colorText: AppColors.debit,
+          );
+        }
+        return false;
+      }
+
       final invoice = PurchaseInvoiceModel(
         id: editingPurchaseId.value,
         invoiceNumber: formNextPurchaseNumber.value,
@@ -271,6 +290,10 @@ class PurchaseController extends GetxController {
 
         resetForm();
 
+        if (Get.isDialogOpen ?? false) {
+          Get.back();
+        }
+
         if (Get.context != null) {
           Get.snackbar('Success', 'Purchase Invoice updated successfully',
               snackPosition: SnackPosition.BOTTOM);
@@ -297,8 +320,18 @@ class PurchaseController extends GetxController {
       }
     } catch (e, stack) {
       debugPrint('[PurchaseController] submitPurchase error: $e\n$stack');
+      final isDuplicate = e.toString().toLowerCase().contains('already exists') ||
+          e.toString().toLowerCase().contains('unique constraint');
       if (Get.context != null) {
-        Get.snackbar('Error', 'Failed to save purchase: $e', snackPosition: SnackPosition.BOTTOM);
+        Get.snackbar(
+          isDuplicate ? 'Duplicate Invoice Number' : 'Error',
+          isDuplicate
+              ? 'Purchase invoice number "${formNextPurchaseNumber.value.trim()}" already exists. Please choose a different number.'
+              : 'Failed to save purchase: $e',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: isDuplicate ? AppColors.debit.withValues(alpha: 0.1) : null,
+          colorText: isDuplicate ? AppColors.debit : null,
+        );
       }
       return false;
     } finally {

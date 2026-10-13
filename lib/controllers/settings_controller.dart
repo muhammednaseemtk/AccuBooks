@@ -68,6 +68,9 @@ class SettingsController extends GetxController {
       isSubmitting.value = true;
       await _companyRepo.updateCompany(updated);
       company.value = updated;
+      if (Get.isDialogOpen ?? false) {
+        Get.back();
+      }
       if (Get.context != null) {
         Get.snackbar('Success', 'Company details updated successfully', snackPosition: SnackPosition.BOTTOM);
       }

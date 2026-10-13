@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:get/get.dart';
+import '../app/theme/app_colors.dart';
 import '../models/account_model.dart';
 import '../models/payment_model.dart';
 import '../models/supplier_model.dart';
@@ -148,6 +149,29 @@ class PaymentController extends GetxController {
 
     try {
       isSubmitting.value = true;
+
+      if (formNextPaymentNumber.value.trim().isEmpty) {
+        formNextPaymentNumber.value = await _paymentService.getNextPaymentNumber();
+      }
+
+      final currentNumber = formNextPaymentNumber.value.trim();
+      final exists = await _paymentService.isPaymentNumberExists(
+        currentNumber,
+        excludeId: editingPaymentId.value,
+      );
+      if (exists) {
+        if (Get.context != null) {
+          Get.snackbar(
+            'Duplicate Payment Number',
+            'Payment number "$currentNumber" already exists. Please use a unique number.',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: AppColors.debit.withValues(alpha: 0.1),
+            colorText: AppColors.debit,
+          );
+        }
+        return false;
+      }
+
       final payment = PaymentModel(
         id: editingPaymentId.value,
         paymentNumber: formNextPaymentNumber.value,
@@ -164,6 +188,10 @@ class PaymentController extends GetxController {
         await _paymentService.updatePayment(payment);
         await loadPayments();
         editingPaymentId.value = null;
+        formNextPaymentNumber.value = await _paymentService.getNextPaymentNumber();
+        if (Get.isDialogOpen ?? false) {
+          Get.back();
+        }
         if (Get.context != null) {
           Get.snackbar('Success', 'Payment updated successfully',
               snackPosition: SnackPosition.BOTTOM);
@@ -172,6 +200,7 @@ class PaymentController extends GetxController {
       } else {
         await _paymentService.createPayment(payment);
         await loadPayments();
+        formNextPaymentNumber.value = await _paymentService.getNextPaymentNumber();
         if (Get.context != null) {
           Get.snackbar('Success', 'Payment added successfully',
               snackPosition: SnackPosition.BOTTOM);
@@ -179,8 +208,18 @@ class PaymentController extends GetxController {
         return true;
       }
     } catch (e) {
+      final isDuplicate = e.toString().toLowerCase().contains('already exists') ||
+          e.toString().toLowerCase().contains('unique constraint');
       if (Get.context != null) {
-        Get.snackbar('Error', 'Failed to save payment: $e', snackPosition: SnackPosition.BOTTOM);
+        Get.snackbar(
+          isDuplicate ? 'Duplicate Payment Number' : 'Error',
+          isDuplicate
+              ? 'Payment number "${formNextPaymentNumber.value.trim()}" already exists. Please choose a different number.'
+              : 'Failed to save payment: $e',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: isDuplicate ? AppColors.debit.withValues(alpha: 0.1) : null,
+          colorText: isDuplicate ? AppColors.debit : null,
+        );
       }
       return false;
     } finally {

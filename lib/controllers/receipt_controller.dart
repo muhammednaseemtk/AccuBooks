@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:get/get.dart';
+import '../app/theme/app_colors.dart';
 import '../models/account_model.dart';
 import '../models/customer_model.dart';
 import '../models/receipt_model.dart';
@@ -149,6 +150,29 @@ class ReceiptController extends GetxController {
 
     try {
       isSubmitting.value = true;
+
+      if (formNextReceiptNumber.value.trim().isEmpty) {
+        formNextReceiptNumber.value = await _receiptService.getNextReceiptNumber();
+      }
+
+      final currentNumber = formNextReceiptNumber.value.trim();
+      final exists = await _receiptService.isReceiptNumberExists(
+        currentNumber,
+        excludeId: editingReceiptId.value,
+      );
+      if (exists) {
+        if (Get.context != null) {
+          Get.snackbar(
+            'Duplicate Receipt Number',
+            'Receipt number "$currentNumber" already exists. Please use a unique number.',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: AppColors.debit.withValues(alpha: 0.1),
+            colorText: AppColors.debit,
+          );
+        }
+        return false;
+      }
+
       final receipt = ReceiptModel(
         id: editingReceiptId.value,
         receiptNumber: formNextReceiptNumber.value,
@@ -165,6 +189,10 @@ class ReceiptController extends GetxController {
         await _receiptService.updateReceipt(receipt);
         await loadReceipts();
         editingReceiptId.value = null;
+        formNextReceiptNumber.value = await _receiptService.getNextReceiptNumber();
+        if (Get.isDialogOpen ?? false) {
+          Get.back();
+        }
         if (Get.context != null) {
           Get.snackbar('Success', 'Receipt updated successfully',
               snackPosition: SnackPosition.BOTTOM);
@@ -173,6 +201,7 @@ class ReceiptController extends GetxController {
       } else {
         await _receiptService.createReceipt(receipt);
         await loadReceipts();
+        formNextReceiptNumber.value = await _receiptService.getNextReceiptNumber();
         if (Get.context != null) {
           Get.snackbar('Success', 'Receipt added successfully',
               snackPosition: SnackPosition.BOTTOM);
@@ -180,8 +209,18 @@ class ReceiptController extends GetxController {
         return true;
       }
     } catch (e) {
+      final isDuplicate = e.toString().toLowerCase().contains('already exists') ||
+          e.toString().toLowerCase().contains('unique constraint');
       if (Get.context != null) {
-        Get.snackbar('Error', 'Failed to save receipt: $e', snackPosition: SnackPosition.BOTTOM);
+        Get.snackbar(
+          isDuplicate ? 'Duplicate Receipt Number' : 'Error',
+          isDuplicate
+              ? 'Receipt number "${formNextReceiptNumber.value.trim()}" already exists. Please choose a different number.'
+              : 'Failed to save receipt: $e',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: isDuplicate ? AppColors.debit.withValues(alpha: 0.1) : null,
+          colorText: isDuplicate ? AppColors.debit : null,
+        );
       }
       return false;
     } finally {

@@ -1,6 +1,8 @@
 import 'dart:async';
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../core/constants/accounting_constants.dart';
+import '../app/theme/app_colors.dart';
 import '../models/category_model.dart';
 import '../models/product_model.dart';
 import '../models/stock_transaction_model.dart';
@@ -25,6 +27,7 @@ class ProductController extends GetxController {
   final isLoading = true.obs;
   final isSubmitting = false.obs;
   final errorMessage = ''.obs;
+  final nextProductCode = ''.obs;
 
   final searchQuery = ''.obs;
   final selectedCategoryId = 0.obs;
@@ -62,11 +65,28 @@ class ProductController extends GetxController {
         activeOnly: false,
       );
       products.assignAll(list);
+      await updateNextProductCode();
     } catch (e) {
       errorMessage.value = 'Failed to load products: $e';
     } finally {
       isLoading.value = false;
     }
+  }
+
+  Future<String> getNextProductCode() async {
+    try {
+      final code = await _productRepo.getNextProductCode();
+      nextProductCode.value = code;
+      return code;
+    } catch (_) {
+      return '${AccountingConstants.prefixProduct}001';
+    }
+  }
+
+  Future<void> updateNextProductCode() async {
+    try {
+      nextProductCode.value = await _productRepo.getNextProductCode();
+    } catch (_) {}
   }
 
   Timer? _searchDebounce;
@@ -95,38 +115,90 @@ class ProductController extends GetxController {
     loadProducts();
   }
 
-  Future<bool> saveProduct(ProductModel product) async {
+  Future<bool> updateProduct(ProductModel product) async {
+    if (product.id == null) return false;
     try {
       isSubmitting.value = true;
-      if (product.id == null) {
-        await _productRepo.insertProduct(product);
-        await loadProducts();
+      final exists = await _productRepo.isProductCodeExists(product.productCode, excludeId: product.id);
+      if (exists) {
         if (Get.context != null) {
-          Get.snackbar('Success', 'Product added successfully', snackPosition: SnackPosition.BOTTOM);
+          Get.snackbar(
+            'Duplicate Product Code',
+            'Product code already exists. Please use a unique code.',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: AppColors.debit.withValues(alpha: 0.9),
+            colorText: Colors.white,
+          );
         }
-      } else {
-        final existingProd = await _productRepo.getProductById(product.id!);
-        if (existingProd != null) {
-          final diff = product.stockQuantity - existingProd.stockQuantity;
-          if (diff != 0) {
-            await _productRepo.updateStock(
-              product.id!,
-              diff,
-              transactionType: AccountingConstants.stockAdjustment,
-              rate: product.purchasePrice,
-            );
-          }
+        return false;
+      }
+      final existingProd = await _productRepo.getProductById(product.id!);
+      if (existingProd != null) {
+        final diff = product.stockQuantity - existingProd.stockQuantity;
+        if (diff != 0) {
+          await _productRepo.updateStock(
+            product.id!,
+            diff,
+            transactionType: AccountingConstants.stockAdjustment,
+            rate: product.purchasePrice,
+          );
         }
-        await _productRepo.updateProduct(product);
-        await loadProducts();
-        if (Get.context != null) {
-          Get.snackbar('Success', 'Product updated successfully', snackPosition: SnackPosition.BOTTOM);
-        }
+      }
+      await _productRepo.updateProduct(product);
+      await loadProducts();
+      if (Get.isDialogOpen ?? false) {
+        Get.back();
+      }
+      if (Get.context != null) {
+        Get.snackbar('Success', 'Product updated successfully', snackPosition: SnackPosition.BOTTOM);
       }
       return true;
     } catch (e) {
       if (Get.context != null) {
-        Get.snackbar('Error', 'Failed to save product: $e', snackPosition: SnackPosition.BOTTOM);
+        Get.snackbar(
+          'Error',
+          e.toString().replaceAll('Exception: ', ''),
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      }
+      return false;
+    } finally {
+      isSubmitting.value = false;
+    }
+  }
+
+  Future<bool> saveProduct(ProductModel product) async {
+    if (product.id != null) {
+      return await updateProduct(product);
+    }
+    try {
+      isSubmitting.value = true;
+      final exists = await _productRepo.isProductCodeExists(product.productCode);
+      if (exists) {
+        if (Get.context != null) {
+          Get.snackbar(
+            'Duplicate Product Code',
+            'Product code already exists. Please use a unique code.',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: AppColors.debit.withValues(alpha: 0.9),
+            colorText: Colors.white,
+          );
+        }
+        return false;
+      }
+      await _productRepo.insertProduct(product);
+      await loadProducts();
+      if (Get.context != null) {
+        Get.snackbar('Success', 'Product added successfully', snackPosition: SnackPosition.BOTTOM);
+      }
+      return true;
+    } catch (e) {
+      if (Get.context != null) {
+        Get.snackbar(
+          'Error',
+          e.toString().replaceAll('Exception: ', ''),
+          snackPosition: SnackPosition.BOTTOM,
+        );
       }
       return false;
     } finally {

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:get/get.dart';
+import '../core/constants/accounting_constants.dart';
 import '../models/supplier_model.dart';
 import '../repositories/supplier_repository.dart';
 
@@ -14,6 +15,7 @@ class SupplierController extends GetxController {
   final isSubmitting = false.obs;
   final errorMessage = ''.obs;
   final searchQuery = ''.obs;
+  final nextSupplierCode = ''.obs;
 
   Timer? _searchDebounce;
 
@@ -43,11 +45,28 @@ class SupplierController extends GetxController {
         activeOnly: false,
       );
       suppliers.assignAll(list);
+      await updateNextSupplierCode();
     } catch (e) {
       errorMessage.value = 'Failed to load suppliers: $e';
     } finally {
       isLoading.value = false;
     }
+  }
+
+  Future<String> getNextSupplierCode() async {
+    try {
+      final code = await _supplierRepo.getNextSupplierCode();
+      nextSupplierCode.value = code;
+      return code;
+    } catch (_) {
+      return '${AccountingConstants.prefixSupplier}001';
+    }
+  }
+
+  Future<void> updateNextSupplierCode() async {
+    try {
+      nextSupplierCode.value = await _supplierRepo.getNextSupplierCode();
+    } catch (_) {}
   }
 
   void setSearch(String query) {
@@ -58,26 +77,79 @@ class SupplierController extends GetxController {
     });
   }
 
-  Future<bool> saveSupplier(SupplierModel supplier) async {
+  Future<bool> updateSupplier(SupplierModel supplier) async {
+    if (supplier.id == null) return false;
     try {
       isSubmitting.value = true;
-      if (supplier.id == null) {
-        await _supplierRepo.insertSupplier(supplier);
-        await loadSuppliers();
+      final exists = await _supplierRepo.isSupplierCodeExists(
+        supplier.supplierCode,
+        excludeId: supplier.id,
+      );
+      if (exists) {
         if (Get.context != null) {
-          Get.snackbar('Success', 'Supplier added successfully', snackPosition: SnackPosition.BOTTOM);
+          Get.snackbar(
+            'Error',
+            'Supplier code already exists. Please use a unique code.',
+            snackPosition: SnackPosition.BOTTOM,
+          );
         }
-      } else {
-        await _supplierRepo.updateSupplier(supplier);
-        await loadSuppliers();
-        if (Get.context != null) {
-          Get.snackbar('Success', 'Supplier updated successfully', snackPosition: SnackPosition.BOTTOM);
-        }
+        return false;
+      }
+      await _supplierRepo.updateSupplier(supplier);
+      await loadSuppliers();
+      if (Get.isDialogOpen ?? false) {
+        Get.back();
+      }
+      if (Get.context != null) {
+        Get.snackbar('Success', 'Supplier updated successfully', snackPosition: SnackPosition.BOTTOM);
       }
       return true;
     } catch (e) {
+      final isDuplicate = e.toString().contains('Supplier code already exists') ||
+          e.toString().toLowerCase().contains('unique');
+      final msg = isDuplicate
+          ? 'Supplier code already exists. Please use a unique code.'
+          : 'Failed to save supplier: $e';
       if (Get.context != null) {
-        Get.snackbar('Error', 'Failed to save supplier: $e', snackPosition: SnackPosition.BOTTOM);
+        Get.snackbar('Error', msg, snackPosition: SnackPosition.BOTTOM);
+      }
+      return false;
+    } finally {
+      isSubmitting.value = false;
+    }
+  }
+
+  Future<bool> saveSupplier(SupplierModel supplier) async {
+    if (supplier.id != null) {
+      return await updateSupplier(supplier);
+    }
+    try {
+      isSubmitting.value = true;
+      final exists = await _supplierRepo.isSupplierCodeExists(supplier.supplierCode);
+      if (exists) {
+        if (Get.context != null) {
+          Get.snackbar(
+            'Error',
+            'Supplier code already exists. Please use a unique code.',
+            snackPosition: SnackPosition.BOTTOM,
+          );
+        }
+        return false;
+      }
+      await _supplierRepo.insertSupplier(supplier);
+      await loadSuppliers();
+      if (Get.context != null) {
+        Get.snackbar('Success', 'Supplier added successfully', snackPosition: SnackPosition.BOTTOM);
+      }
+      return true;
+    } catch (e) {
+      final isDuplicate = e.toString().contains('Supplier code already exists') ||
+          e.toString().toLowerCase().contains('unique');
+      final msg = isDuplicate
+          ? 'Supplier code already exists. Please use a unique code.'
+          : 'Failed to save supplier: $e';
+      if (Get.context != null) {
+        Get.snackbar('Error', msg, snackPosition: SnackPosition.BOTTOM);
       }
       return false;
     } finally {

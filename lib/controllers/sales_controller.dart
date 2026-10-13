@@ -252,6 +252,21 @@ class SalesController extends GetxController {
         formNextInvoiceNumber.value = await _salesService.getNextInvoiceNumber();
       }
 
+      final exists = await _salesService.isInvoiceNumberExists(
+        formNextInvoiceNumber.value.trim(),
+        excludeId: editingInvoiceId.value,
+      );
+      if (exists) {
+        if (Get.context != null) {
+          Get.snackbar(
+            'Error',
+            'Sales invoice number already exists. Please use a unique number.',
+            snackPosition: SnackPosition.BOTTOM,
+          );
+        }
+        return false;
+      }
+
       final invoice = SalesInvoiceModel(
         id: editingInvoiceId.value,
         invoiceNumber: formNextInvoiceNumber.value,
@@ -278,6 +293,10 @@ class SalesController extends GetxController {
         selectedInvoice.value = updated;
 
         resetForm();
+
+        if (Get.isDialogOpen ?? false) {
+          Get.back();
+        }
 
         if (Get.context != null) {
           Get.snackbar(
@@ -311,8 +330,13 @@ class SalesController extends GetxController {
       }
     } catch (e, stack) {
       debugPrint('Failed to save invoice: $e\n$stack');
+      final isDuplicate = e.toString().contains('already exists') ||
+          e.toString().toLowerCase().contains('unique');
+      final msg = isDuplicate
+          ? 'Sales invoice number already exists. Please use a unique number.'
+          : 'Failed to save invoice: $e';
       if (Get.context != null) {
-        Get.snackbar('Error', 'Failed to save invoice: $e', snackPosition: SnackPosition.BOTTOM);
+        Get.snackbar('Error', msg, snackPosition: SnackPosition.BOTTOM);
       }
       return false;
     } finally {
