@@ -37,6 +37,10 @@ class SalesService {
     return await _salesRepo.getNextInvoiceNumber();
   }
 
+  Future<bool> isInvoiceNumberExists(String invoiceNumber, {int? excludeId}) async {
+    return await _salesRepo.isInvoiceNumberExists(invoiceNumber, excludeId: excludeId);
+  }
+
   Future<List<SalesInvoiceModel>> getAllInvoices({
     DateTime? fromDate,
     DateTime? toDate,

@@ -30,6 +30,10 @@ class PaymentService {
     return await _paymentRepo.getNextPaymentNumber();
   }
 
+  Future<bool> isPaymentNumberExists(String paymentNumber, {int? excludeId}) async {
+    return await _paymentRepo.isPaymentNumberExists(paymentNumber, excludeId: excludeId);
+  }
+
   Future<List<PaymentModel>> getAllPayments({
     DateTime? fromDate,
     DateTime? toDate,
@@ -53,8 +57,18 @@ class PaymentService {
       throw Exception('Payment amount must be greater than zero.');
     }
 
+    String paymentNumber = payment.paymentNumber.trim();
+    if (paymentNumber.isEmpty) {
+      paymentNumber = await getNextPaymentNumber();
+    } else if (await _paymentRepo.isPaymentNumberExists(paymentNumber)) {
+      throw Exception('Payment number "$paymentNumber" already exists.');
+    }
+
     final roundedAmount = CurrencyUtils.round(payment.amount);
-    final finalPayment = payment.copyWith(amount: roundedAmount);
+    final finalPayment = payment.copyWith(
+      paymentNumber: paymentNumber,
+      amount: roundedAmount,
+    );
 
     final supplier = await _supplierRepo.getSupplierById(finalPayment.supplierId);
     if (supplier == null) throw Exception('Supplier not found: ${finalPayment.supplierId}');
@@ -103,6 +117,9 @@ class PaymentService {
   Future<void> updatePayment(PaymentModel payment) async {
     if (payment.id == null) throw Exception('Payment ID is required for update.');
     if (payment.amount <= 0) throw Exception('Payment amount must be greater than zero.');
+    if (await _paymentRepo.isPaymentNumberExists(payment.paymentNumber, excludeId: payment.id)) {
+      throw Exception('Payment number "${payment.paymentNumber}" already exists.');
+    }
 
     final roundedAmount = CurrencyUtils.round(payment.amount);
     final finalPayment = payment.copyWith(amount: roundedAmount);
@@ -158,6 +175,11 @@ class PaymentService {
   }
 
   Future<void> deletePayment(int paymentId) async {
+    final payment = await _paymentRepo.getPaymentById(paymentId);
+    if (payment != null) {
+      await _paymentRepo.reservePaymentNumber(payment.paymentNumber);
+    }
+
     await _dbHelper.transaction((txn) async {
       final entries = await txn.query(
         DatabaseTables.tableJournalEntries,

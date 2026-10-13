@@ -54,17 +54,25 @@ class AccountingService {
     return await _journalRepo.insertJournalEntry(entry, txn: txn);
   }
 
+  Future<bool> isJournalNumberExists(String transactionNumber, {int? excludeId, Transaction? txn}) async {
+    return await _journalRepo.isJournalNumberExists(transactionNumber, excludeId: excludeId, txn: txn);
+  }
+
   /// Create a manual journal entry from the Journal screen
   Future<int> postManualJournal({
     required DateTime date,
     required String description,
     required List<JournalLineModel> lines,
+    String? transactionNumber,
+    Transaction? txn,
   }) async {
     return await createJournalEntry(
       date: date,
       type: AccountingConstants.transTypeJournal,
       description: description,
       lines: lines,
+      transactionNumber: transactionNumber,
+      txn: txn,
     );
   }
 

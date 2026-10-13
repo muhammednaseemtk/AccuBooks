@@ -30,6 +30,10 @@ class ReceiptService {
     return await _receiptRepo.getNextReceiptNumber();
   }
 
+  Future<bool> isReceiptNumberExists(String receiptNumber, {int? excludeId}) async {
+    return await _receiptRepo.isReceiptNumberExists(receiptNumber, excludeId: excludeId);
+  }
+
   Future<List<ReceiptModel>> getAllReceipts({
     DateTime? fromDate,
     DateTime? toDate,
@@ -53,8 +57,18 @@ class ReceiptService {
       throw Exception('Receipt amount must be greater than zero.');
     }
 
+    String receiptNumber = receipt.receiptNumber.trim();
+    if (receiptNumber.isEmpty) {
+      receiptNumber = await getNextReceiptNumber();
+    } else if (await _receiptRepo.isReceiptNumberExists(receiptNumber)) {
+      throw Exception('Receipt number "$receiptNumber" already exists.');
+    }
+
     final roundedAmount = CurrencyUtils.round(receipt.amount);
-    final finalReceipt = receipt.copyWith(amount: roundedAmount);
+    final finalReceipt = receipt.copyWith(
+      receiptNumber: receiptNumber,
+      amount: roundedAmount,
+    );
 
     final customer = await _customerRepo.getCustomerById(finalReceipt.customerId);
     if (customer == null) throw Exception('Customer not found: ${finalReceipt.customerId}');
@@ -103,6 +117,9 @@ class ReceiptService {
   Future<void> updateReceipt(ReceiptModel receipt) async {
     if (receipt.id == null) throw Exception('Receipt ID is required for update.');
     if (receipt.amount <= 0) throw Exception('Receipt amount must be greater than zero.');
+    if (await _receiptRepo.isReceiptNumberExists(receipt.receiptNumber, excludeId: receipt.id)) {
+      throw Exception('Receipt number "${receipt.receiptNumber}" already exists.');
+    }
 
     final roundedAmount = CurrencyUtils.round(receipt.amount);
     final finalReceipt = receipt.copyWith(amount: roundedAmount);
@@ -158,6 +175,11 @@ class ReceiptService {
   }
 
   Future<void> deleteReceipt(int receiptId) async {
+    final receipt = await _receiptRepo.getReceiptById(receiptId);
+    if (receipt != null) {
+      await _receiptRepo.reserveReceiptNumber(receipt.receiptNumber);
+    }
+
     await _dbHelper.transaction((txn) async {
       final entries = await txn.query(
         DatabaseTables.tableJournalEntries,

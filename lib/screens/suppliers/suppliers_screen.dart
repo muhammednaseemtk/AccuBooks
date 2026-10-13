@@ -181,13 +181,14 @@ class SuppliersScreen extends GetView<SupplierController> {
   void _showSupplierFormDialog(
     BuildContext context, {
     SupplierModel? supplier,
-  }) {
+  }) async {
     final isEdit = supplier != null;
-    final codeCtrl = TextEditingController(
-      text:
-          supplier?.supplierCode ??
-          'SUP-${DateTime.now().millisecondsSinceEpoch % 100000}',
-    );
+    String initialCode =
+        supplier?.supplierCode ?? controller.nextSupplierCode.value;
+    if (!isEdit && initialCode.isEmpty) {
+      initialCode = await controller.getNextSupplierCode();
+    }
+    final codeCtrl = TextEditingController(text: initialCode);
     final nameCtrl = TextEditingController(text: supplier?.name ?? '');
     final phoneCtrl = TextEditingController(text: supplier?.phone ?? '');
     final emailCtrl = TextEditingController(text: supplier?.email ?? '');
@@ -327,6 +328,7 @@ class SuppliersScreen extends GetView<SupplierController> {
               label: isEdit ? 'Update' : 'Save Supplier',
               isLoading: controller.isSubmitting.value,
               onPressed: () async {
+                if (controller.isSubmitting.value) return;
                 if (!formKey.currentState!.validate()) return;
                 final cleanTax = taxNumCtrl.text.trim();
                 if (cleanTax.isNotEmpty && !RegExp(r'^\d+$').hasMatch(cleanTax)) {
@@ -357,12 +359,16 @@ class SuppliersScreen extends GetView<SupplierController> {
                         openingBalanceType: selectedObType.value,
                       );
 
-                final ok = await controller.saveSupplier(sup);
+                final ok = isEdit
+                    ? await controller.updateSupplier(sup)
+                    : await controller.saveSupplier(sup);
                 if (ok) {
                   if (isEdit) {
-                    Get.back();
+                    if (Get.isDialogOpen ?? false) {
+                      Get.back();
+                    }
                   } else {
-                    codeCtrl.clear();
+                    final nextCode = await controller.getNextSupplierCode();
                     nameCtrl.clear();
                     phoneCtrl.clear();
                     emailCtrl.clear();
@@ -371,6 +377,7 @@ class SuppliersScreen extends GetView<SupplierController> {
                     openingCtrl.clear();
                     selectedObType.value = AccountingConstants.balanceCredit;
                     formKey.currentState?.reset();
+                    codeCtrl.text = nextCode;
                   }
                 }
               },

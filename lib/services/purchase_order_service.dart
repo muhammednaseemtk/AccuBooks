@@ -41,8 +41,16 @@ class PurchaseOrderService {
     return await _orderRepo.getNextOrderNumber();
   }
 
+  Future<bool> isOrderNumberExists(String orderNumber, {int? excludeId}) async {
+    return await _orderRepo.isOrderNumberExists(orderNumber, excludeId: excludeId);
+  }
+
   Future<String> getNextReturnNumber() async {
     return await _orderRepo.getNextReturnNumber();
+  }
+
+  Future<bool> isReturnNumberExists(String returnNumber, {int? excludeId}) async {
+    return await _orderRepo.isReturnNumberExists(returnNumber, excludeId: excludeId);
   }
 
   Future<List<PurchaseOrderModel>> getAllOrders({

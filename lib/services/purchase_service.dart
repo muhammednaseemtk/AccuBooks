@@ -37,6 +37,10 @@ class PurchaseService {
     return await _purchaseRepo.getNextPurchaseNumber();
   }
 
+  Future<bool> isPurchaseNumberExists(String purchaseNumber, {int? excludeId}) async {
+    return await _purchaseRepo.isPurchaseNumberExists(purchaseNumber, excludeId: excludeId);
+  }
+
   Future<List<PurchaseInvoiceModel>> getAllPurchases({
     DateTime? fromDate,
     DateTime? toDate,
@@ -99,6 +103,8 @@ class PurchaseService {
     String invoiceNumber = invoice.invoiceNumber.trim();
     if (invoiceNumber.isEmpty) {
       invoiceNumber = await getNextPurchaseNumber();
+    } else if (await _purchaseRepo.isPurchaseNumberExists(invoiceNumber)) {
+      throw Exception('Purchase Invoice number "$invoiceNumber" already exists.');
     }
 
     final finalInvoice = invoice.copyWith(
@@ -371,10 +377,12 @@ class PurchaseService {
     });
   }
 
-  /// Delete purchase invoice: reverses stock, removes associated journal entries and invoice
+  /// Delete purchase invoice: reverses stock, reverses associated journal entries and invoice
   Future<void> deletePurchaseInvoice(int invoiceId) async {
     final invoice = await _purchaseRepo.getPurchaseInvoiceById(invoiceId);
     if (invoice == null) throw Exception('Purchase invoice not found: $invoiceId');
+
+    await _purchaseRepo.reservePurchaseNumber(invoice.invoiceNumber);
 
     await _dbHelper.transaction((txn) async {
       // 1. If purchase was not cancelled, decrement back the inventory
@@ -439,6 +447,9 @@ class PurchaseService {
     }
     if (oldInvoice.isCancelled) {
       throw Exception('Cancelled purchases cannot be modified.');
+    }
+    if (await _purchaseRepo.isPurchaseNumberExists(invoice.invoiceNumber, excludeId: invoice.id)) {
+      throw Exception('Purchase Invoice number "${invoice.invoiceNumber}" already exists.');
     }
     if (items.isEmpty) {
       throw Exception('Purchase Invoice must contain at least one item.');
