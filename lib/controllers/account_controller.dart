@@ -71,21 +71,39 @@ class AccountController extends GetxController {
     loadAccounts();
   }
 
-  Future<bool> saveAccount(AccountModel account) async {
+  Future<bool> updateAccount(AccountModel account) async {
+    if (account.id == null) return false;
     try {
       isSubmitting.value = true;
-      if (account.id == null) {
-        await _accountRepo.insertAccount(account);
-        await loadAccounts();
-        if (Get.context != null) {
-          Get.snackbar('Success', 'Account added successfully', snackPosition: SnackPosition.BOTTOM);
-        }
-      } else {
-        await _accountRepo.updateAccount(account);
-        await loadAccounts();
-        if (Get.context != null) {
-          Get.snackbar('Success', 'Account updated successfully', snackPosition: SnackPosition.BOTTOM);
-        }
+      await _accountRepo.updateAccount(account);
+      await loadAccounts();
+      if (Get.isDialogOpen ?? false) {
+        Get.back();
+      }
+      if (Get.context != null) {
+        Get.snackbar('Success', 'Account updated successfully', snackPosition: SnackPosition.BOTTOM);
+      }
+      return true;
+    } catch (e) {
+      if (Get.context != null) {
+        Get.snackbar('Error', 'Failed to save account: $e', snackPosition: SnackPosition.BOTTOM);
+      }
+      return false;
+    } finally {
+      isSubmitting.value = false;
+    }
+  }
+
+  Future<bool> saveAccount(AccountModel account) async {
+    if (account.id != null) {
+      return await updateAccount(account);
+    }
+    try {
+      isSubmitting.value = true;
+      await _accountRepo.insertAccount(account);
+      await loadAccounts();
+      if (Get.context != null) {
+        Get.snackbar('Success', 'Account added successfully', snackPosition: SnackPosition.BOTTOM);
       }
       return true;
     } catch (e) {

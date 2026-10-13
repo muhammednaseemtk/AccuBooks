@@ -1,3 +1,4 @@
+import 'package:accubooks/models/sales_invoice_item_model.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../app/routes/app_routes.dart';
@@ -14,7 +15,6 @@ import '../../core/widgets/app_table.dart';
 import '../../core/widgets/app_text_field.dart';
 import '../../models/customer_model.dart';
 import '../../models/product_model.dart';
-import '../../models/sales_invoice_item_model.dart';
 import '../navigation/app_scaffold.dart';
 
 class SalesCreateScreen extends GetView<SalesController> {
@@ -308,9 +308,11 @@ class SalesCreateScreen extends GetView<SalesController> {
                                     'sales_disc_${controller.formNextInvoiceNumber.value}',
                                   ),
                                   hint: 'Discount',
-                                  initialValue: controller.formDiscount.value == 0
+                                  initialValue:
+                                      controller.formDiscount.value == 0
                                       ? '0'
-                                      : controller.formDiscount.value.toStringAsFixed(2),
+                                      : controller.formDiscount.value
+                                            .toStringAsFixed(2),
                                   keyboardType:
                                       const TextInputType.numberWithOptions(
                                         decimal: true,
@@ -355,9 +357,11 @@ class SalesCreateScreen extends GetView<SalesController> {
                                     'sales_paid_${controller.formNextInvoiceNumber.value}',
                                   ),
                                   hint: 'Amount',
-                                  initialValue: controller.formPaidAmount.value == 0
+                                  initialValue:
+                                      controller.formPaidAmount.value == 0
                                       ? '0'
-                                      : controller.formPaidAmount.value.toStringAsFixed(2),
+                                      : controller.formPaidAmount.value
+                                            .toStringAsFixed(2),
                                   keyboardType:
                                       const TextInputType.numberWithOptions(
                                         decimal: true,
@@ -469,7 +473,9 @@ class SalesCreateScreen extends GetView<SalesController> {
       StatefulBuilder(
         builder: (context, setState) {
           return AppDialog(
-            title: editIndex != null ? 'Edit Invoice Item' : 'Add Product to Invoice',
+            title: editIndex != null
+                ? 'Edit Invoice Item'
+                : 'Add Product to Invoice',
             maxWidth: 550,
             content: Form(
               key: formKey,
@@ -582,7 +588,13 @@ class SalesCreateScreen extends GetView<SalesController> {
                       0.0;
 
                   if (editIndex != null) {
-                    controller.updateFormItem(editIndex, selectedProd!, q, r, d);
+                    controller.updateFormItem(
+                      editIndex,
+                      selectedProd!,
+                      q,
+                      r,
+                      d,
+                    );
                   } else {
                     controller.addFormItem(selectedProd!, q, r, d);
                   }

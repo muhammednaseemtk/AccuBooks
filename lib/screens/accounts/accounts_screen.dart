@@ -282,6 +282,7 @@ class AccountsScreen extends GetView<AccountController> {
                 label: isEdit ? 'Update' : 'Create',
                 isLoading: controller.isSubmitting.value,
                 onPressed: () async {
+                  if (controller.isSubmitting.value) return;
                   if (!formKey.currentState!.validate()) return;
                   final cleanCode = codeCtrl.text.trim();
                   if (!RegExp(r'^\d+$').hasMatch(cleanCode)) return;
@@ -293,6 +294,7 @@ class AccountsScreen extends GetView<AccountController> {
                           accountType: selectedType.value,
                           openingBalance: opVal,
                           openingBalanceType: selectedObType.value,
+                          updatedAt: DateTime.now(),
                         )
                       : AccountModel(
                           accountCode: cleanCode,
@@ -303,10 +305,14 @@ class AccountsScreen extends GetView<AccountController> {
                           isSystemAccount: false,
                         );
 
-                  final ok = await controller.saveAccount(acc);
+                  final ok = isEdit
+                      ? await controller.updateAccount(acc)
+                      : await controller.saveAccount(acc);
                   if (ok) {
                     if (isEdit) {
-                      Get.back();
+                      if (Get.isDialogOpen ?? false) {
+                        Get.back();
+                      }
                     } else {
                       codeCtrl.clear();
                       nameCtrl.clear();

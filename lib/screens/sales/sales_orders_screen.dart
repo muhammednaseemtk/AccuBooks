@@ -1,3 +1,5 @@
+import 'package:accubooks/models/sales_order_item_model.dart';
+import 'package:accubooks/models/sales_return_item_model.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../app/routes/app_routes.dart';
@@ -20,9 +22,7 @@ import '../../models/customer_model.dart';
 import '../../models/product_model.dart';
 import '../../models/sales_invoice_model.dart';
 import '../../models/sales_order_model.dart';
-import '../../models/sales_order_item_model.dart';
 import '../../models/sales_return_model.dart';
-import '../../models/sales_return_item_model.dart';
 import '../navigation/app_scaffold.dart';
 
 class SalesOrdersScreen extends GetView<SalesOrderController> {
@@ -639,15 +639,29 @@ class SalesOrdersScreen extends GetView<SalesOrderController> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Text('Order Discount', style: AppTextStyles.caption),
+                              const Text(
+                                'Order Discount',
+                                style: AppTextStyles.caption,
+                              ),
                               SizedBox(
                                 width: 110,
                                 child: AppTextField(
                                   hint: 'Discount',
-                                  initialValue: controller.formOrderDiscount.value > 0 ? controller.formOrderDiscount.value.toString() : '0',
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                  inputFormatters: [AppInputFormatters.decimal()],
-                                  onChanged: (v) => controller.formOrderDiscount.value = double.tryParse(v) ?? 0.0,
+                                  initialValue:
+                                      controller.formOrderDiscount.value > 0
+                                      ? controller.formOrderDiscount.value
+                                            .toString()
+                                      : '0',
+                                  keyboardType:
+                                      const TextInputType.numberWithOptions(
+                                        decimal: true,
+                                      ),
+                                  inputFormatters: [
+                                    AppInputFormatters.decimal(),
+                                  ],
+                                  onChanged: (v) =>
+                                      controller.formOrderDiscount.value =
+                                          double.tryParse(v) ?? 0.0,
                                 ),
                               ),
                             ],
@@ -715,20 +729,34 @@ class SalesOrdersScreen extends GetView<SalesOrderController> {
     );
   }
 
-  void _showAddOrderItemDialog(BuildContext context, {int? editIndex, SalesOrderItemModel? existingItem}) {
+  void _showAddOrderItemDialog(
+    BuildContext context, {
+    int? editIndex,
+    SalesOrderItemModel? existingItem,
+  }) {
     ProductModel? selectedProd = existingItem != null
-        ? controller.products.firstWhereOrNull((p) => p.id == existingItem.productId)
+        ? controller.products.firstWhereOrNull(
+            (p) => p.id == existingItem.productId,
+          )
         : null;
-    final qtyCtrl = TextEditingController(text: existingItem != null ? existingItem.quantity.toString() : '1');
-    final rateCtrl = TextEditingController(text: existingItem != null ? existingItem.rate.toString() : '');
-    final discountCtrl = TextEditingController(text: existingItem != null ? existingItem.discount.toString() : '0');
+    final qtyCtrl = TextEditingController(
+      text: existingItem != null ? existingItem.quantity.toString() : '1',
+    );
+    final rateCtrl = TextEditingController(
+      text: existingItem != null ? existingItem.rate.toString() : '',
+    );
+    final discountCtrl = TextEditingController(
+      text: existingItem != null ? existingItem.discount.toString() : '0',
+    );
     final formKey = GlobalKey<FormState>();
 
     Get.dialog(
       StatefulBuilder(
         builder: (context, setState) {
           return AppDialog(
-            title: existingItem != null ? 'Edit Product Item' : 'Add Product Item',
+            title: existingItem != null
+                ? 'Edit Product Item'
+                : 'Add Product Item',
             maxWidth: 500,
             content: Form(
               key: formKey,
@@ -1048,15 +1076,29 @@ class SalesOrdersScreen extends GetView<SalesOrderController> {
                           Row(
                             mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              const Text('Extra Discount', style: AppTextStyles.caption),
+                              const Text(
+                                'Extra Discount',
+                                style: AppTextStyles.caption,
+                              ),
                               SizedBox(
                                 width: 110,
                                 child: AppTextField(
                                   hint: 'Discount',
-                                  initialValue: controller.formReturnDiscount.value > 0 ? controller.formReturnDiscount.value.toString() : '0',
-                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                  inputFormatters: [AppInputFormatters.decimal()],
-                                  onChanged: (v) => controller.formReturnDiscount.value = double.tryParse(v) ?? 0.0,
+                                  initialValue:
+                                      controller.formReturnDiscount.value > 0
+                                      ? controller.formReturnDiscount.value
+                                            .toString()
+                                      : '0',
+                                  keyboardType:
+                                      const TextInputType.numberWithOptions(
+                                        decimal: true,
+                                      ),
+                                  inputFormatters: [
+                                    AppInputFormatters.decimal(),
+                                  ],
+                                  onChanged: (v) =>
+                                      controller.formReturnDiscount.value =
+                                          double.tryParse(v) ?? 0.0,
                                 ),
                               ),
                             ],
@@ -1124,13 +1166,25 @@ class SalesOrdersScreen extends GetView<SalesOrderController> {
     );
   }
 
-  void _showAddReturnItemDialog(BuildContext context, {int? editIndex, SalesReturnItemModel? existingItem}) {
+  void _showAddReturnItemDialog(
+    BuildContext context, {
+    int? editIndex,
+    SalesReturnItemModel? existingItem,
+  }) {
     ProductModel? selectedProd = existingItem != null
-        ? controller.products.firstWhereOrNull((p) => p.id == existingItem.productId)
+        ? controller.products.firstWhereOrNull(
+            (p) => p.id == existingItem.productId,
+          )
         : null;
-    final qtyCtrl = TextEditingController(text: existingItem != null ? existingItem.quantity.toString() : '1');
-    final rateCtrl = TextEditingController(text: existingItem != null ? existingItem.rate.toString() : '');
-    final discountCtrl = TextEditingController(text: existingItem != null ? existingItem.discount.toString() : '0');
+    final qtyCtrl = TextEditingController(
+      text: existingItem != null ? existingItem.quantity.toString() : '1',
+    );
+    final rateCtrl = TextEditingController(
+      text: existingItem != null ? existingItem.rate.toString() : '',
+    );
+    final discountCtrl = TextEditingController(
+      text: existingItem != null ? existingItem.discount.toString() : '0',
+    );
     final formKey = GlobalKey<FormState>();
 
     // If a reference invoice is chosen, pre-filter or check available items
@@ -1140,7 +1194,9 @@ class SalesOrdersScreen extends GetView<SalesOrderController> {
       StatefulBuilder(
         builder: (context, setState) {
           return AppDialog(
-            title: existingItem != null ? 'Edit Return Item' : 'Add Return Item',
+            title: existingItem != null
+                ? 'Edit Return Item'
+                : 'Add Return Item',
             maxWidth: 500,
             content: Form(
               key: formKey,

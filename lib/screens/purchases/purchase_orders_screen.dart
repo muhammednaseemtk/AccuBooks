@@ -1,3 +1,5 @@
+import 'package:accubooks/models/purchase_order_item_model.dart';
+import 'package:accubooks/models/purchase_return_item_model.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../app/routes/app_routes.dart';
@@ -19,9 +21,7 @@ import '../../core/widgets/responsive_layout.dart';
 import '../../models/product_model.dart';
 import '../../models/purchase_invoice_model.dart';
 import '../../models/purchase_order_model.dart';
-import '../../models/purchase_order_item_model.dart';
 import '../../models/purchase_return_model.dart';
-import '../../models/purchase_return_item_model.dart';
 import '../../models/supplier_model.dart';
 import '../navigation/app_scaffold.dart';
 
@@ -68,37 +68,43 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
               child: SingleChildScrollView(
                 scrollDirection: Axis.horizontal,
-                child: Obx(() => Row(
-                  children: [
-                    ChoiceChip(
-                      label: const Text('Purchase Orders'),
-                      selected: controller.activeTabIndex.value == 0,
-                      onSelected: (_) => controller.switchTab(0),
-                      selectedColor: AppColors.primary,
-                      labelStyle: AppTextStyles.button.copyWith(
-                        color: controller.activeTabIndex.value == 0 ? Colors.white : null,
+                child: Obx(
+                  () => Row(
+                    children: [
+                      ChoiceChip(
+                        label: const Text('Purchase Orders'),
+                        selected: controller.activeTabIndex.value == 0,
+                        onSelected: (_) => controller.switchTab(0),
+                        selectedColor: AppColors.primary,
+                        labelStyle: AppTextStyles.button.copyWith(
+                          color: controller.activeTabIndex.value == 0
+                              ? Colors.white
+                              : null,
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    ChoiceChip(
-                      label: const Text('Purchase Invoices'),
-                      selected: false,
-                      onSelected: (_) => Get.offNamed(AppRoutes.purchases),
-                      selectedColor: AppColors.primary,
-                      labelStyle: AppTextStyles.button,
-                    ),
-                    const SizedBox(width: 12),
-                    ChoiceChip(
-                      label: const Text('Purchase Returns'),
-                      selected: controller.activeTabIndex.value == 1,
-                      onSelected: (_) => controller.switchTab(1),
-                      selectedColor: AppColors.primary,
-                      labelStyle: AppTextStyles.button.copyWith(
-                        color: controller.activeTabIndex.value == 1 ? Colors.white : null,
+                      const SizedBox(width: 12),
+                      ChoiceChip(
+                        label: const Text('Purchase Invoices'),
+                        selected: false,
+                        onSelected: (_) => Get.offNamed(AppRoutes.purchases),
+                        selectedColor: AppColors.primary,
+                        labelStyle: AppTextStyles.button,
                       ),
-                    ),
-                  ],
-                )),
+                      const SizedBox(width: 12),
+                      ChoiceChip(
+                        label: const Text('Purchase Returns'),
+                        selected: controller.activeTabIndex.value == 1,
+                        onSelected: (_) => controller.switchTab(1),
+                        selectedColor: AppColors.primary,
+                        labelStyle: AppTextStyles.button.copyWith(
+                          color: controller.activeTabIndex.value == 1
+                              ? Colors.white
+                              : null,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
             ),
 
@@ -115,22 +121,45 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
                     prefixIcon: const Icon(Icons.search, size: 20),
                     onChanged: controller.setSearch,
                   ),
-                  Obx(() => AppDropdown<int>(
-                        value: controller.selectedSupplierId.value,
-                        items: [
-                          const DropdownMenuItem(value: 0, child: Text('All Suppliers')),
-                          ...controller.suppliers.map((s) => DropdownMenuItem(value: s.id, child: Text(s.name))),
-                        ],
-                        onChanged: (v) => controller.setSupplierFilter(v ?? 0),
-                      )),
+                  Obx(
+                    () => AppDropdown<int>(
+                      value: controller.selectedSupplierId.value,
+                      items: [
+                        const DropdownMenuItem(
+                          value: 0,
+                          child: Text('All Suppliers'),
+                        ),
+                        ...controller.suppliers.map(
+                          (s) => DropdownMenuItem(
+                            value: s.id,
+                            child: Text(s.name),
+                          ),
+                        ),
+                      ],
+                      onChanged: (v) => controller.setSupplierFilter(v ?? 0),
+                    ),
+                  ),
                   Obx(() {
                     if (controller.activeTabIndex.value == 0) {
                       return AppDropdown<String>(
                         value: controller.selectedStatus.value,
-                        items: ['All', AccountingConstants.statusPending, AccountingConstants.statusConfirmed, AccountingConstants.statusCompleted, AccountingConstants.statusCancelled]
-                            .map((s) => DropdownMenuItem(value: s, child: Text(s)))
-                            .toList(),
-                        onChanged: (v) => controller.setStatusFilter(v ?? 'All'),
+                        items:
+                            [
+                                  'All',
+                                  AccountingConstants.statusPending,
+                                  AccountingConstants.statusConfirmed,
+                                  AccountingConstants.statusCompleted,
+                                  AccountingConstants.statusCancelled,
+                                ]
+                                .map(
+                                  (s) => DropdownMenuItem(
+                                    value: s,
+                                    child: Text(s),
+                                  ),
+                                )
+                                .toList(),
+                        onChanged: (v) =>
+                            controller.setStatusFilter(v ?? 'All'),
                       );
                     }
                     return const SizedBox.shrink();
@@ -149,7 +178,14 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
                 }
 
                 if (controller.errorMessage.isNotEmpty) {
-                  return Center(child: Text(controller.errorMessage.value, style: AppTextStyles.body1.copyWith(color: AppColors.debit)));
+                  return Center(
+                    child: Text(
+                      controller.errorMessage.value,
+                      style: AppTextStyles.body1.copyWith(
+                        color: AppColors.debit,
+                      ),
+                    ),
+                  );
                 }
 
                 if (controller.activeTabIndex.value == 0) {
@@ -169,7 +205,8 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
     if (controller.orders.isEmpty) {
       return EmptyState(
         title: 'No purchase orders found',
-        subtitle: 'Create a new order to place purchase requests with suppliers before billing.',
+        subtitle:
+            'Create a new order to place purchase requests with suppliers before billing.',
         actionLabel: 'Create Purchase Order',
         onAction: () => _showCreateOrderDialog(context),
       );
@@ -181,7 +218,11 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
       AppTableColumn(title: 'Supplier', width: 180),
       AppTableColumn(title: 'Delivery', width: 110),
       AppTableColumn(title: 'Items', width: 70, alignment: Alignment.center),
-      AppTableColumn(title: 'Grand Total', width: 130, alignment: Alignment.centerRight),
+      AppTableColumn(
+        title: 'Grand Total',
+        width: 130,
+        alignment: Alignment.centerRight,
+      ),
       AppTableColumn(title: 'Status', width: 120, alignment: Alignment.center),
       AppTableColumn(title: 'Actions', width: 130, alignment: Alignment.center),
     ];
@@ -190,30 +231,57 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
       final order = controller.orders[index];
       return [
         Text(order.orderNumber, style: AppTextStyles.tableCellBold),
-        Text(AppDateUtils.format(order.orderDate), style: AppTextStyles.tableCell),
-        Text(order.supplierName ?? 'Supplier #${order.supplierId}', style: AppTextStyles.tableCell),
-        Text(order.expectedDeliveryDate != null ? AppDateUtils.format(order.expectedDeliveryDate!) : '-', style: AppTextStyles.tableCell),
+        Text(
+          AppDateUtils.format(order.orderDate),
+          style: AppTextStyles.tableCell,
+        ),
+        Text(
+          order.supplierName ?? 'Supplier #${order.supplierId}',
+          style: AppTextStyles.tableCell,
+        ),
+        Text(
+          order.expectedDeliveryDate != null
+              ? AppDateUtils.format(order.expectedDeliveryDate!)
+              : '-',
+          style: AppTextStyles.tableCell,
+        ),
         Text('${order.items.length}', style: AppTextStyles.tableCell),
-        Text(CurrencyUtils.format(order.grandTotal), style: AppTextStyles.tableCellBold),
+        Text(
+          CurrencyUtils.format(order.grandTotal),
+          style: AppTextStyles.tableCellBold,
+        ),
         _buildStatusBadge(order.status),
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             IconButton(
-              icon: const Icon(Icons.visibility_outlined, size: 18, color: AppColors.primary),
+              icon: const Icon(
+                Icons.visibility_outlined,
+                size: 18,
+                color: AppColors.primary,
+              ),
               tooltip: 'View Details',
               onPressed: () => _showOrderDetailsDialog(context, order),
             ),
             IconButton(
-              icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.primary),
+              icon: const Icon(
+                Icons.edit_outlined,
+                size: 18,
+                color: AppColors.primary,
+              ),
               tooltip: 'Edit Order',
               onPressed: () async {
                 await controller.prepareEditOrderForm(order);
-                if (context.mounted) _showCreateOrderDialog(context, isEditing: true);
+                if (context.mounted)
+                  _showCreateOrderDialog(context, isEditing: true);
               },
             ),
             IconButton(
-              icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.debit),
+              icon: const Icon(
+                Icons.delete_outline,
+                size: 18,
+                color: AppColors.debit,
+              ),
               tooltip: 'Delete Order',
               onPressed: () => _confirmDeleteOrder(context, order),
             ),
@@ -229,7 +297,8 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
     if (controller.returns.isEmpty) {
       return EmptyState(
         title: 'No purchase returns found',
-        subtitle: 'Process return of purchased items back to suppliers and deduct payables.',
+        subtitle:
+            'Process return of purchased items back to suppliers and deduct payables.',
         actionLabel: 'Create Purchase Return',
         onAction: () => _showCreateReturnDialog(context),
       );
@@ -241,7 +310,11 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
       AppTableColumn(title: 'Supplier', width: 180),
       AppTableColumn(title: 'Ref Invoice', width: 130),
       AppTableColumn(title: 'Items', width: 70, alignment: Alignment.center),
-      AppTableColumn(title: 'Return Total', width: 130, alignment: Alignment.centerRight),
+      AppTableColumn(
+        title: 'Return Total',
+        width: 130,
+        alignment: Alignment.centerRight,
+      ),
       AppTableColumn(title: 'Status', width: 110, alignment: Alignment.center),
       AppTableColumn(title: 'Actions', width: 130, alignment: Alignment.center),
     ];
@@ -250,30 +323,52 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
       final ret = controller.returns[index];
       return [
         Text(ret.returnNumber, style: AppTextStyles.tableCellBold),
-        Text(AppDateUtils.format(ret.returnDate), style: AppTextStyles.tableCell),
-        Text(ret.supplierName ?? 'Supplier #${ret.supplierId}', style: AppTextStyles.tableCell),
+        Text(
+          AppDateUtils.format(ret.returnDate),
+          style: AppTextStyles.tableCell,
+        ),
+        Text(
+          ret.supplierName ?? 'Supplier #${ret.supplierId}',
+          style: AppTextStyles.tableCell,
+        ),
         Text(ret.referenceInvoiceNumber ?? '-', style: AppTextStyles.tableCell),
         Text('${ret.items.length}', style: AppTextStyles.tableCell),
-        Text(CurrencyUtils.format(ret.grandTotal), style: AppTextStyles.tableCellBold),
+        Text(
+          CurrencyUtils.format(ret.grandTotal),
+          style: AppTextStyles.tableCellBold,
+        ),
         _buildStatusBadge(ret.status),
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             IconButton(
-              icon: const Icon(Icons.visibility_outlined, size: 18, color: AppColors.primary),
+              icon: const Icon(
+                Icons.visibility_outlined,
+                size: 18,
+                color: AppColors.primary,
+              ),
               tooltip: 'View Details',
               onPressed: () => _showReturnDetailsDialog(context, ret),
             ),
             IconButton(
-              icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.primary),
+              icon: const Icon(
+                Icons.edit_outlined,
+                size: 18,
+                color: AppColors.primary,
+              ),
               tooltip: 'Edit Return',
               onPressed: () async {
                 await controller.prepareEditReturnForm(ret);
-                if (context.mounted) _showCreateReturnDialog(context, isEditing: true);
+                if (context.mounted)
+                  _showCreateReturnDialog(context, isEditing: true);
               },
             ),
             IconButton(
-              icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.debit),
+              icon: const Icon(
+                Icons.delete_outline,
+                size: 18,
+                color: AppColors.debit,
+              ),
               tooltip: 'Delete Return',
               onPressed: () => _confirmDeleteReturn(context, ret),
             ),
@@ -308,8 +403,17 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(12)),
-      child: Text(status, style: AppTextStyles.caption.copyWith(color: fg, fontWeight: FontWeight.w600)),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Text(
+        status,
+        style: AppTextStyles.caption.copyWith(
+          color: fg,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
     );
   }
 
@@ -335,21 +439,29 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
                     spacing: 12,
                     breakpoint: 450,
                     children: [
-                      Obx(() => AppTextField(
-                            label: 'Order Number',
-                            hint: 'Order Number',
-                            initialValue: controller.formOrderNumber.value,
-                            readOnly: true,
-                          )),
-                      Obx(() => AppDropdown<SupplierModel>(
-                            label: 'Supplier *',
-                            hint: 'Select Supplier',
-                            value: controller.formOrderSupplier.value,
-                            items: controller.suppliers.map((s) {
-                              return DropdownMenuItem(value: s, child: Text(s.name));
-                            }).toList(),
-                            onChanged: (s) => controller.formOrderSupplier.value = s,
-                          )),
+                      Obx(
+                        () => AppTextField(
+                          label: 'Order Number',
+                          hint: 'Order Number',
+                          initialValue: controller.formOrderNumber.value,
+                          readOnly: true,
+                        ),
+                      ),
+                      Obx(
+                        () => AppDropdown<SupplierModel>(
+                          label: 'Supplier *',
+                          hint: 'Select Supplier',
+                          value: controller.formOrderSupplier.value,
+                          items: controller.suppliers.map((s) {
+                            return DropdownMenuItem(
+                              value: s,
+                              child: Text(s.name),
+                            );
+                          }).toList(),
+                          onChanged: (s) =>
+                              controller.formOrderSupplier.value = s,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -357,32 +469,49 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
                     spacing: 12,
                     breakpoint: 450,
                     children: [
-                      Obx(() => AppDatePickerField(
-                            label: 'Order Date',
-                            value: controller.formOrderDate.value,
-                            onDateSelected: (d) => controller.formOrderDate.value = d,
-                          )),
-                      Obx(() => AppDatePickerField(
-                            label: 'Expected Delivery Date',
-                            hint: 'Select date',
-                            value: controller.formExpectedDeliveryDate.value,
-                            initialPickerDate: DateTime.now().add(const Duration(days: 7)),
-                            onDateSelected: (d) => controller.formExpectedDeliveryDate.value = d,
-                          )),
+                      Obx(
+                        () => AppDatePickerField(
+                          label: 'Order Date',
+                          value: controller.formOrderDate.value,
+                          onDateSelected: (d) =>
+                              controller.formOrderDate.value = d,
+                        ),
+                      ),
+                      Obx(
+                        () => AppDatePickerField(
+                          label: 'Expected Delivery Date',
+                          hint: 'Select date',
+                          value: controller.formExpectedDeliveryDate.value,
+                          initialPickerDate: DateTime.now().add(
+                            const Duration(days: 7),
+                          ),
+                          onDateSelected: (d) =>
+                              controller.formExpectedDeliveryDate.value = d,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 12),
-                  Obx(() => AppDropdown<String>(
-                        label: 'Order Status',
-                        value: controller.formOrderStatus.value,
-                        items: [
-                          AccountingConstants.statusPending,
-                          AccountingConstants.statusConfirmed,
-                          AccountingConstants.statusCompleted,
-                          AccountingConstants.statusCancelled,
-                        ].map((s) => DropdownMenuItem(value: s, child: Text(s))).toList(),
-                        onChanged: (s) => controller.formOrderStatus.value = s ?? AccountingConstants.statusPending,
-                      )),
+                  Obx(
+                    () => AppDropdown<String>(
+                      label: 'Order Status',
+                      value: controller.formOrderStatus.value,
+                      items:
+                          [
+                                AccountingConstants.statusPending,
+                                AccountingConstants.statusConfirmed,
+                                AccountingConstants.statusCompleted,
+                                AccountingConstants.statusCancelled,
+                              ]
+                              .map(
+                                (s) =>
+                                    DropdownMenuItem(value: s, child: Text(s)),
+                              )
+                              .toList(),
+                      onChanged: (s) => controller.formOrderStatus.value =
+                          s ?? AccountingConstants.statusPending,
+                    ),
+                  ),
                   const SizedBox(height: 16),
                   const Divider(),
                   const SizedBox(height: 8),
@@ -407,17 +536,24 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
                       return Container(
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).brightness == Brightness.dark ? AppColors.surfaceVariantDark : AppColors.surfaceVariantLight,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? AppColors.surfaceVariantDark
+                              : AppColors.surfaceVariantLight,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: const Center(
-                          child: Text('No product items added yet. Click "+ Add Product".', style: AppTextStyles.caption),
+                          child: Text(
+                            'No product items added yet. Click "+ Add Product".',
+                            style: AppTextStyles.caption,
+                          ),
                         ),
                       );
                     }
 
                     return Column(
-                      children: List.generate(controller.formOrderItems.length, (i) {
+                      children: List.generate(controller.formOrderItems.length, (
+                        i,
+                      ) {
                         final item = controller.formOrderItems[i];
                         return Card(
                           margin: const EdgeInsets.only(bottom: 8),
@@ -427,21 +563,46 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
                               children: [
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Text(item.productName ?? 'Product', style: AppTextStyles.body1.copyWith(fontWeight: FontWeight.bold)),
-                                      Text('${item.quantity} ${item.unit ?? ''} @ ${CurrencyUtils.format(item.rate)} | Tax: ${CurrencyUtils.format(item.taxAmount)}', style: AppTextStyles.caption),
+                                      Text(
+                                        item.productName ?? 'Product',
+                                        style: AppTextStyles.body1.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      Text(
+                                        '${item.quantity} ${item.unit ?? ''} @ ${CurrencyUtils.format(item.rate)} | Tax: ${CurrencyUtils.format(item.taxAmount)}',
+                                        style: AppTextStyles.caption,
+                                      ),
                                     ],
                                   ),
                                 ),
-                                Text(CurrencyUtils.format(item.total), style: AppTextStyles.metricMedium),
-                                IconButton(
-                                  icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.primary),
-                                  onPressed: () => _showAddOrderItemDialog(context, editIndex: i, existingItem: item),
+                                Text(
+                                  CurrencyUtils.format(item.total),
+                                  style: AppTextStyles.metricMedium,
                                 ),
                                 IconButton(
-                                  icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.debit),
-                                  onPressed: () => controller.removeOrderItem(i),
+                                  icon: const Icon(
+                                    Icons.edit_outlined,
+                                    size: 18,
+                                    color: AppColors.primary,
+                                  ),
+                                  onPressed: () => _showAddOrderItemDialog(
+                                    context,
+                                    editIndex: i,
+                                    existingItem: item,
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.delete_outline,
+                                    size: 18,
+                                    color: AppColors.debit,
+                                  ),
+                                  onPressed: () =>
+                                      controller.removeOrderItem(i),
                                 ),
                               ],
                             ),
@@ -456,49 +617,79 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
                   const SizedBox(height: 8),
 
                   // Totals
-                  Obx(() => Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).brightness == Brightness.dark ? AppColors.surfaceVariantDark : AppColors.surfaceVariantLight,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Column(
-                          children: [
-                            _calcRow('Subtotal', CurrencyUtils.format(controller.formOrderSubtotal)),
-                            const SizedBox(height: 6),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text('Order Discount', style: AppTextStyles.caption),
-                                SizedBox(
-                                  width: 110,
-                                  child: AppTextField(
-                                    hint: 'Discount',
-                                    initialValue: controller.formOrderDiscount.value == 0
-                                        ? '0'
-                                        : controller.formOrderDiscount.value.toStringAsFixed(2),
-                                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                    inputFormatters: [AppInputFormatters.decimal()],
-                                    onChanged: (v) => controller.formOrderDiscount.value = double.tryParse(v) ?? 0.0,
-                                  ),
+                  Obx(
+                    () => Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? AppColors.surfaceVariantDark
+                            : AppColors.surfaceVariantLight,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        children: [
+                          _calcRow(
+                            'Subtotal',
+                            CurrencyUtils.format(controller.formOrderSubtotal),
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Order Discount',
+                                style: AppTextStyles.caption,
+                              ),
+                              SizedBox(
+                                width: 110,
+                                child: AppTextField(
+                                  hint: 'Discount',
+                                  initialValue:
+                                      controller.formOrderDiscount.value == 0
+                                      ? '0'
+                                      : controller.formOrderDiscount.value
+                                            .toStringAsFixed(2),
+                                  keyboardType:
+                                      const TextInputType.numberWithOptions(
+                                        decimal: true,
+                                      ),
+                                  inputFormatters: [
+                                    AppInputFormatters.decimal(),
+                                  ],
+                                  onChanged: (v) =>
+                                      controller.formOrderDiscount.value =
+                                          double.tryParse(v) ?? 0.0,
                                 ),
-                              ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          _calcRow(
+                            'Tax Total',
+                            CurrencyUtils.format(controller.formOrderTaxTotal),
+                          ),
+                          const Divider(height: 12),
+                          _calcRow(
+                            'Grand Total',
+                            CurrencyUtils.format(
+                              controller.formOrderGrandTotal,
                             ),
-                            const SizedBox(height: 4),
-                            _calcRow('Tax Total', CurrencyUtils.format(controller.formOrderTaxTotal)),
-                            const Divider(height: 12),
-                            _calcRow('Grand Total', CurrencyUtils.format(controller.formOrderGrandTotal), isBold: true),
-                          ],
-                        ),
-                      )),
+                            isBold: true,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
 
                   const SizedBox(height: 12),
-                  Obx(() => AppTextField(
-                        label: 'Notes / Memo',
-                        hint: 'Enter notes',
-                        initialValue: controller.formOrderNotes.value,
-                        onChanged: (v) => controller.formOrderNotes.value = v,
-                      )),
+                  Obx(
+                    () => AppTextField(
+                      label: 'Notes / Memo',
+                      hint: 'Enter notes',
+                      initialValue: controller.formOrderNotes.value,
+                      onChanged: (v) => controller.formOrderNotes.value = v,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -511,19 +702,23 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
                   Get.back();
                 },
               ),
-              Obx(() => AppButton(
-                    label: isEditing ? 'Update Purchase Order' : 'Create Purchase Order',
-                    icon: Icons.check,
-                    isLoading: controller.isSubmitting.value,
-                    onPressed: controller.isSubmitting.value
-                        ? null
-                        : () async {
-                            final ok = await controller.submitOrder();
-                            if (ok) {
-                              Get.back();
-                            }
-                          },
-                  )),
+              Obx(
+                () => AppButton(
+                  label: isEditing
+                      ? 'Update Purchase Order'
+                      : 'Create Purchase Order',
+                  icon: Icons.check,
+                  isLoading: controller.isSubmitting.value,
+                  onPressed: controller.isSubmitting.value
+                      ? null
+                      : () async {
+                          final ok = await controller.submitOrder();
+                          if (ok) {
+                            Get.back();
+                          }
+                        },
+                ),
+              ),
             ],
           );
         },
@@ -538,12 +733,22 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
   }) {
     ProductModel? selectedProd;
     if (existingItem != null) {
-      selectedProd = controller.products.firstWhereOrNull((p) => p.id == existingItem.productId);
-      selectedProd ??= controller.products.firstWhereOrNull((p) => p.name == existingItem.productName);
+      selectedProd = controller.products.firstWhereOrNull(
+        (p) => p.id == existingItem.productId,
+      );
+      selectedProd ??= controller.products.firstWhereOrNull(
+        (p) => p.name == existingItem.productName,
+      );
     }
-    final qtyCtrl = TextEditingController(text: existingItem != null ? existingItem.quantity.toString() : '1');
-    final rateCtrl = TextEditingController(text: existingItem != null ? existingItem.rate.toString() : '');
-    final discountCtrl = TextEditingController(text: existingItem != null ? existingItem.discount.toString() : '0');
+    final qtyCtrl = TextEditingController(
+      text: existingItem != null ? existingItem.quantity.toString() : '1',
+    );
+    final rateCtrl = TextEditingController(
+      text: existingItem != null ? existingItem.rate.toString() : '',
+    );
+    final discountCtrl = TextEditingController(
+      text: existingItem != null ? existingItem.discount.toString() : '0',
+    );
     final formKey = GlobalKey<FormState>();
 
     Get.dialog(
@@ -567,7 +772,8 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
                     onChanged: (p) {
                       setState(() {
                         selectedProd = p;
-                        if (p != null) rateCtrl.text = p.purchasePrice.toString();
+                        if (p != null)
+                          rateCtrl.text = p.purchasePrice.toString();
                       });
                     },
                   ),
@@ -580,17 +786,25 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
                         label: 'Quantity *',
                         hint: 'Quantity',
                         controller: qtyCtrl,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                         inputFormatters: [AppInputFormatters.decimal()],
-                        validator: (v) => (double.tryParse(v ?? '') ?? 0) <= 0 ? 'Quantity must be > 0' : null,
+                        validator: (v) => (double.tryParse(v ?? '') ?? 0) <= 0
+                            ? 'Quantity must be > 0'
+                            : null,
                       ),
                       AppTextField(
                         label: 'Purchase Price *',
                         hint: 'Purchase Price',
                         controller: rateCtrl,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                         inputFormatters: [AppInputFormatters.decimal()],
-                        validator: (v) => (double.tryParse(v ?? '') ?? -1) < 0 ? 'Valid price required' : null,
+                        validator: (v) => (double.tryParse(v ?? '') ?? -1) < 0
+                            ? 'Valid price required'
+                            : null,
                       ),
                     ],
                   ),
@@ -599,26 +813,41 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
                     label: 'Discount (₹)',
                     hint: 'Discount',
                     controller: discountCtrl,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     inputFormatters: [AppInputFormatters.decimal()],
                   ),
                 ],
               ),
             ),
             actions: [
-              AppButton(label: 'Cancel', type: AppButtonType.text, onPressed: () => Get.back()),
+              AppButton(
+                label: 'Cancel',
+                type: AppButtonType.text,
+                onPressed: () => Get.back(),
+              ),
               AppButton(
                 label: editIndex != null ? 'Update Item' : 'Add to Order',
                 onPressed: () {
                   if (selectedProd == null) {
-                    Get.snackbar('Error', 'Please select a product', snackPosition: SnackPosition.BOTTOM);
+                    Get.snackbar(
+                      'Error',
+                      'Please select a product',
+                      snackPosition: SnackPosition.BOTTOM,
+                    );
                     return;
                   }
                   if (!formKey.currentState!.validate()) return;
 
-                  final q = double.tryParse(qtyCtrl.text.replaceAll(',', '')) ?? 1.0;
-                  final r = double.tryParse(rateCtrl.text.replaceAll(',', '')) ?? selectedProd!.purchasePrice;
-                  final d = double.tryParse(discountCtrl.text.replaceAll(',', '')) ?? 0.0;
+                  final q =
+                      double.tryParse(qtyCtrl.text.replaceAll(',', '')) ?? 1.0;
+                  final r =
+                      double.tryParse(rateCtrl.text.replaceAll(',', '')) ??
+                      selectedProd!.purchasePrice;
+                  final d =
+                      double.tryParse(discountCtrl.text.replaceAll(',', '')) ??
+                      0.0;
 
                   if (editIndex != null) {
                     controller.updateOrderItem(editIndex, q, r, d);
@@ -657,21 +886,29 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
                     spacing: 12,
                     breakpoint: 450,
                     children: [
-                      Obx(() => AppTextField(
-                            label: 'Return Number',
-                            hint: 'Return Number',
-                            initialValue: controller.formReturnNumber.value,
-                            readOnly: true,
-                          )),
-                      Obx(() => AppDropdown<SupplierModel>(
-                            label: 'Supplier *',
-                            hint: 'Select Supplier',
-                            value: controller.formReturnSupplier.value,
-                            items: controller.suppliers.map((s) {
-                              return DropdownMenuItem(value: s, child: Text(s.name));
-                            }).toList(),
-                            onChanged: (s) => controller.formReturnSupplier.value = s,
-                          )),
+                      Obx(
+                        () => AppTextField(
+                          label: 'Return Number',
+                          hint: 'Return Number',
+                          initialValue: controller.formReturnNumber.value,
+                          readOnly: true,
+                        ),
+                      ),
+                      Obx(
+                        () => AppDropdown<SupplierModel>(
+                          label: 'Supplier *',
+                          hint: 'Select Supplier',
+                          value: controller.formReturnSupplier.value,
+                          items: controller.suppliers.map((s) {
+                            return DropdownMenuItem(
+                              value: s,
+                              child: Text(s.name),
+                            );
+                          }).toList(),
+                          onChanged: (s) =>
+                              controller.formReturnSupplier.value = s,
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -679,23 +916,31 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
                     spacing: 12,
                     breakpoint: 450,
                     children: [
-                      Obx(() => AppDatePickerField(
-                            label: 'Return Date',
-                            value: controller.formReturnDate.value,
-                            onDateSelected: (d) => controller.formReturnDate.value = d,
-                          )),
-                      Obx(() => AppDropdown<PurchaseInvoiceModel>(
-                            label: 'Reference Invoice (Optional)',
-                            hint: 'Select Purchase Invoice',
-                            value: controller.formReferenceInvoice.value,
-                            items: controller.recentInvoices.map((inv) {
-                              return DropdownMenuItem(
-                                value: inv,
-                                child: Text('${inv.invoiceNumber} (${CurrencyUtils.format(inv.grandTotal)})'),
-                              );
-                            }).toList(),
-                            onChanged: (inv) => controller.onSelectReferenceInvoice(inv),
-                          )),
+                      Obx(
+                        () => AppDatePickerField(
+                          label: 'Return Date',
+                          value: controller.formReturnDate.value,
+                          onDateSelected: (d) =>
+                              controller.formReturnDate.value = d,
+                        ),
+                      ),
+                      Obx(
+                        () => AppDropdown<PurchaseInvoiceModel>(
+                          label: 'Reference Invoice (Optional)',
+                          hint: 'Select Purchase Invoice',
+                          value: controller.formReferenceInvoice.value,
+                          items: controller.recentInvoices.map((inv) {
+                            return DropdownMenuItem(
+                              value: inv,
+                              child: Text(
+                                '${inv.invoiceNumber} (${CurrencyUtils.format(inv.grandTotal)})',
+                              ),
+                            );
+                          }).toList(),
+                          onChanged: (inv) =>
+                              controller.onSelectReferenceInvoice(inv),
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -706,7 +951,10 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Returned Items', style: AppTextStyles.subtitle2),
+                      const Text(
+                        'Returned Items',
+                        style: AppTextStyles.subtitle2,
+                      ),
                       AppButton(
                         label: 'Add Returned Product',
                         icon: Icons.add,
@@ -722,17 +970,24 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
                       return Container(
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
-                          color: Theme.of(context).brightness == Brightness.dark ? AppColors.surfaceVariantDark : AppColors.surfaceVariantLight,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? AppColors.surfaceVariantDark
+                              : AppColors.surfaceVariantLight,
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: const Center(
-                          child: Text('No returned items added yet. Click "+ Add Returned Product".', style: AppTextStyles.caption),
+                          child: Text(
+                            'No returned items added yet. Click "+ Add Returned Product".',
+                            style: AppTextStyles.caption,
+                          ),
                         ),
                       );
                     }
 
                     return Column(
-                      children: List.generate(controller.formReturnItems.length, (i) {
+                      children: List.generate(controller.formReturnItems.length, (
+                        i,
+                      ) {
                         final item = controller.formReturnItems[i];
                         return Card(
                           margin: const EdgeInsets.only(bottom: 8),
@@ -742,21 +997,48 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
                               children: [
                                 Expanded(
                                   child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
                                     children: [
-                                      Text(item.productName ?? 'Product', style: AppTextStyles.body1.copyWith(fontWeight: FontWeight.bold)),
-                                      Text('Return Qty: ${item.quantity} ${item.unit ?? ''} @ ${CurrencyUtils.format(item.rate)} | Tax: ${CurrencyUtils.format(item.taxAmount)}', style: AppTextStyles.caption),
+                                      Text(
+                                        item.productName ?? 'Product',
+                                        style: AppTextStyles.body1.copyWith(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      Text(
+                                        'Return Qty: ${item.quantity} ${item.unit ?? ''} @ ${CurrencyUtils.format(item.rate)} | Tax: ${CurrencyUtils.format(item.taxAmount)}',
+                                        style: AppTextStyles.caption,
+                                      ),
                                     ],
                                   ),
                                 ),
-                                Text(CurrencyUtils.format(item.total), style: AppTextStyles.metricMedium.copyWith(color: AppColors.debit)),
-                                IconButton(
-                                  icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.primary),
-                                  onPressed: () => _showAddReturnItemDialog(context, editIndex: i, existingItem: item),
+                                Text(
+                                  CurrencyUtils.format(item.total),
+                                  style: AppTextStyles.metricMedium.copyWith(
+                                    color: AppColors.debit,
+                                  ),
                                 ),
                                 IconButton(
-                                  icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.debit),
-                                  onPressed: () => controller.removeReturnItem(i),
+                                  icon: const Icon(
+                                    Icons.edit_outlined,
+                                    size: 18,
+                                    color: AppColors.primary,
+                                  ),
+                                  onPressed: () => _showAddReturnItemDialog(
+                                    context,
+                                    editIndex: i,
+                                    existingItem: item,
+                                  ),
+                                ),
+                                IconButton(
+                                  icon: const Icon(
+                                    Icons.delete_outline,
+                                    size: 18,
+                                    color: AppColors.debit,
+                                  ),
+                                  onPressed: () =>
+                                      controller.removeReturnItem(i),
                                 ),
                               ],
                             ),
@@ -771,49 +1053,79 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
                   const SizedBox(height: 8),
 
                   // Totals
-                  Obx(() => Container(
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context).brightness == Brightness.dark ? AppColors.surfaceVariantDark : AppColors.surfaceVariantLight,
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Column(
-                          children: [
-                            _calcRow('Return Subtotal', CurrencyUtils.format(controller.formReturnSubtotal)),
-                            const SizedBox(height: 6),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                const Text('Extra Discount', style: AppTextStyles.caption),
-                                SizedBox(
-                                  width: 110,
-                                  child: AppTextField(
-                                    hint: 'Discount',
-                                    initialValue: controller.formReturnDiscount.value == 0
-                                        ? '0'
-                                        : controller.formReturnDiscount.value.toStringAsFixed(2),
-                                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                    inputFormatters: [AppInputFormatters.decimal()],
-                                    onChanged: (v) => controller.formReturnDiscount.value = double.tryParse(v) ?? 0.0,
-                                  ),
+                  Obx(
+                    () => Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? AppColors.surfaceVariantDark
+                            : AppColors.surfaceVariantLight,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        children: [
+                          _calcRow(
+                            'Return Subtotal',
+                            CurrencyUtils.format(controller.formReturnSubtotal),
+                          ),
+                          const SizedBox(height: 6),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              const Text(
+                                'Extra Discount',
+                                style: AppTextStyles.caption,
+                              ),
+                              SizedBox(
+                                width: 110,
+                                child: AppTextField(
+                                  hint: 'Discount',
+                                  initialValue:
+                                      controller.formReturnDiscount.value == 0
+                                      ? '0'
+                                      : controller.formReturnDiscount.value
+                                            .toStringAsFixed(2),
+                                  keyboardType:
+                                      const TextInputType.numberWithOptions(
+                                        decimal: true,
+                                      ),
+                                  inputFormatters: [
+                                    AppInputFormatters.decimal(),
+                                  ],
+                                  onChanged: (v) =>
+                                      controller.formReturnDiscount.value =
+                                          double.tryParse(v) ?? 0.0,
                                 ),
-                              ],
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          _calcRow(
+                            'Return Tax',
+                            CurrencyUtils.format(controller.formReturnTaxTotal),
+                          ),
+                          const Divider(height: 12),
+                          _calcRow(
+                            'Return Total (Reversal Credit)',
+                            CurrencyUtils.format(
+                              controller.formReturnGrandTotal,
                             ),
-                            const SizedBox(height: 4),
-                            _calcRow('Return Tax', CurrencyUtils.format(controller.formReturnTaxTotal)),
-                            const Divider(height: 12),
-                            _calcRow('Return Total (Reversal Credit)', CurrencyUtils.format(controller.formReturnGrandTotal), isBold: true),
-                          ],
-                        ),
-                      )),
+                            isBold: true,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
 
                   const SizedBox(height: 12),
-                  Obx(() => AppTextField(
-                        label: 'Reason for Return / Notes',
-                        hint: 'Enter notes',
-                        initialValue: controller.formReturnReason.value,
-                        onChanged: (v) => controller.formReturnReason.value = v,
-                      )),
+                  Obx(
+                    () => AppTextField(
+                      label: 'Reason for Return / Notes',
+                      hint: 'Enter notes',
+                      initialValue: controller.formReturnReason.value,
+                      onChanged: (v) => controller.formReturnReason.value = v,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -826,19 +1138,23 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
                   Get.back();
                 },
               ),
-              Obx(() => AppButton(
-                    label: isEditing ? 'Update Purchase Return' : 'Create Purchase Return',
-                    icon: Icons.check,
-                    isLoading: controller.isSubmitting.value,
-                    onPressed: controller.isSubmitting.value
-                        ? null
-                        : () async {
-                            final ok = await controller.submitReturn();
-                            if (ok) {
-                              Get.back();
-                            }
-                          },
-                  )),
+              Obx(
+                () => AppButton(
+                  label: isEditing
+                      ? 'Update Purchase Return'
+                      : 'Create Purchase Return',
+                  icon: Icons.check,
+                  isLoading: controller.isSubmitting.value,
+                  onPressed: controller.isSubmitting.value
+                      ? null
+                      : () async {
+                          final ok = await controller.submitReturn();
+                          if (ok) {
+                            Get.back();
+                          }
+                        },
+                ),
+              ),
             ],
           );
         },
@@ -853,12 +1169,22 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
   }) {
     ProductModel? selectedProd;
     if (existingItem != null) {
-      selectedProd = controller.products.firstWhereOrNull((p) => p.id == existingItem.productId);
-      selectedProd ??= controller.products.firstWhereOrNull((p) => p.name == existingItem.productName);
+      selectedProd = controller.products.firstWhereOrNull(
+        (p) => p.id == existingItem.productId,
+      );
+      selectedProd ??= controller.products.firstWhereOrNull(
+        (p) => p.name == existingItem.productName,
+      );
     }
-    final qtyCtrl = TextEditingController(text: existingItem != null ? existingItem.quantity.toString() : '1');
-    final rateCtrl = TextEditingController(text: existingItem != null ? existingItem.rate.toString() : '');
-    final discountCtrl = TextEditingController(text: existingItem != null ? existingItem.discount.toString() : '0');
+    final qtyCtrl = TextEditingController(
+      text: existingItem != null ? existingItem.quantity.toString() : '1',
+    );
+    final rateCtrl = TextEditingController(
+      text: existingItem != null ? existingItem.rate.toString() : '',
+    );
+    final discountCtrl = TextEditingController(
+      text: existingItem != null ? existingItem.discount.toString() : '0',
+    );
     final formKey = GlobalKey<FormState>();
 
     final refInvoice = controller.formReferenceInvoice.value;
@@ -879,14 +1205,19 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
                     hint: 'Select Product',
                     value: selectedProd,
                     items: controller.products.map((p) {
-                      return DropdownMenuItem(value: p, child: Text('${p.name} (Stock: ${p.stockQuantity})'));
+                      return DropdownMenuItem(
+                        value: p,
+                        child: Text('${p.name} (Stock: ${p.stockQuantity})'),
+                      );
                     }).toList(),
                     onChanged: (p) {
                       setState(() {
                         selectedProd = p;
                         if (p != null) {
                           if (refInvoice != null) {
-                            final invItem = refInvoice.items.firstWhereOrNull((i) => i.productId == p.id);
+                            final invItem = refInvoice.items.firstWhereOrNull(
+                              (i) => i.productId == p.id,
+                            );
                             if (invItem != null) {
                               rateCtrl.text = invItem.rate.toString();
                               qtyCtrl.text = invItem.quantity.toString();
@@ -909,7 +1240,9 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
                         label: 'Returned Quantity *',
                         hint: 'Quantity',
                         controller: qtyCtrl,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                         inputFormatters: [AppInputFormatters.decimal()],
                         validator: (v) {
                           final q = double.tryParse(v ?? '') ?? 0;
@@ -921,9 +1254,13 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
                         label: 'Purchase Price *',
                         hint: 'Purchase Price',
                         controller: rateCtrl,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        keyboardType: const TextInputType.numberWithOptions(
+                          decimal: true,
+                        ),
                         inputFormatters: [AppInputFormatters.decimal()],
-                        validator: (v) => (double.tryParse(v ?? '') ?? -1) < 0 ? 'Valid price required' : null,
+                        validator: (v) => (double.tryParse(v ?? '') ?? -1) < 0
+                            ? 'Valid price required'
+                            : null,
                       ),
                     ],
                   ),
@@ -932,26 +1269,41 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
                     label: 'Discount (₹)',
                     hint: 'Discount',
                     controller: discountCtrl,
-                    keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
                     inputFormatters: [AppInputFormatters.decimal()],
                   ),
                 ],
               ),
             ),
             actions: [
-              AppButton(label: 'Cancel', type: AppButtonType.text, onPressed: () => Get.back()),
+              AppButton(
+                label: 'Cancel',
+                type: AppButtonType.text,
+                onPressed: () => Get.back(),
+              ),
               AppButton(
                 label: editIndex != null ? 'Update Item' : 'Add to Return',
                 onPressed: () {
                   if (selectedProd == null) {
-                    Get.snackbar('Error', 'Please select a product', snackPosition: SnackPosition.BOTTOM);
+                    Get.snackbar(
+                      'Error',
+                      'Please select a product',
+                      snackPosition: SnackPosition.BOTTOM,
+                    );
                     return;
                   }
                   if (!formKey.currentState!.validate()) return;
 
-                  final q = double.tryParse(qtyCtrl.text.replaceAll(',', '')) ?? 1.0;
-                  final r = double.tryParse(rateCtrl.text.replaceAll(',', '')) ?? selectedProd!.purchasePrice;
-                  final d = double.tryParse(discountCtrl.text.replaceAll(',', '')) ?? 0.0;
+                  final q =
+                      double.tryParse(qtyCtrl.text.replaceAll(',', '')) ?? 1.0;
+                  final r =
+                      double.tryParse(rateCtrl.text.replaceAll(',', '')) ??
+                      selectedProd!.purchasePrice;
+                  final d =
+                      double.tryParse(discountCtrl.text.replaceAll(',', '')) ??
+                      0.0;
 
                   if (editIndex != null) {
                     controller.updateReturnItem(editIndex, q, r, d);
@@ -982,33 +1334,54 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Date: ${AppDateUtils.format(order.orderDate)}', style: AppTextStyles.body2),
+                Text(
+                  'Date: ${AppDateUtils.format(order.orderDate)}',
+                  style: AppTextStyles.body2,
+                ),
                 _buildStatusBadge(order.status),
               ],
             ),
             const SizedBox(height: 4),
-            Text('Supplier: ${order.supplierName ?? 'Supplier #${order.supplierId}'}', style: AppTextStyles.subtitle2),
+            Text(
+              'Supplier: ${order.supplierName ?? 'Supplier #${order.supplierId}'}',
+              style: AppTextStyles.subtitle2,
+            ),
             if (order.expectedDeliveryDate != null)
-              Text('Expected Delivery: ${AppDateUtils.format(order.expectedDeliveryDate!)}', style: AppTextStyles.caption),
+              Text(
+                'Expected Delivery: ${AppDateUtils.format(order.expectedDeliveryDate!)}',
+                style: AppTextStyles.caption,
+              ),
             const SizedBox(height: 12),
             const Divider(),
             const Text('Items', style: AppTextStyles.subtitle2),
             const SizedBox(height: 8),
-            ...order.items.map((item) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text('${item.productName ?? 'Product'} (${item.quantity} ${item.unit ?? ''} @ ${CurrencyUtils.format(item.rate)})', style: AppTextStyles.body2),
+            ...order.items.map(
+              (item) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${item.productName ?? 'Product'} (${item.quantity} ${item.unit ?? ''} @ ${CurrencyUtils.format(item.rate)})',
+                        style: AppTextStyles.body2,
                       ),
-                      Text(CurrencyUtils.format(item.total), style: AppTextStyles.tableCellBold),
-                    ],
-                  ),
-                )),
+                    ),
+                    Text(
+                      CurrencyUtils.format(item.total),
+                      style: AppTextStyles.tableCellBold,
+                    ),
+                  ],
+                ),
+              ),
+            ),
             const Divider(),
             _calcRow('Subtotal', CurrencyUtils.format(order.subtotal)),
             _calcRow('Tax', CurrencyUtils.format(order.taxAmount)),
-            _calcRow('Grand Total', CurrencyUtils.format(order.grandTotal), isBold: true),
+            _calcRow(
+              'Grand Total',
+              CurrencyUtils.format(order.grandTotal),
+              isBold: true,
+            ),
             if (order.notes != null && order.notes!.isNotEmpty) ...[
               const SizedBox(height: 8),
               Text('Notes: ${order.notes}', style: AppTextStyles.caption),
@@ -1032,7 +1405,8 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
             onPressed: () async {
               Get.back();
               await controller.prepareEditOrderForm(order);
-              if (context.mounted) _showCreateOrderDialog(context, isEditing: true);
+              if (context.mounted)
+                _showCreateOrderDialog(context, isEditing: true);
             },
           ),
           AppButton(label: 'Close', onPressed: () => Get.back()),
@@ -1057,7 +1431,9 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
             const SizedBox(height: 8),
             Text(
               'This action cannot be undone.',
-              style: AppTextStyles.caption.copyWith(color: AppColors.textSecondaryLight),
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.textSecondaryLight,
+              ),
             ),
           ],
         ),
@@ -1093,33 +1469,57 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('Date: ${AppDateUtils.format(ret.returnDate)}', style: AppTextStyles.body2),
+                Text(
+                  'Date: ${AppDateUtils.format(ret.returnDate)}',
+                  style: AppTextStyles.body2,
+                ),
                 _buildStatusBadge(ret.status),
               ],
             ),
             const SizedBox(height: 4),
-            Text('Supplier: ${ret.supplierName ?? 'Supplier #${ret.supplierId}'}', style: AppTextStyles.subtitle2),
+            Text(
+              'Supplier: ${ret.supplierName ?? 'Supplier #${ret.supplierId}'}',
+              style: AppTextStyles.subtitle2,
+            ),
             if (ret.referenceInvoiceNumber != null)
-              Text('Reference Invoice: ${ret.referenceInvoiceNumber}', style: AppTextStyles.caption),
+              Text(
+                'Reference Invoice: ${ret.referenceInvoiceNumber}',
+                style: AppTextStyles.caption,
+              ),
             const SizedBox(height: 12),
             const Divider(),
-            const Text('Returned Items (Stock Deducted)', style: AppTextStyles.subtitle2),
+            const Text(
+              'Returned Items (Stock Deducted)',
+              style: AppTextStyles.subtitle2,
+            ),
             const SizedBox(height: 8),
-            ...ret.items.map((item) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 4),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text('${item.productName ?? 'Product'} (${item.quantity} ${item.unit ?? ''} @ ${CurrencyUtils.format(item.rate)})', style: AppTextStyles.body2),
+            ...ret.items.map(
+              (item) => Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        '${item.productName ?? 'Product'} (${item.quantity} ${item.unit ?? ''} @ ${CurrencyUtils.format(item.rate)})',
+                        style: AppTextStyles.body2,
                       ),
-                      Text(CurrencyUtils.format(item.total), style: AppTextStyles.tableCellBold),
-                    ],
-                  ),
-                )),
+                    ),
+                    Text(
+                      CurrencyUtils.format(item.total),
+                      style: AppTextStyles.tableCellBold,
+                    ),
+                  ],
+                ),
+              ),
+            ),
             const Divider(),
             _calcRow('Return Subtotal', CurrencyUtils.format(ret.subtotal)),
             _calcRow('Return Tax', CurrencyUtils.format(ret.taxAmount)),
-            _calcRow('Return Total', CurrencyUtils.format(ret.grandTotal), isBold: true),
+            _calcRow(
+              'Return Total',
+              CurrencyUtils.format(ret.grandTotal),
+              isBold: true,
+            ),
             if (ret.reason != null && ret.reason!.isNotEmpty) ...[
               const SizedBox(height: 8),
               Text('Reason: ${ret.reason}', style: AppTextStyles.caption),
@@ -1143,7 +1543,8 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
             onPressed: () async {
               Get.back();
               await controller.prepareEditReturnForm(ret);
-              if (context.mounted) _showCreateReturnDialog(context, isEditing: true);
+              if (context.mounted)
+                _showCreateReturnDialog(context, isEditing: true);
             },
           ),
           AppButton(label: 'Close', onPressed: () => Get.back()),
@@ -1168,7 +1569,9 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
             const SizedBox(height: 8),
             Text(
               'Deleting this return will revert stock deductions and accounting ledger entries.',
-              style: AppTextStyles.caption.copyWith(color: AppColors.textSecondaryLight),
+              style: AppTextStyles.caption.copyWith(
+                color: AppColors.textSecondaryLight,
+              ),
             ),
           ],
         ),
@@ -1196,8 +1599,14 @@ class PurchaseOrdersScreen extends GetView<PurchaseOrderController> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(label, style: isBold ? AppTextStyles.subtitle2 : AppTextStyles.body2),
-        Text(value, style: isBold ? AppTextStyles.metricMedium : AppTextStyles.body1),
+        Text(
+          label,
+          style: isBold ? AppTextStyles.subtitle2 : AppTextStyles.body2,
+        ),
+        Text(
+          value,
+          style: isBold ? AppTextStyles.metricMedium : AppTextStyles.body1,
+        ),
       ],
     );
   }
