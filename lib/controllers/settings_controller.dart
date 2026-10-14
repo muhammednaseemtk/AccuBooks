@@ -2,19 +2,28 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/constants/app_constants.dart';
+import '../core/database/database_helper.dart';
+import '../core/utils/sequence_utils.dart';
 import '../models/company_model.dart';
 import '../repositories/company_repository.dart';
+import '../services/auth_service.dart';
 import '../services/backup_service.dart';
 
 class SettingsController extends GetxController {
   final CompanyRepository _companyRepo;
   final BackupService _backupService;
+  final AuthService? _authService;
+  final DatabaseHelper _dbHelper;
 
   SettingsController({
     CompanyRepository? companyRepo,
     BackupService? backupService,
+    AuthService? authService,
+    DatabaseHelper? dbHelper,
   })  : _companyRepo = companyRepo ?? CompanyRepository(),
-        _backupService = backupService ?? BackupService();
+        _backupService = backupService ?? BackupService(),
+        _authService = authService ?? (Get.isRegistered<AuthService>() ? Get.find<AuthService>() : null),
+        _dbHelper = dbHelper ?? DatabaseHelper();
 
   final company = Rxn<CompanyModel>();
   final isDarkMode = false.obs;
@@ -22,6 +31,11 @@ class SettingsController extends GetxController {
   final isLoading = false.obs;
   final isSubmitting = false.obs;
   final dbInfo = <String, dynamic>{}.obs;
+
+  bool get canManageBackups {
+    final auth = _authService ?? (Get.isRegistered<AuthService>() ? Get.find<AuthService>() : null);
+    return auth?.isAdmin ?? true;
+  }
 
   void toggleSidebar() {
     isSidebarCollapsed.value = !isSidebarCollapsed.value;
@@ -86,9 +100,25 @@ class SettingsController extends GetxController {
   }
 
   Future<void> createBackup() async {
+    if (!canManageBackups) {
+      if (Get.context != null) {
+        Get.snackbar(
+          'Access Denied',
+          'Only administrators or owners can backup the database.',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      }
+      return;
+    }
+
     try {
       isSubmitting.value = true;
       final path = await _backupService.createBackup();
+      // If user cancelled the file picker, abort silently without creating a fallback or showing success
+      if (path == null || path.isEmpty) {
+        return;
+      }
+
       await loadSettings();
       if (Get.context != null) {
         Get.snackbar(
@@ -108,15 +138,31 @@ class SettingsController extends GetxController {
   }
 
   Future<void> restoreBackup() async {
+    if (!canManageBackups) {
+      if (Get.context != null) {
+        Get.snackbar(
+          'Access Denied',
+          'Only administrators or owners can restore the database.',
+          snackPosition: SnackPosition.BOTTOM,
+        );
+      }
+      return;
+    }
+
     try {
       isSubmitting.value = true;
       final success = await _backupService.restoreFromBackup();
       if (success) {
+        // Safely purge all in-memory user controllers, cached lists, and state
+        AuthService.clearUserControllers();
+        // Reconcile document sequence reservations against the restored database
+        await SequenceUtils.reconcileAfterRestore(_dbHelper);
+        // Reload settings and refreshed database info
         await loadSettings();
         if (Get.context != null) {
           Get.snackbar(
             'Restore Complete',
-            'Database restored successfully. Please restart or refresh application.',
+            'Database restored successfully. All records have been refreshed.',
             snackPosition: SnackPosition.BOTTOM,
             duration: const Duration(seconds: 4),
           );

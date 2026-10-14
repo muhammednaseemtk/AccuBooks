@@ -218,8 +218,10 @@ class ProductsScreen extends GetView<ProductController> {
 
   void _showProductFormDialog(BuildContext context, {ProductModel? product}) async {
     final isEdit = product != null;
-    String initialCode = product?.productCode ?? controller.nextProductCode.value;
-    if (!isEdit && initialCode.isEmpty) {
+    final String initialCode;
+    if (isEdit) {
+      initialCode = product.productCode;
+    } else {
       initialCode = await controller.getNextProductCode();
     }
     final codeCtrl = TextEditingController(text: initialCode);
@@ -250,6 +252,11 @@ class ProductsScreen extends GetView<ProductController> {
                     label: 'Product Code *',
                     hint: 'Product Code',
                     controller: codeCtrl,
+                    onChanged: (val) {
+                      if (!isEdit) {
+                        controller.nextProductCode.value = val.trim();
+                      }
+                    },
                     validator: (v) => v == null || v.isEmpty ? 'Code required' : null,
                   ),
                   AppTextField(
@@ -413,6 +420,7 @@ class ProductsScreen extends GetView<ProductController> {
                         Get.back();
                       }
                     } else {
+                      formKey.currentState?.reset();
                       final nextCode = await controller.getNextProductCode();
                       codeCtrl.text = nextCode;
                       barcodeCtrl.clear();
@@ -424,7 +432,6 @@ class ProductsScreen extends GetView<ProductController> {
                       stockCtrl.text = '0';
                       minStockCtrl.text = '5';
                       selectedCat.value = controller.categories.isNotEmpty ? controller.categories.first.id : null;
-                      formKey.currentState?.reset();
                     }
                   }
                 },

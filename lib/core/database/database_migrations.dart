@@ -38,6 +38,7 @@ class DatabaseMigrations {
     batch.execute(DatabaseTables.createJournalEntriesTable);
     batch.execute(DatabaseTables.createJournalLinesTable);
     batch.execute(DatabaseTables.createStockTransactionsTable);
+    batch.execute(DatabaseTables.createAppMetadataTable);
 
     // 2. Create Indexes
     for (final indexSql in DatabaseTables.createIndexes) {

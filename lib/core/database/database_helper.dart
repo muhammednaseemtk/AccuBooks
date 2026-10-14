@@ -137,6 +137,10 @@ class DatabaseHelper {
           try {
             await db.execute('ALTER TABLE ${DatabaseTables.tableUsers} ADD COLUMN profile_image TEXT;');
           } catch (_) {}
+          try {
+            await db.execute(DatabaseTables.createAppMetadataTable);
+            await stampMetadata(db);
+          } catch (_) {}
         },
       ),
     );
@@ -169,6 +173,203 @@ class DatabaseHelper {
     }
   }
 
+  /// Stamp ownership and application metadata in the database
+  Future<void> stampMetadata(Database db, [int? userId]) async {
+    try {
+      await db.execute(DatabaseTables.createAppMetadataTable);
+      final effectiveUserId = userId ?? _activeUserId;
+      String userEmail = '';
+      int? orgId;
+      String companyName = '';
+
+      if (effectiveUserId != null) {
+        try {
+          final auth = await authDatabase;
+          final userRows = await auth.query(
+            DatabaseTables.tableUsers,
+            columns: ['email', 'organization_id'],
+            where: 'id = ?',
+            whereArgs: [effectiveUserId],
+            limit: 1,
+          );
+          if (userRows.isNotEmpty) {
+            userEmail = (userRows.first['email'] as String?) ?? '';
+            orgId = userRows.first['organization_id'] as int?;
+          }
+        } catch (_) {}
+      }
+
+      try {
+        final companyRows = await db.query(
+          DatabaseTables.tableCompanies,
+          columns: ['name'],
+          limit: 1,
+        );
+        if (companyRows.isNotEmpty) {
+          companyName = (companyRows.first['name'] as String?) ?? '';
+        }
+      } catch (_) {}
+
+      final batch = db.batch();
+      void setMeta(String k, String v) {
+        batch.insert(
+          DatabaseTables.tableAppMetadata,
+          {'key': k, 'value': v},
+          conflictAlgorithm: ConflictAlgorithm.replace,
+        );
+      }
+
+      setMeta('app_name', 'AccuBooks');
+      setMeta('user_id', effectiveUserId?.toString() ?? '');
+      setMeta('user_email', userEmail);
+      setMeta('organization_id', orgId?.toString() ?? '');
+      setMeta('company_name', companyName);
+      setMeta('schema_version', DatabaseMigrations.currentVersion.toString());
+      setMeta('updated_at', DateTime.now().toIso8601String());
+
+      await batch.commit(noResult: true);
+    } catch (_) {}
+  }
+
+  /// Validate a backup SQLite database file for schema, required tables, version, and user/company ownership
+  Future<Map<String, String>> validateBackupFile(
+    String backupFilePath, {
+    int? expectedUserId,
+    String? expectedUserEmail,
+    int? expectedOrgId,
+  }) async {
+    initializeFfi();
+    final backupFile = File(backupFilePath);
+    if (!await backupFile.exists()) {
+      throw Exception('Backup file does not exist at $backupFilePath');
+    }
+
+    Database? checkDb;
+    try {
+      try {
+        checkDb = await databaseFactory.openDatabase(
+          backupFilePath,
+          options: OpenDatabaseOptions(
+            readOnly: true,
+            onConfigure: (db) async {
+              await db.execute('PRAGMA busy_timeout = 10000;');
+            },
+          ),
+        );
+      } catch (e) {
+        throw Exception('Backup file is corrupted or not a valid SQLite database ($e).');
+      }
+
+      // 1. Check integrity
+      List<Map<String, Object?>> integrity;
+      try {
+        integrity = await checkDb.rawQuery('PRAGMA integrity_check;');
+      } catch (e) {
+        throw Exception('Backup file is corrupted or not a valid SQLite database ($e).');
+      }
+
+      if (integrity.isEmpty ||
+          integrity.first.values.first.toString().toLowerCase() != 'ok') {
+        throw Exception('Backup file is corrupted or not a valid SQLite database.');
+      }
+
+      // 2. Check schema version
+      final versionRes = await checkDb.rawQuery('PRAGMA user_version;');
+      final version = (versionRes.first.values.first as int?) ?? 0;
+      if (version <= 0 || version > DatabaseMigrations.currentVersion) {
+        throw Exception(
+          'Incompatible database version ($version). Current supported version is ${DatabaseMigrations.currentVersion}.',
+        );
+      }
+
+      // 3. Check required accounting tables
+      final tablesRes = await checkDb.rawQuery(
+        "SELECT name FROM sqlite_master WHERE type='table';",
+      );
+      final tableNames = tablesRes
+          .map((r) => (r['name'] as String?)?.toLowerCase() ?? '')
+          .toSet();
+
+      const requiredTables = [
+        DatabaseTables.tableCompanies,
+        DatabaseTables.tableAccounts,
+        DatabaseTables.tableCustomers,
+        DatabaseTables.tableSuppliers,
+        DatabaseTables.tableProducts,
+        DatabaseTables.tableSalesInvoices,
+        DatabaseTables.tableSalesOrders,
+        DatabaseTables.tablePurchaseInvoices,
+        DatabaseTables.tablePurchaseOrders,
+        DatabaseTables.tableReceipts,
+        DatabaseTables.tablePayments,
+        DatabaseTables.tableExpenses,
+        DatabaseTables.tableJournalEntries,
+        DatabaseTables.tableJournalLines,
+      ];
+
+      for (final table in requiredTables) {
+        if (!tableNames.contains(table.toLowerCase())) {
+          throw Exception(
+            'Invalid AccuBooks backup file: Missing required accounting table "$table".',
+          );
+        }
+      }
+
+      // 4. Check user / company isolation metadata
+      final Map<String, String> meta = {};
+      if (tableNames.contains(DatabaseTables.tableAppMetadata.toLowerCase())) {
+        final metaRows = await checkDb.query(DatabaseTables.tableAppMetadata);
+        for (final r in metaRows) {
+          final k = r['key'] as String?;
+          final v = r['value'] as String?;
+          if (k != null && v != null) {
+            meta[k] = v;
+          }
+        }
+      }
+
+      final targetUserId = expectedUserId ?? _activeUserId;
+      if (targetUserId != null) {
+        final metaUserId = meta['user_id'];
+        if (metaUserId != null &&
+            metaUserId.isNotEmpty &&
+            metaUserId != targetUserId.toString()) {
+          final ownerInfo = meta['user_email'] != null && meta['user_email']!.isNotEmpty
+              ? ' (${meta['user_email']})'
+              : ' (User ID: $metaUserId)';
+          throw Exception(
+            'Cannot restore backup: This backup belongs to another user$ownerInfo and cannot be restored into the current account (User ID: $targetUserId).',
+          );
+        }
+
+        if (expectedUserEmail != null &&
+            expectedUserEmail.isNotEmpty &&
+            meta['user_email'] != null &&
+            meta['user_email']!.isNotEmpty &&
+            meta['user_email']!.toLowerCase() != expectedUserEmail.toLowerCase()) {
+          throw Exception(
+            'Cannot restore backup: This backup belongs to user "${meta['user_email']}" and cannot be restored into account "$expectedUserEmail".',
+          );
+        }
+
+        if (expectedOrgId != null &&
+            meta['organization_id'] != null &&
+            meta['organization_id']!.isNotEmpty &&
+            meta['organization_id'] != expectedOrgId.toString()) {
+          throw Exception(
+            'Cannot restore backup: This backup belongs to another organization (Org ID: ${meta['organization_id']}) and cannot be restored into the current account.',
+          );
+        }
+      }
+
+      return meta;
+    } finally {
+      if (checkDb != null && checkDb.isOpen) {
+        await checkDb.close();
+      }
+    }
+  }
+
   /// Execute an atomic transaction
   Future<T> transaction<T>(Future<T> Function(Transaction txn) action) async {
     final db = await database;
@@ -193,8 +394,17 @@ class DatabaseHelper {
     }
   }
 
-  /// Create backup of accounting database file
+  /// Create backup of accounting database file, ensuring WAL checkpoint and metadata stamping
   Future<String> backupDatabase({String? customDestinationPath}) async {
+    // Ensure database metadata is stamped and WAL is completely flushed/checkpointed
+    final db = await database;
+    await stampMetadata(db);
+    try {
+      await db.rawQuery('PRAGMA wal_checkpoint(TRUNCATE);');
+    } catch (e) {
+      debugPrint('Error checkpointing WAL before backup: $e');
+    }
+
     final currentDbPath = await getDatabasePath();
     final currentFile = File(currentDbPath);
     if (!await currentFile.exists()) {
@@ -204,7 +414,7 @@ class DatabaseHelper {
     String destPath = customDestinationPath ?? '';
     if (destPath.isEmpty) {
       final docDir = await getApplicationDocumentsDirectory();
-      final timestamp = DateTime.now().millisecondsSinceEpoch;
+      final timestamp = DateTime.now().toIso8601String().replaceAll(':', '-').split('.').first;
       destPath = p.join(docDir.path, 'AccuBooks', 'accubooks_backup_$timestamp.db');
     }
 
@@ -213,54 +423,100 @@ class DatabaseHelper {
       await destFile.parent.create(recursive: true);
     }
 
-    // Ensure database is in a consistent state by running checkpoint or simple query
-    final db = await database;
-    await db.rawQuery('PRAGMA wal_checkpoint(FULL);');
-
     await currentFile.copy(destPath);
     return destPath;
   }
 
-  /// Restore database from a backup file
+  /// Restore database from a backup file with pre-validation, safety backup, and rollback
   Future<bool> restoreDatabase(String backupFilePath) async {
     final backupFile = File(backupFilePath);
     if (!await backupFile.exists()) {
       throw Exception('Backup file does not exist at $backupFilePath');
     }
 
-    // Close active database
+    // 1. Retrieve current user & org info for isolation validation
+    String? activeEmail;
+    int? activeOrgId;
+    if (_activeUserId != null) {
+      try {
+        final auth = await authDatabase;
+        final userRows = await auth.query(
+          DatabaseTables.tableUsers,
+          where: 'id = ?',
+          whereArgs: [_activeUserId],
+          limit: 1,
+        );
+        if (userRows.isNotEmpty) {
+          activeEmail = userRows.first['email'] as String?;
+          activeOrgId = userRows.first['organization_id'] as int?;
+        }
+      } catch (_) {}
+    }
+
+    // Pre-validate backup file BEFORE touching active database
+    await validateBackupFile(
+      backupFilePath,
+      expectedUserId: _activeUserId,
+      expectedUserEmail: activeEmail,
+      expectedOrgId: activeOrgId,
+    );
+
+    // 2. Safely flush WAL and close active database connection
+    if (_db != null && _db!.isOpen) {
+      try {
+        await _db!.rawQuery('PRAGMA wal_checkpoint(TRUNCATE);');
+      } catch (_) {}
+    }
     await close();
 
     final currentDbPath = await getDatabasePath();
     final currentFile = File(currentDbPath);
 
-    // Keep temporary safety backup of active database
-    final tempBackupPath = '$currentDbPath.tmp';
+    // 3. Keep recoverable safety backup of current active database
+    final safetyBackupPath = '$currentDbPath.pre_restore_safety.bak';
     if (await currentFile.exists()) {
-      await currentFile.copy(tempBackupPath);
+      await currentFile.copy(safetyBackupPath);
     }
 
+    // 4. Safely remove lingering WAL/SHM files to prevent WAL replay conflicts
+    final walFile = File('$currentDbPath-wal');
+    final shmFile = File('$currentDbPath-shm');
+    if (await walFile.exists()) {
+      try { await walFile.delete(); } catch (_) {}
+    }
+    if (await shmFile.exists()) {
+      try { await shmFile.delete(); } catch (_) {}
+    }
+
+    // 5. Replace current database file with validated backup
     try {
       await backupFile.copy(currentDbPath);
-      // Reopen database to verify integrity
-      _db = await _initDatabase();
-      await _db!.rawQuery('PRAGMA integrity_check;');
 
-      // Remove temp file
-      final tempFile = File(tempBackupPath);
-      if (await tempFile.exists()) {
-        await tempFile.delete();
+      // Reopen database and verify integrity
+      _db = await _initDatabase();
+      final integrity = await _db!.rawQuery('PRAGMA integrity_check;');
+      if (integrity.isEmpty ||
+          integrity.first.values.first.toString().toLowerCase() != 'ok') {
+        throw Exception('Restored database failed integrity check.');
       }
+
       return true;
     } catch (e) {
-      // Revert if restore failed
-      final tempFile = File(tempBackupPath);
-      if (await tempFile.exists()) {
-        await tempFile.copy(currentDbPath);
-        await tempFile.delete();
+      // Rollback on any failure: restore from safety backup
+      await close();
+      if (await walFile.exists()) {
+        try { await walFile.delete(); } catch (_) {}
+      }
+      if (await shmFile.exists()) {
+        try { await shmFile.delete(); } catch (_) {}
+      }
+
+      final safetyFile = File(safetyBackupPath);
+      if (await safetyFile.exists()) {
+        await safetyFile.copy(currentDbPath);
       }
       _db = await _initDatabase();
-      rethrow;
+      throw Exception('Database restoration failed and was safely rolled back: $e');
     }
   }
 

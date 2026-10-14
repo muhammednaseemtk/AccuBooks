@@ -28,6 +28,7 @@ class DatabaseTables {
   static const String tableJournalEntries = 'journal_entries';
   static const String tableJournalLines = 'journal_lines';
   static const String tableStockTransactions = 'stock_transactions';
+  static const String tableAppMetadata = 'app_metadata';
 
   // Schema creation statements
   static const String createCompaniesTable = '''
@@ -498,6 +499,13 @@ class DatabaseTables {
       total REAL NOT NULL,
       FOREIGN KEY (return_id) REFERENCES $tablePurchaseReturns (id) ON DELETE CASCADE,
       FOREIGN KEY (product_id) REFERENCES $tableProducts (id)
+    );
+  ''';
+
+  static const String createAppMetadataTable = '''
+    CREATE TABLE IF NOT EXISTS $tableAppMetadata (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
     );
   ''';
 

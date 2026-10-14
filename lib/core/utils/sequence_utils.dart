@@ -166,4 +166,56 @@ class SequenceUtils {
 
     return candidate;
   }
+
+  /// Reconcile document number reservations after a database restore
+  /// Clears in-memory caches and purges any reserved codes that exist as active records in the restored database
+  static Future<void> reconcileAfterRestore(DatabaseHelper dbHelper) async {
+    _inMemoryReserved.clear();
+
+    final modules = [
+      {'pref': 'reserved_customer_codes', 'table': 'customers', 'col': 'customer_code'},
+      {'pref': 'reserved_supplier_codes', 'table': 'suppliers', 'col': 'supplier_code'},
+      {'pref': 'reserved_product_codes', 'table': 'products', 'col': 'product_code'},
+      {'pref': 'reserved_sales_order_numbers', 'table': 'sales_orders', 'col': 'order_number'},
+      {'pref': 'reserved_sales_invoice_numbers', 'table': 'sales_invoices', 'col': 'invoice_number'},
+      {'pref': 'reserved_sales_return_numbers', 'table': 'sales_returns', 'col': 'return_number'},
+      {'pref': 'reserved_purchase_order_numbers', 'table': 'purchase_orders', 'col': 'order_number'},
+      {'pref': 'reserved_purchase_numbers', 'table': 'purchase_invoices', 'col': 'invoice_number'},
+      {'pref': 'reserved_purchase_return_numbers', 'table': 'purchase_returns', 'col': 'return_number'},
+      {'pref': 'reserved_receipt_numbers', 'table': 'receipts', 'col': 'receipt_number'},
+      {'pref': 'reserved_payment_numbers', 'table': 'payments', 'col': 'payment_number'},
+      {'pref': 'reserved_expense_numbers', 'table': 'expenses', 'col': 'expense_number'},
+      {'pref': 'reserved_journal_numbers', 'table': 'journal_entries', 'col': 'transaction_number'},
+    ];
+
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final db = await dbHelper.database;
+
+      for (final m in modules) {
+        final prefKey = m['pref']!;
+        final tableName = m['table']!;
+        final colName = m['col']!;
+
+        final reservedList = prefs.getStringList(prefKey) ?? [];
+        if (reservedList.isEmpty) continue;
+
+        try {
+          final rows = await db.query(tableName, columns: [colName]);
+          final existing = rows
+              .map((r) => (r[colName] as String?)?.trim().toUpperCase() ?? '')
+              .where((s) => s.isNotEmpty)
+              .toSet();
+
+          // Remove any codes that actually exist in the restored database
+          final cleaned = reservedList
+              .map((s) => s.trim().toUpperCase())
+              .where((s) => !existing.contains(s))
+              .toList();
+
+          await prefs.setStringList(prefKey, cleaned);
+        } catch (_) {}
+      }
+    } catch (_) {}
+  }
 }

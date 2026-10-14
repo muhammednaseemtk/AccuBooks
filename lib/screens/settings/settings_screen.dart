@@ -160,6 +160,16 @@ class SettingsScreen extends StatelessWidget {
               );
             }),
             const SizedBox(height: 20),
+            if (!controller.canManageBackups) ...[
+              Text(
+                'Note: Backup and restore require Owner or Administrator permissions.',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: Colors.orange,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
             Wrap(
               spacing: 16,
               runSpacing: 12,
