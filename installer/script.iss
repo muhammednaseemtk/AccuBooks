@@ -5,11 +5,11 @@
 [Setup]
 ; NOTE: The value of AppId uniquely identifies this application. Do not use the same AppId value in installers for other applications.
 ; (To generate a new GUID, click Tools | Generate GUID inside the IDE.)
-AppId={{A721E15C-10F3-4F19-BA4A-0892CBA4768A}
-AppName=AccuBooks
-AppVersion=1.0.0
-;AppVerName={cm:NameAndVersion,AccuBooks,1.0.0}
-DefaultDirName={autopf}\AccuBooks
+AppId={{77C8E521-DB69-4207-A2A4-65F6467CFAF7}
+AppName=Accubooks
+AppVersion=1.0,0
+;AppVerName={cm:NameAndVersion,Accubooks,1.0%2c0}
+DefaultDirName={autopf}\Accubooks
 UninstallDisplayIcon={app}\accubooks.exe
 ; "ArchitecturesAllowed=x64compatible" specifies that Setup cannot run on anything but x64 and Windows 11 on Arm.
 ArchitecturesAllowed=x64compatible
@@ -22,7 +22,7 @@ DisableProgramGroupPage=yes
 ; Uncomment the following line to run in non administrative install mode (install for current user only).
 ;PrivilegesRequired=lowest
 OutputDir=C:\coding\AccuBooks\installer
-OutputBaseFilename=AccuBooks
+OutputBaseFilename=Accubooks
 SolidCompression=yes
 WizardStyle=modern dynamic
 
@@ -42,9 +42,9 @@ Source: "C:\coding\AccuBooks\build\windows\x64\runner\Release\data\*"; DestDir: 
 ; NOTE: Don't use "Flags: ignoreversion" on any shared system files.
 
 [Icons]
-Name: "{autoprograms}\AccuBooks"; Filename: "{app}\accubooks.exe"
-Name: "{autodesktop}\AccuBooks"; Filename: "{app}\accubooks.exe"; Tasks: desktopicon
+Name: "{autoprograms}\Accubooks"; Filename: "{app}\accubooks.exe"
+Name: "{autodesktop}\Accubooks"; Filename: "{app}\accubooks.exe"; Tasks: desktopicon
 
 [Run]
-Filename: "{app}\accubooks.exe"; Description: "{cm:LaunchProgram,AccuBooks}"; Flags: nowait postinstall skipifsilent
+Filename: "{app}\accubooks.exe"; Description: "{cm:LaunchProgram,Accubooks}"; Flags: nowait postinstall skipifsilent
 

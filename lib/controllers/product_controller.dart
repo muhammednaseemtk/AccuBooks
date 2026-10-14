@@ -79,7 +79,9 @@ class ProductController extends GetxController {
       nextProductCode.value = code;
       return code;
     } catch (_) {
-      return '${AccountingConstants.prefixProduct}001';
+      const fallback = '${AccountingConstants.prefixProduct}001';
+      nextProductCode.value = fallback;
+      return fallback;
     }
   }
 
@@ -173,6 +175,18 @@ class ProductController extends GetxController {
     }
     try {
       isSubmitting.value = true;
+      if (product.productCode.trim().isEmpty) {
+        if (Get.context != null) {
+          Get.snackbar(
+            'Validation Error',
+            'Product code is required.',
+            snackPosition: SnackPosition.BOTTOM,
+            backgroundColor: AppColors.debit.withValues(alpha: 0.9),
+            colorText: Colors.white,
+          );
+        }
+        return false;
+      }
       final exists = await _productRepo.isProductCodeExists(product.productCode);
       if (exists) {
         if (Get.context != null) {
